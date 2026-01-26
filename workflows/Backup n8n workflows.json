@@ -1,0 +1,501 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Execute workflow": {
+      "main": [
+        [
+          {
+            "node": "Set date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set date": {
+      "main": [
+        [
+          {
+            "node": "Format date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format date": {
+      "main": [
+        [
+          {
+            "node": "Set commit date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set commit date": {
+      "main": [
+        [
+          {
+            "node": "List files from repository [GITHUB]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List files from repository [GITHUB]": {
+      "main": [
+        [
+          {
+            "node": "Combine file names [GITHUB]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine file names [GITHUB]": {
+      "main": [
+        [
+          {
+            "node": "Retrieve workflows [N8N]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve workflows [N8N]": {
+      "main": [
+        [
+          {
+            "node": "Move JSON to binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move JSON to binary": {
+      "main": [
+        [
+          {
+            "node": "Split to single items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split to single items": {
+      "main": [
+        [
+          {
+            "node": "Check if file exists in repository",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if file exists in repository": {
+      "main": [
+        [
+          {
+            "node": "Update file [GITHUB]",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upload file [GITHUB]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update file [GITHUB]": {
+      "main": [
+        [
+          {
+            "node": "Split to single items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file [GITHUB]": {
+      "main": [
+        [
+          {
+            "node": "Split to single items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2025-12-08T09:07:30.128Z",
+  "id": "hKu4h0ymcuCtFVnI",
+  "isArchived": true,
+  "meta": null,
+  "name": "Backup n8n workflows",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e5eec405-7739-42a0-9923-8f04ae696fad",
+      "name": "Execute workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        48,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "3b1adad9-b099-44d3-98dd-b72040534f5e",
+      "name": "Set date",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        240,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ $json.currentDate }}",
+        "format": "custom",
+        "customFormat": "dd-MM-yyyy/H:mm",
+        "options": {}
+      },
+      "id": "63cb0517-1799-4f41-8021-1dfba6958ff2",
+      "name": "Format date",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        448,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "commitDate",
+              "value": "={{ $json.formattedDate }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4b31a5fc-b5ad-4249-a704-045dfeb74ff7",
+      "name": "Set commit date",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        640,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "operation": "list",
+        "owner": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "repository": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "filePath": "="
+      },
+      "id": "304064aa-b0a4-4fa7-86ff-3c0ff339eeb6",
+      "name": "List files from repository [GITHUB]",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        848,
+        416
+      ],
+      "alwaysOutputData": true,
+      "webhookId": "4c194651-3478-4605-a557-b3182657a8e6"
+    },
+    {
+      "parameters": {
+        "operation": "aggregateItems",
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "name"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f5c2e9ae-2640-4cc2-a19a-2d90f330bfc0",
+      "name": "Combine file names [GITHUB]",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 2.1,
+      "position": [
+        1040,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "filters": {},
+        "requestOptions": {}
+      },
+      "id": "d4f176a1-4c8c-47f6-be21-6500b9434877",
+      "name": "Retrieve workflows [N8N]",
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        416
+      ],
+      "credentials": {
+        "n8nApi": {
+          "id": "qEJ3gWoYTfXYgkN2",
+          "name": "n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "jsonToBinary",
+        "options": {
+          "fileName": "={{ $json.name.replace(/\\s+/g, '-').toLowerCase() }}-{{ $json.id }}.json"
+        }
+      },
+      "id": "23ef7bc7-4fba-411b-9239-02d94711b006",
+      "name": "Move JSON to binary",
+      "type": "n8n-nodes-base.moveBinaryData",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "a397a689-7ada-467e-b110-8bcda9c132a4",
+      "name": "Split to single items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $node['Combine file names [GITHUB]'].json.name }}",
+              "operation": "contains",
+              "value2": "={{ $binary.data.fileName }}"
+            }
+          ]
+        }
+      },
+      "id": "ddc7797a-7eb7-4b5a-97ee-2e986572f8b6",
+      "name": "Check if file exists in repository",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "operation": "edit",
+        "owner": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "repository": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "filePath": "={{ $binary.data.fileName }}",
+        "binaryData": true,
+        "commitMessage": "=backup-{{ $node['Set commit date'].json.commitDate }}"
+      },
+      "id": "21794616-7ea0-46e6-b8d7-aad829f88824",
+      "name": "Update file [GITHUB]",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        2144,
+        144
+      ],
+      "webhookId": "5dc0735e-45d8-41f9-99b9-304cc0cfa139"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "owner": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "repository": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "filePath": "={{ $binary.data.fileName }}",
+        "binaryData": true,
+        "commitMessage": "=backup-{{ $node['Set commit date'].json.commitDate }}"
+      },
+      "id": "3b3532fa-6580-44c3-9933-1a1a5b7ec943",
+      "name": "Upload file [GITHUB]",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        2144,
+        544
+      ],
+      "webhookId": "8beb8eab-8b06-4eb9-adb4-41a2bef5e012"
+    },
+    {
+      "parameters": {
+        "content": "## Trigger\nYou can change it to [\"Schedule\" trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/) to make backups on regular basis.",
+        "height": 339.51767272727324,
+        "width": 182.4715262478496
+      },
+      "id": "bb4d514b-f904-4a15-9b54-755f5b5ab009",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Set and format date/time\nThose nodes are responsible for setting a current date and time in format `dd-MM-yyyy/H:mm`. Date and time are used to compose commit messages in GitHub, for example: `backup-12-07-2023/14:18`.",
+        "height": 339.42690909090965,
+        "width": 585.4045090909088
+      },
+      "id": "6b91f508-d0d7-45e4-8a20-874bf22b0ac1",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        208,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Make a list of existing files\nReturn a list of existing files (backups) in GitHub repository. Data returned by those nodes is used by \"IF\" node (later in workflow) to check whether the backup files should be created or updated.",
+        "height": 339.42690909090965,
+        "width": 389.89265454545443
+      },
+      "id": "8502e197-552a-47e6-9f69-2a7ac0e6474f",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        800,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Retrieve workflows\nGet all workflows form your n8n instance. Remember that **your credentials need to point to the instance that you want to backup.**",
+        "height": 339.42690909090965,
+        "width": 384.14708363636373
+      },
+      "id": "3b892c1a-1142-4573-bd11-376ced3f54ee",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Upload backup\nSplit JSON files into batches of 1, check if they were uploaded to repository before. If yes (true), upload the new version of the file. Otherwise (false) create the file in repository.",
+        "height": 731.633426614796,
+        "width": 703.8733020263451
+      },
+      "id": "fe768469-1044-473a-b9f7-d48171aed8d2",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1616,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ⚠️ Note\n\n1. Complete video guide for this workflow is available [on my YouTube](https://www.youtube.com/watch?v=dNuVuoPD0Jo). \n2. Remember to add your credentials and configure GitHub nodes (covered in the video guide).\n3. If you like this workflow, please subscribe to [my YouTube channel](https://www.youtube.com/@workfloows) and/or [my newsletter](https://workfloows.com/).\n\n**Thank you for your support!**",
+        "height": 234.82946582693546,
+        "width": 508.8662091091177
+      },
+      "id": "e1b62d52-70c6-4661-af9d-18b2d7ca5979",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "shared": [
+    {
+      "updatedAt": "2025-12-08T09:07:30.133Z",
+      "createdAt": "2025-12-08T09:07:30.133Z",
+      "role": "workflow:owner",
+      "workflowId": "hKu4h0ymcuCtFVnI",
+      "projectId": "f4dAeEYwbhnfFVsh"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-12T22:22:15.000Z",
+  "versionId": "eaa1b8cb-5022-4849-a39f-891e142851f1"
+}
