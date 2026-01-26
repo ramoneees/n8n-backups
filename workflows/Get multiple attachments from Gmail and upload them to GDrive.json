@@ -1,0 +1,586 @@
+{
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-01-25T22:17:41.000Z",
+    "createdAt": "2026-01-25T22:16:42.301Z",
+    "versionId": "1879b0c3-c724-4e11-8236-07d20ecaca43",
+    "workflowId": "8AAwI2hqmqmfjrtx",
+    "nodes": [
+      {
+        "parameters": {
+          "name": "={{ $json.fileName }}",
+          "driveId": {
+            "__rl": true,
+            "value": "My Drive",
+            "mode": "list",
+            "cachedResultName": "My Drive",
+            "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "={{ $json.folderId }}",
+            "mode": "id"
+          },
+          "options": {}
+        },
+        "id": "f8e19c97-0983-4365-bc63-179605050ef2",
+        "name": "upload files to google drive",
+        "type": "n8n-nodes-base.googleDrive",
+        "position": [
+          1072,
+          -240
+        ],
+        "typeVersion": 3,
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "yuNhenjVS5Da8oAw",
+            "name": "Google Drive account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "simple": false,
+          "filters": {
+            "q": "has:attachment filename:pdf newer_than:30d (\n  label:to-process/invoice\n  OR from:noreply@grupoyour.com\n  OR from:noreply@weoinvoice.com\n  OR from:noreply@factura.grenke.pt\n  OR from:payments-noreply@google.com\n  OR from:noreply@documentos.meoempresas.pt\n  OR from:geral@alcocheteup.pt\n  OR from:no_reply@mun-montijo.pt\n)"
+          },
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.2,
+        "position": [
+          0,
+          0
+        ],
+        "id": "688312a3-ad4f-451c-ad3b-9ad321dc7f07",
+        "name": "Get many messages",
+        "webhookId": "c886792f-129b-4d66-9aad-34902805d9c0",
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "NswnTKPTIgVfiQvs",
+            "name": "Gmail account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "let items = $input.all();\n\nlet results = [];\n\nfor (const item of items) {\n\n  // ---- 1) Resolve email date (fallback = now) ----\n  const rawDate =\n    item.json.internalDate ||\n    item.json.date ||\n    item.json.headers?.date ||\n    null;\n\n  let date;\n  if (rawDate && !isNaN(rawDate)) {\n    date = new Date(Number(rawDate));\n  } else if (rawDate) {\n    date = new Date(rawDate);\n  } else {\n    date = new Date();\n  }\n\n  if (isNaN(date.getTime())) {\n    date = new Date();\n  }\n\n  // ---- 2) Build MM-YYYY ----\n  const month = String(date.getMonth() + 1).padStart(2, '0');\n  const year = date.getFullYear();\n  const monthYear = `${month}-${year}`;\n\n  // ---- 3) Explode attachments ----\n  for (const key of Object.keys(item.binary ?? {})) {\n    const bin = item.binary[key];\n\n    const isPdf =\n      (bin.mimeType && bin.mimeType.toLowerCase().includes('pdf')) ||\n      (bin.fileName && bin.fileName.toLowerCase().endsWith('.pdf'));\n\n    if (!isPdf) continue;\n\n    results.push({\n      json: {\n        monthYear,             // <-- folder name\n        fileName: bin.fileName,\n        folderId: $input.first().json.id\n      },\n      binary: {\n        data: bin              // normalize for Drive Upload\n      }\n    });\n  }\n}\n\nreturn results;"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          704,
+          -224
+        ],
+        "id": "174a17a6-e233-4cda-9a3e-58e3e04881e8",
+        "name": "Code in JavaScript1"
+      },
+      {
+        "parameters": {
+          "resource": "folder",
+          "name": "={{ $json.mesAno }}",
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30",
+            "mode": "list",
+            "cachedResultName": "faturas",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          336,
+          -432
+        ],
+        "id": "6830aa7d-22f5-4733-b2fd-f758e517223e",
+        "name": "Create folder1",
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "yuNhenjVS5Da8oAw",
+            "name": "Google Drive account"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          368,
+          -144
+        ],
+        "id": "abdd87c8-bd2d-4ae4-8dc7-a605c1b7ecaf",
+        "name": "Merge"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Tenta pegar a data do email (Gmail costuma enviar em ms ou string)\nconst rawDate =\n  $json.internalDate ||\n  $json.date ||\n  $json.headers?.date ||\n  null;\n\nlet date;\n\n// Se vier timestamp (ms)\nif (rawDate && !isNaN(rawDate)) {\n  date = new Date(Number(rawDate));\n} \n// Se vier string de data\nelse if (rawDate) {\n  date = new Date(rawDate);\n} \n// Fallback: agora\nelse {\n  date = new Date();\n}\n\n// Garante validade\nif (isNaN(date.getTime())) {\n  date = new Date();\n}\n\n// Cria MM-YYYY\nconst mes = String(date.getMonth() + 1).padStart(2, '0');\nconst ano = date.getFullYear();\nconst mesAno = `${mes}-${ano}`;\n\n// Injeta no JSON\nreturn [\n  {\n    json: {\n      ...$json,\n      mesAno,\n    },\n    binary: $binary,\n  },\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          128,
+          -336
+        ],
+        "id": "661724d1-c3da-4a9c-b819-d63741307d18",
+        "name": "Code in JavaScript"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://app.assistro.co/api/v1/wapushplus/single/message",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer  eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2FwcC5hc3Npc3Ryby5jby9wbGFuL3dhcHVzaC1wbHVzL244biIsImlhdCI6MTc2OTM3NTc3NCwiZXhwIjoyNDAwMDk1Nzc0LCJuYmYiOjE3NjkzNzU3NzQsImp0aSI6Indrb0FKRjd1NXRJUnozdGMiLCJzdWIiOiI3MDQ4IiwicHJ2IjoiMjNiZDVjODk0OWY2MDBhZGIzOWU3MDFjNDAwODcyZGI3YTU5NzZmNyIsInVzZXJfY29tcGFueV9pZCI6NTAwNiwidXNlcl9wdXNoX3BsdXNfd2ViaG9va19pZCI6NDkwOSwiY3VycmVudF93ZWJob29rX2lkIjoyNDksInByb2R1Y3RfaWQiOjUsImludGVncmF0aW9uIjoibjhuIn0.MgISQPV0y5pMUmbK4Cr7H9hSwSav4rBnwp03y4k5xp4 "
+              },
+              {
+                "name": "Integration",
+                "value": "n8n"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\n  \"msgs\": [\n    {\n      \"number\": \"+351926565596\",\n      \"message\": \"Routine worked\",\n      \"type\": 1\n    }\n  ]\n}",
+          "options": {
+            "redirect": {
+              "redirect": {}
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          1280,
+          -240
+        ],
+        "id": "1977137c-86fb-4242-a828-01bbfbbf648d",
+        "name": "HTTP Request"
+      },
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "months",
+                "triggerAtDayOfMonth": 10,
+                "triggerAtHour": 10
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          -320,
+          -416
+        ],
+        "id": "1d5d84c9-6947-4167-8e57-6f9668d9aece",
+        "name": "Schedule Trigger"
+      }
+    ],
+    "connections": {
+      "Get many messages": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Create folder1": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code in JavaScript1": {
+        "main": [
+          [
+            {
+              "node": "upload files to google drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "upload files to google drive": {
+        "main": [
+          [
+            {
+              "node": "HTTP Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Merge": {
+        "main": [
+          [
+            {
+              "node": "Code in JavaScript1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code in JavaScript": {
+        "main": [
+          [
+            {
+              "node": "Create folder1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Schedule Trigger": {
+        "main": [
+          [
+            {
+              "node": "Code in JavaScript",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Get many messages",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Ramon Rios",
+    "name": "Version 1879b0c3",
+    "description": "",
+    "autosaved": false
+  },
+  "activeVersionId": "1879b0c3-c724-4e11-8236-07d20ecaca43",
+  "connections": {
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Create folder1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "upload files to google drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "upload files to google drive": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create folder1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-01-02T15:36:49.655Z",
+  "id": "8AAwI2hqmqmfjrtx",
+  "isArchived": false,
+  "meta": {
+    "templateId": "2348",
+    "templateCredsSetupCompleted": true
+  },
+  "name": "Get multiple attachments from Gmail and upload them to GDrive",
+  "nodes": [
+    {
+      "parameters": {
+        "name": "={{ $json.fileName }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $json.folderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "f8e19c97-0983-4365-bc63-179605050ef2",
+      "name": "upload files to google drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "position": [
+        1072,
+        -240
+      ],
+      "typeVersion": 3,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "yuNhenjVS5Da8oAw",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "simple": false,
+        "filters": {
+          "q": "has:attachment filename:pdf newer_than:30d (\n  label:to-process/invoice\n  OR from:noreply@grupoyour.com\n  OR from:noreply@weoinvoice.com\n  OR from:noreply@factura.grenke.pt\n  OR from:payments-noreply@google.com\n  OR from:noreply@documentos.meoempresas.pt\n  OR from:geral@alcocheteup.pt\n  OR from:no_reply@mun-montijo.pt\n)"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "688312a3-ad4f-451c-ad3b-9ad321dc7f07",
+      "name": "Get many messages",
+      "webhookId": "c886792f-129b-4d66-9aad-34902805d9c0",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NswnTKPTIgVfiQvs",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let items = $input.all();\n\nlet results = [];\n\nfor (const item of items) {\n\n  // ---- 1) Resolve email date (fallback = now) ----\n  const rawDate =\n    item.json.internalDate ||\n    item.json.date ||\n    item.json.headers?.date ||\n    null;\n\n  let date;\n  if (rawDate && !isNaN(rawDate)) {\n    date = new Date(Number(rawDate));\n  } else if (rawDate) {\n    date = new Date(rawDate);\n  } else {\n    date = new Date();\n  }\n\n  if (isNaN(date.getTime())) {\n    date = new Date();\n  }\n\n  // ---- 2) Build MM-YYYY ----\n  const month = String(date.getMonth() + 1).padStart(2, '0');\n  const year = date.getFullYear();\n  const monthYear = `${month}-${year}`;\n\n  // ---- 3) Explode attachments ----\n  for (const key of Object.keys(item.binary ?? {})) {\n    const bin = item.binary[key];\n\n    const isPdf =\n      (bin.mimeType && bin.mimeType.toLowerCase().includes('pdf')) ||\n      (bin.fileName && bin.fileName.toLowerCase().endsWith('.pdf'));\n\n    if (!isPdf) continue;\n\n    results.push({\n      json: {\n        monthYear,             // <-- folder name\n        fileName: bin.fileName,\n        folderId: $input.first().json.id\n      },\n      binary: {\n        data: bin              // normalize for Drive Upload\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        -224
+      ],
+      "id": "174a17a6-e233-4cda-9a3e-58e3e04881e8",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $json.mesAno }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30",
+          "mode": "list",
+          "cachedResultName": "faturas",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        336,
+        -432
+      ],
+      "id": "6830aa7d-22f5-4733-b2fd-f758e517223e",
+      "name": "Create folder1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "yuNhenjVS5Da8oAw",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        368,
+        -144
+      ],
+      "id": "abdd87c8-bd2d-4ae4-8dc7-a605c1b7ecaf",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tenta pegar a data do email (Gmail costuma enviar em ms ou string)\nconst rawDate =\n  $json.internalDate ||\n  $json.date ||\n  $json.headers?.date ||\n  null;\n\nlet date;\n\n// Se vier timestamp (ms)\nif (rawDate && !isNaN(rawDate)) {\n  date = new Date(Number(rawDate));\n} \n// Se vier string de data\nelse if (rawDate) {\n  date = new Date(rawDate);\n} \n// Fallback: agora\nelse {\n  date = new Date();\n}\n\n// Garante validade\nif (isNaN(date.getTime())) {\n  date = new Date();\n}\n\n// Cria MM-YYYY\nconst mes = String(date.getMonth() + 1).padStart(2, '0');\nconst ano = date.getFullYear();\nconst mesAno = `${mes}-${ano}`;\n\n// Injeta no JSON\nreturn [\n  {\n    json: {\n      ...$json,\n      mesAno,\n    },\n    binary: $binary,\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        -336
+      ],
+      "id": "661724d1-c3da-4a9c-b819-d63741307d18",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.assistro.co/api/v1/wapushplus/single/message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer  eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2FwcC5hc3Npc3Ryby5jby9wbGFuL3dhcHVzaC1wbHVzL244biIsImlhdCI6MTc2OTM3NTc3NCwiZXhwIjoyNDAwMDk1Nzc0LCJuYmYiOjE3NjkzNzU3NzQsImp0aSI6Indrb0FKRjd1NXRJUnozdGMiLCJzdWIiOiI3MDQ4IiwicHJ2IjoiMjNiZDVjODk0OWY2MDBhZGIzOWU3MDFjNDAwODcyZGI3YTU5NzZmNyIsInVzZXJfY29tcGFueV9pZCI6NTAwNiwidXNlcl9wdXNoX3BsdXNfd2ViaG9va19pZCI6NDkwOSwiY3VycmVudF93ZWJob29rX2lkIjoyNDksInByb2R1Y3RfaWQiOjUsImludGVncmF0aW9uIjoibjhuIn0.MgISQPV0y5pMUmbK4Cr7H9hSwSav4rBnwp03y4k5xp4 "
+            },
+            {
+              "name": "Integration",
+              "value": "n8n"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"msgs\": [\n    {\n      \"number\": \"+351926565596\",\n      \"message\": \"Routine worked\",\n      \"type\": 1\n    }\n  ]\n}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1280,
+        -240
+      ],
+      "id": "1977137c-86fb-4242-a828-01bbfbbf648d",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtDayOfMonth": 10,
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -320,
+        -416
+      ],
+      "id": "1d5d84c9-6947-4167-8e57-6f9668d9aece",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-01-02T15:36:49.661Z",
+      "createdAt": "2026-01-02T15:36:49.661Z",
+      "role": "workflow:owner",
+      "workflowId": "8AAwI2hqmqmfjrtx",
+      "projectId": "f4dAeEYwbhnfFVsh"
+    }
+  ],
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-01-25T22:18:33.416Z",
+  "versionId": "1879b0c3-c724-4e11-8236-07d20ecaca43"
+}
