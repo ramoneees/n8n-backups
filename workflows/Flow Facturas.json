@@ -1,0 +1,306 @@
+{
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-01-27T16:39:13.000Z",
+    "createdAt": "2026-01-26T22:52:46.068Z",
+    "versionId": "75b13247-6085-4423-831e-5bea61def021",
+    "workflowId": "kjrkhRZmcoe-kkpI8sjxC",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "7a1bfae9-62dc-4eb6-bb2a-bd885881ce05",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          -800,
+          -240
+        ],
+        "id": "a936d190-bedb-41e3-9e21-664c47017bb9",
+        "name": "Webhook",
+        "webhookId": "7a1bfae9-62dc-4eb6-bb2a-bd885881ce05"
+      },
+      {
+        "parameters": {
+          "url": "=https://restcountries.com/v3.1/alpha?codes={{ $json.body.client.country_id }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          -560,
+          -384
+        ],
+        "id": "700838bd-0283-40a9-a258-e07eda69f7e3",
+        "name": "HTTP Request"
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          -432,
+          -256
+        ],
+        "id": "805626d6-56b9-4686-a6ba-8f158ec5616a",
+        "name": "Merge"
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\n\nconst country = items?.[0]?.json;\nconst payload = items?.[1]?.json;\n\n// --- Country name (REST Countries format) ---\nconst countryName =\n  country?.name?.common ??\n  country?.name ??\n  country?.translations?.eng?.common ??\n  null;\n\n// --- Client info (Invoice Ninja webhook format) ---\nconst client = payload?.body?.client ?? {};\n\nconst customerName =\n  client?.display_name ??\n  client?.name ??\n  null;\n\nconst vat =\n  client?.vat_number ??\n  null;\n\nconst address1 = client?.address1 ?? \"\";\nconst address2 = client?.address2 ?? \"\";\nconst city = client?.city ?? \"\";\nconst state = client?.state ?? \"\";\nconst postalCode = client?.postal_code ?? \"\";\n\n// Printable address\nconst addressParts = [\n  address1,\n  address2,\n  [city, state].filter(Boolean).join(\", \"),\n  postalCode,\n  countryName,\n].filter((p) => p && String(p).trim().length > 0);\n\nconst address = addressParts.join(\"\\n\");\n\n// --- Invoice amount + optional conversion ---\nconst invoice = payload?.body?.invoices?.[0] ?? null;\n\n// Amount in invoice currency (Invoice Ninja stores amounts often as numbers already in currency units)\nconst invoiceAmount = typeof invoice?.amount === \"number\" ? invoice.amount : Number(invoice?.amount ?? NaN);\n\n// Exchange rate preference: invoice.exchange_rate first, fallback to payment.exchange_rate\nconst exchangeRateRaw =\n  invoice?.exchange_rate ??\n  payload?.body?.exchange_rate ??\n  null;\n\nconst exchangeRate = exchangeRateRaw === null ? null : Number(exchangeRateRaw);\n\n// Convert only if we have a valid rate\nlet convertedAmount = null;\nif (Number.isFinite(invoiceAmount) && Number.isFinite(exchangeRate) && exchangeRate > 0) {\n  // Interpretation: convertedAmount = invoiceAmount * exchangeRate\n  // (If you find the direction is inverted in your setup, switch to invoiceAmount / exchangeRate)\n  convertedAmount = invoiceAmount * exchangeRate;\n}\n\n// Optional: round to 2 decimals for display\nconst round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;\n\nreturn [\n  {\n    json: {\n      countryName,\n      customerName,\n      vat,\n      address,\n\n      // structured address fields\n      address1,\n      address2,\n      city,\n      state,\n      postalCode,\n      countryId: client?.country_id ?? null,\n      countryNumericCode: country?.ccn3 ?? null,\n      countryAlpha2: country?.cca2 ?? null,\n\n      // invoice + conversion fields\n      invoiceId: invoice?.id ?? null,\n      invoiceNumber: invoice?.number ?? null,\n      invoiceAmount: Number.isFinite(invoiceAmount) ? invoiceAmount : null,\n      invoiceCurrencyId: invoice?.currency_id ?? null,\n      exchangeRate: Number.isFinite(exchangeRate) ? exchangeRate : null,\n      convertedAmount: convertedAmount !== null ? round2(convertedAmount) : null,\n    },\n  },\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -224,
+          -256
+        ],
+        "id": "431690e0-8a46-4936-a79c-dd84e0fb20c2",
+        "name": "Code in JavaScript"
+      },
+      {
+        "parameters": {
+          "sendTo": "=ricardo.caldas@accoprime.com",
+          "subject": "Geração de Factura",
+          "message": "=Prezado(a), \nSolicito a gentileza de emitir uma fatura no valor de:\n{{ $json.convertedAmount }} €  \nPara a empresa: {{ $json.customerName }} \nNIF/VAT:{{ $json.vat }}  \n{{ $json.address }} \nDescrição do serviço:  \n\"Serviços de consultoria informática\"  \n\nAgradeço desde já pela atenção e colaboração.",
+          "options": {
+            "appendAttribution": false,
+            "ccList": "carla.marques@accoprime.com"
+          }
+        },
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.2,
+        "position": [
+          16,
+          -256
+        ],
+        "id": "b904cc95-bc45-4d04-802f-aa778b57433b",
+        "name": "Send a message",
+        "webhookId": "9ff8dec5-3f5b-49d7-a26f-91e02ce94154",
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "NswnTKPTIgVfiQvs",
+            "name": "Gmail account"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "HTTP Request",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "HTTP Request": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Merge": {
+        "main": [
+          [
+            {
+              "node": "Code in JavaScript",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code in JavaScript": {
+        "main": [
+          [
+            {
+              "node": "Send a message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Ramon Rios",
+    "name": "Version 75b13247",
+    "description": "",
+    "autosaved": false
+  },
+  "activeVersionId": "75b13247-6085-4423-831e-5bea61def021",
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-01-26T21:47:48.744Z",
+  "id": "kjrkhRZmcoe-kkpI8sjxC",
+  "isArchived": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "name": "Flow Facturas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "7a1bfae9-62dc-4eb6-bb2a-bd885881ce05",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -800,
+        -240
+      ],
+      "id": "a936d190-bedb-41e3-9e21-664c47017bb9",
+      "name": "Webhook",
+      "webhookId": "7a1bfae9-62dc-4eb6-bb2a-bd885881ce05"
+    },
+    {
+      "parameters": {
+        "url": "=https://restcountries.com/v3.1/alpha?codes={{ $json.body.client.country_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -560,
+        -384
+      ],
+      "id": "700838bd-0283-40a9-a258-e07eda69f7e3",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -432,
+        -256
+      ],
+      "id": "805626d6-56b9-4686-a6ba-8f158ec5616a",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst country = items?.[0]?.json;\nconst payload = items?.[1]?.json;\n\n// --- Country name (REST Countries format) ---\nconst countryName =\n  country?.name?.common ??\n  country?.name ??\n  country?.translations?.eng?.common ??\n  null;\n\n// --- Client info (Invoice Ninja webhook format) ---\nconst client = payload?.body?.client ?? {};\n\nconst customerName =\n  client?.display_name ??\n  client?.name ??\n  null;\n\nconst vat =\n  client?.vat_number ??\n  null;\n\nconst address1 = client?.address1 ?? \"\";\nconst address2 = client?.address2 ?? \"\";\nconst city = client?.city ?? \"\";\nconst state = client?.state ?? \"\";\nconst postalCode = client?.postal_code ?? \"\";\n\n// Printable address\nconst addressParts = [\n  address1,\n  address2,\n  [city, state].filter(Boolean).join(\", \"),\n  postalCode,\n  countryName,\n].filter((p) => p && String(p).trim().length > 0);\n\nconst address = addressParts.join(\"\\n\");\n\n// --- Invoice amount + optional conversion ---\nconst invoice = payload?.body?.invoices?.[0] ?? null;\n\n// Amount in invoice currency (Invoice Ninja stores amounts often as numbers already in currency units)\nconst invoiceAmount = typeof invoice?.amount === \"number\" ? invoice.amount : Number(invoice?.amount ?? NaN);\n\n// Exchange rate preference: invoice.exchange_rate first, fallback to payment.exchange_rate\nconst exchangeRateRaw =\n  invoice?.exchange_rate ??\n  payload?.body?.exchange_rate ??\n  null;\n\nconst exchangeRate = exchangeRateRaw === null ? null : Number(exchangeRateRaw);\n\n// Convert only if we have a valid rate\nlet convertedAmount = null;\nif (Number.isFinite(invoiceAmount) && Number.isFinite(exchangeRate) && exchangeRate > 0) {\n  // Interpretation: convertedAmount = invoiceAmount * exchangeRate\n  // (If you find the direction is inverted in your setup, switch to invoiceAmount / exchangeRate)\n  convertedAmount = invoiceAmount * exchangeRate;\n}\n\n// Optional: round to 2 decimals for display\nconst round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;\n\nreturn [\n  {\n    json: {\n      countryName,\n      customerName,\n      vat,\n      address,\n\n      // structured address fields\n      address1,\n      address2,\n      city,\n      state,\n      postalCode,\n      countryId: client?.country_id ?? null,\n      countryNumericCode: country?.ccn3 ?? null,\n      countryAlpha2: country?.cca2 ?? null,\n\n      // invoice + conversion fields\n      invoiceId: invoice?.id ?? null,\n      invoiceNumber: invoice?.number ?? null,\n      invoiceAmount: Number.isFinite(invoiceAmount) ? invoiceAmount : null,\n      invoiceCurrencyId: invoice?.currency_id ?? null,\n      exchangeRate: Number.isFinite(exchangeRate) ? exchangeRate : null,\n      convertedAmount: convertedAmount !== null ? round2(convertedAmount) : null,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -256
+      ],
+      "id": "431690e0-8a46-4936-a79c-dd84e0fb20c2",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "sendTo": "=ricardo.caldas@accoprime.com",
+        "subject": "Geração de Factura",
+        "message": "=Prezado(a), \nSolicito a gentileza de emitir uma fatura no valor de:\n{{ $json.convertedAmount }} €  \nPara a empresa: {{ $json.customerName }} \nNIF/VAT:{{ $json.vat }}  \n{{ $json.address }} \nDescrição do serviço:  \n\"Serviços de consultoria informática\"  \n\nAgradeço desde já pela atenção e colaboração.",
+        "options": {
+          "appendAttribution": false,
+          "ccList": "carla.marques@accoprime.com"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        16,
+        -256
+      ],
+      "id": "b904cc95-bc45-4d04-802f-aa778b57433b",
+      "name": "Send a message",
+      "webhookId": "9ff8dec5-3f5b-49d7-a26f-91e02ce94154",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "NswnTKPTIgVfiQvs",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-01-26T21:47:48.746Z",
+      "createdAt": "2026-01-26T21:47:48.746Z",
+      "role": "workflow:owner",
+      "workflowId": "kjrkhRZmcoe-kkpI8sjxC",
+      "projectId": "f4dAeEYwbhnfFVsh"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-01-26T22:52:46.067Z",
+  "versionId": "75b13247-6085-4423-831e-5bea61def021"
+}
