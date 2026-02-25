@@ -1,0 +1,32 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {},
+  "createdAt": "2026-02-25T17:07:47.300Z",
+  "id": "dw16mF1EkovHUngb",
+  "isArchived": false,
+  "meta": null,
+  "name": "Extrair Referências de Facturas",
+  "nodes": [],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-02-25T17:07:47.302Z",
+      "createdAt": "2026-02-25T17:07:47.302Z",
+      "role": "workflow:owner",
+      "workflowId": "dw16mF1EkovHUngb",
+      "projectId": "goe6nejb5G8RJyVd"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-02-25T17:07:47.300Z",
+  "versionId": "157f3af2-fc79-4cda-9a6e-d4d3ed6d5df5"
+}
