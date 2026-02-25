@@ -1,7 +1,149 @@
 {
-  "active": false,
-  "activeVersion": null,
-  "activeVersionId": null,
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-02-25T17:06:26.000Z",
+    "createdAt": "2026-02-25T17:06:08.301Z",
+    "versionId": "dcd1881b-43af-49d5-8d6a-b57267f79c59",
+    "workflowId": "F7PXuPaJuDaBizk7",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "7a1bfae9-62dc-4eb6-bb2a-bd885881ce05",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          -240,
+          144
+        ],
+        "id": "044a66cc-a533-4f03-91d0-32edd8bbdf07",
+        "name": "Webhook",
+        "webhookId": "7a1bfae9-62dc-4eb6-bb2a-bd885881ce05"
+      },
+      {
+        "parameters": {
+          "url": "=https://restcountries.com/v3.1/alpha?codes={{ $json.body.client.country_id }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          0,
+          0
+        ],
+        "id": "ef628d7d-7548-4aff-99b1-d0f414cb0d95",
+        "name": "HTTP Request"
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          128,
+          128
+        ],
+        "id": "8e71e7e2-357f-4d47-80cd-638df828d9d1",
+        "name": "Merge"
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\n\nconst country = items?.[0]?.json;\nconst payload = items?.[1]?.json;\n\n// --- Country name (REST Countries format) ---\nconst countryName =\n  country?.name?.common ??\n  country?.name ??\n  country?.translations?.eng?.common ??\n  null;\n\n// --- Client info (Invoice Ninja webhook format) ---\nconst client = payload?.body?.client ?? {};\n\nconst customerName =\n  client?.display_name ??\n  client?.name ??\n  null;\n\nconst vat =\n  client?.vat_number ??\n  null;\n\nconst address1 = client?.address1 ?? \"\";\nconst address2 = client?.address2 ?? \"\";\nconst city = client?.city ?? \"\";\nconst state = client?.state ?? \"\";\nconst postalCode = client?.postal_code ?? \"\";\n\n// Printable address\nconst addressParts = [\n  address1,\n  address2,\n  [city, state].filter(Boolean).join(\", \"),\n  postalCode,\n  countryName,\n].filter((p) => p && String(p).trim().length > 0);\n\nconst address = addressParts.join(\"\\n\");\n\n// --- Invoice amount + optional conversion ---\nconst invoice = payload?.body?.invoices?.[0] ?? null;\n\n// Amount in invoice currency (Invoice Ninja stores amounts often as numbers already in currency units)\nconst invoiceAmount = typeof invoice?.amount === \"number\" ? invoice.amount : Number(invoice?.amount ?? NaN);\n\n// Exchange rate preference: invoice.exchange_rate first, fallback to payment.exchange_rate\nconst exchangeRateRaw =\n  invoice?.exchange_rate ??\n  payload?.body?.exchange_rate ??\n  null;\n\nconst exchangeRate = exchangeRateRaw === null ? null : Number(exchangeRateRaw);\n\n// Convert only if we have a valid rate\nlet convertedAmount = null;\nif (Number.isFinite(invoiceAmount) && Number.isFinite(exchangeRate) && exchangeRate > 0) {\n  // Interpretation: convertedAmount = invoiceAmount * exchangeRate\n  // (If you find the direction is inverted in your setup, switch to invoiceAmount / exchangeRate)\n  convertedAmount = invoiceAmount * exchangeRate;\n}\n\n// Optional: round to 2 decimals for display\nconst round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;\n\nreturn [\n  {\n    json: {\n      countryName,\n      customerName,\n      vat,\n      address,\n\n      // structured address fields\n      address1,\n      address2,\n      city,\n      state,\n      postalCode,\n      countryId: client?.country_id ?? null,\n      countryNumericCode: country?.ccn3 ?? null,\n      countryAlpha2: country?.cca2 ?? null,\n\n      // invoice + conversion fields\n      invoiceId: invoice?.id ?? null,\n      invoiceNumber: invoice?.number ?? null,\n      invoiceAmount: Number.isFinite(invoiceAmount) ? invoiceAmount : null,\n      invoiceCurrencyId: invoice?.currency_id ?? null,\n      exchangeRate: Number.isFinite(exchangeRate) ? exchangeRate : null,\n      convertedAmount: convertedAmount !== null ? round2(convertedAmount) : null,\n    },\n  },\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          336,
+          128
+        ],
+        "id": "838d3ca1-5a3c-4a54-adc5-ddc12240e059",
+        "name": "Code in JavaScript"
+      },
+      {
+        "parameters": {
+          "sendTo": "=ricardo.caldas@accoprime.com",
+          "subject": "Geração de Factura",
+          "message": "=<!doctype html>\n<html lang=\"pt-PT\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n    <meta name=\"x-apple-disable-message-reformatting\" />\n    <title>Pedido de Emissão de Fatura</title>\n    <style>\n      /* Basic email-safe resets */\n      html, body { margin:0 !important; padding:0 !important; height:100% !important; width:100% !important; }\n      * { -ms-text-size-adjust:100%; -webkit-text-size-adjust:100%; }\n      table, td { mso-table-lspace:0pt !important; mso-table-rspace:0pt !important; }\n      img { -ms-interpolation-mode:bicubic; }\n      a { text-decoration:none; }\n    </style>\n  </head>\n\n  <body style=\"margin:0; padding:0; background:#f4f6f8; font-family: Arial, Helvetica, sans-serif; color:#1f2937;\">\n    <!-- Preheader (hidden) -->\n    <div style=\"display:none; font-size:1px; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden; mso-hide:all;\">\n      Pedido de emissão de fatura – {{ $json.convertedAmount }} €\n    </div>\n\n    <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"background:#f4f6f8;\">\n      <tr>\n        <td align=\"center\" style=\"padding:24px 12px;\">\n          <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"600\" style=\"width:600px; max-width:600px; background:#ffffff; border-radius:14px; overflow:hidden; box-shadow:0 6px 20px rgba(17, 24, 39, 0.08);\">\n            <!-- Header -->\n            <tr>\n              <td style=\"padding:22px 24px; background:#0f172a;\">\n                <div style=\"font-size:16px; line-height:22px; color:#e5e7eb; font-weight:600;\">\n                  Pedido de Emissão de Fatura\n                </div>\n              </td>\n            </tr>\n\n            <!-- Body -->\n            <tr>\n              <td style=\"padding:24px;\">\n                <p style=\"margin:0 0 16px 0; font-size:14px; line-height:22px;\">\n                  Prezado(a),\n                </p>\n\n                <p style=\"margin:0 0 18px 0; font-size:14px; line-height:22px;\">\n                  Solicito a gentileza de emitir uma fatura no valor de:\n                  <strong style=\"font-size:16px;\">{{ $json.convertedAmount }} €</strong>\n                </p>\n\n                <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;\">\n                  <tr>\n                    <td style=\"padding:14px 16px; background:#f9fafb; border-bottom:1px solid #e5e7eb;\">\n                      <div style=\"font-size:13px; color:#111827; font-weight:600;\">Dados de faturação</div>\n                    </td>\n                  </tr>\n                  <tr>\n                    <td style=\"padding:14px 16px;\">\n                      <div style=\"font-size:14px; line-height:22px;\">\n                        <div style=\"margin:0 0 8px 0;\">\n                          <strong>Empresa:</strong> {{ $json.customerName }}\n                        </div>\n                        <div style=\"margin:0 0 8px 0;\">\n                          <strong>NIF/VAT:</strong> {{ $json.vat }}\n                        </div>\n                        <div style=\"margin:0;\">\n                          <strong>Morada:</strong><br />\n                          <span style=\"white-space:pre-line;\">{{ $json.address }}</span>\n                        </div>\n                      </div>\n                    </td>\n                  </tr>\n                </table>\n\n                <div style=\"height:16px; line-height:16px;\">&nbsp;</div>\n\n                <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;\">\n                  <tr>\n                    <td style=\"padding:14px 16px; background:#f9fafb; border-bottom:1px solid #e5e7eb;\">\n                      <div style=\"font-size:13px; color:#111827; font-weight:600;\">Descrição do serviço</div>\n                    </td>\n                  </tr>\n                  <tr>\n                    <td style=\"padding:14px 16px;\">\n                      <div style=\"font-size:14px; line-height:22px;\">\n                        “Serviços de consultoria informática”\n                      </div>\n                    </td>\n                  </tr>\n                </table>\n\n                <div style=\"height:18px; line-height:18px;\">&nbsp;</div>\n\n                <p style=\"margin:0; font-size:14px; line-height:22px;\">\n                  Agradeço desde já pela atenção e colaboração.\n                </p>\n\n                <p style=\"margin:16px 0 0 0; font-size:14px; line-height:22px;\">\n                  Com os melhores cumprimentos,<br />\n                  <span style=\"color:#6b7280;\">(o seu nome)</span>\n                </p>\n              </td>\n            </tr>\n\n            <!-- Footer -->\n            <tr>\n              <td style=\"padding:18px 24px; background:#f9fafb; border-top:1px solid #e5e7eb;\">\n                <div style=\"font-size:12px; line-height:18px; color:#6b7280;\">\n                  Esta mensagem foi enviada automaticamente. Se necessário, responda a este email para mais informações.\n                </div>\n              </td>\n            </tr>\n          </table>\n\n          <div style=\"font-size:12px; line-height:18px; color:#9ca3af; padding:12px 6px 0 6px;\">\n            © <span>{{ $json.customerName }}</span>\n          </div>\n        </td>\n      </tr>\n    </table>\n  </body>\n</html>",
+          "options": {
+            "appendAttribution": false,
+            "ccList": "carla.marques@accoprime.com"
+          }
+        },
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.2,
+        "position": [
+          576,
+          128
+        ],
+        "id": "f8854b33-bfa0-4553-9055-a3e13439698a",
+        "name": "Send a message",
+        "webhookId": "9ff8dec5-3f5b-49d7-a26f-91e02ce94154",
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "9pkmNZ2pAN09eDhX",
+            "name": "Gmail Empresa"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "HTTP Request",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "HTTP Request": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Merge": {
+        "main": [
+          [
+            {
+              "node": "Code in JavaScript",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code in JavaScript": {
+        "main": [
+          [
+            {
+              "node": "Send a message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Ramon ramon@pereirariosoftware.com",
+    "name": "Version dcd1881b",
+    "description": "",
+    "autosaved": true
+  },
+  "activeVersionId": "dcd1881b-43af-49d5-8d6a-b57267f79c59",
   "connections": {
     "Webhook": {
       "main": [
@@ -56,7 +198,9 @@
   "createdAt": "2026-02-25T16:40:11.676Z",
   "id": "F7PXuPaJuDaBizk7",
   "isArchived": false,
-  "meta": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
   "name": "Flow Facturas",
   "nodes": [
     {
@@ -117,7 +261,7 @@
       "parameters": {
         "sendTo": "=ricardo.caldas@accoprime.com",
         "subject": "Geração de Factura",
-        "message": "=Prezado(a), \nSolicito a gentileza de emitir uma fatura no valor de:\n{{ $json.convertedAmount }} €  \nPara a empresa: {{ $json.customerName }} \nNIF/VAT:{{ $json.vat }}  \n{{ $json.address }} \nDescrição do serviço:  \n\"Serviços de consultoria informática\"  \n\nAgradeço desde já pela atenção e colaboração.",
+        "message": "=<!doctype html>\n<html lang=\"pt-PT\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n    <meta name=\"x-apple-disable-message-reformatting\" />\n    <title>Pedido de Emissão de Fatura</title>\n    <style>\n      /* Basic email-safe resets */\n      html, body { margin:0 !important; padding:0 !important; height:100% !important; width:100% !important; }\n      * { -ms-text-size-adjust:100%; -webkit-text-size-adjust:100%; }\n      table, td { mso-table-lspace:0pt !important; mso-table-rspace:0pt !important; }\n      img { -ms-interpolation-mode:bicubic; }\n      a { text-decoration:none; }\n    </style>\n  </head>\n\n  <body style=\"margin:0; padding:0; background:#f4f6f8; font-family: Arial, Helvetica, sans-serif; color:#1f2937;\">\n    <!-- Preheader (hidden) -->\n    <div style=\"display:none; font-size:1px; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden; mso-hide:all;\">\n      Pedido de emissão de fatura – {{ $json.convertedAmount }} €\n    </div>\n\n    <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"background:#f4f6f8;\">\n      <tr>\n        <td align=\"center\" style=\"padding:24px 12px;\">\n          <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"600\" style=\"width:600px; max-width:600px; background:#ffffff; border-radius:14px; overflow:hidden; box-shadow:0 6px 20px rgba(17, 24, 39, 0.08);\">\n            <!-- Header -->\n            <tr>\n              <td style=\"padding:22px 24px; background:#0f172a;\">\n                <div style=\"font-size:16px; line-height:22px; color:#e5e7eb; font-weight:600;\">\n                  Pedido de Emissão de Fatura\n                </div>\n              </td>\n            </tr>\n\n            <!-- Body -->\n            <tr>\n              <td style=\"padding:24px;\">\n                <p style=\"margin:0 0 16px 0; font-size:14px; line-height:22px;\">\n                  Prezado(a),\n                </p>\n\n                <p style=\"margin:0 0 18px 0; font-size:14px; line-height:22px;\">\n                  Solicito a gentileza de emitir uma fatura no valor de:\n                  <strong style=\"font-size:16px;\">{{ $json.convertedAmount }} €</strong>\n                </p>\n\n                <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;\">\n                  <tr>\n                    <td style=\"padding:14px 16px; background:#f9fafb; border-bottom:1px solid #e5e7eb;\">\n                      <div style=\"font-size:13px; color:#111827; font-weight:600;\">Dados de faturação</div>\n                    </td>\n                  </tr>\n                  <tr>\n                    <td style=\"padding:14px 16px;\">\n                      <div style=\"font-size:14px; line-height:22px;\">\n                        <div style=\"margin:0 0 8px 0;\">\n                          <strong>Empresa:</strong> {{ $json.customerName }}\n                        </div>\n                        <div style=\"margin:0 0 8px 0;\">\n                          <strong>NIF/VAT:</strong> {{ $json.vat }}\n                        </div>\n                        <div style=\"margin:0;\">\n                          <strong>Morada:</strong><br />\n                          <span style=\"white-space:pre-line;\">{{ $json.address }}</span>\n                        </div>\n                      </div>\n                    </td>\n                  </tr>\n                </table>\n\n                <div style=\"height:16px; line-height:16px;\">&nbsp;</div>\n\n                <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;\">\n                  <tr>\n                    <td style=\"padding:14px 16px; background:#f9fafb; border-bottom:1px solid #e5e7eb;\">\n                      <div style=\"font-size:13px; color:#111827; font-weight:600;\">Descrição do serviço</div>\n                    </td>\n                  </tr>\n                  <tr>\n                    <td style=\"padding:14px 16px;\">\n                      <div style=\"font-size:14px; line-height:22px;\">\n                        “Serviços de consultoria informática”\n                      </div>\n                    </td>\n                  </tr>\n                </table>\n\n                <div style=\"height:18px; line-height:18px;\">&nbsp;</div>\n\n                <p style=\"margin:0; font-size:14px; line-height:22px;\">\n                  Agradeço desde já pela atenção e colaboração.\n                </p>\n\n                <p style=\"margin:16px 0 0 0; font-size:14px; line-height:22px;\">\n                  Com os melhores cumprimentos,<br />\n                  <span style=\"color:#6b7280;\">(o seu nome)</span>\n                </p>\n              </td>\n            </tr>\n\n            <!-- Footer -->\n            <tr>\n              <td style=\"padding:18px 24px; background:#f9fafb; border-top:1px solid #e5e7eb;\">\n                <div style=\"font-size:12px; line-height:18px; color:#6b7280;\">\n                  Esta mensagem foi enviada automaticamente. Se necessário, responda a este email para mais informações.\n                </div>\n              </td>\n            </tr>\n          </table>\n\n          <div style=\"font-size:12px; line-height:18px; color:#9ca3af; padding:12px 6px 0 6px;\">\n            © <span>{{ $json.customerName }}</span>\n          </div>\n        </td>\n      </tr>\n    </table>\n  </body>\n</html>",
         "options": {
           "appendAttribution": false,
           "ccList": "carla.marques@accoprime.com"
@@ -131,7 +275,13 @@
       ],
       "id": "f8854b33-bfa0-4553-9055-a3e13439698a",
       "name": "Send a message",
-      "webhookId": "9ff8dec5-3f5b-49d7-a26f-91e02ce94154"
+      "webhookId": "9ff8dec5-3f5b-49d7-a26f-91e02ce94154",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "9pkmNZ2pAN09eDhX",
+          "name": "Gmail Empresa"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -151,7 +301,7 @@
   ],
   "staticData": null,
   "tags": [],
-  "triggerCount": 0,
-  "updatedAt": "2026-02-25T16:40:11.676Z",
-  "versionId": "1d333647-db9b-473e-a3c9-1e1957c4c2d0"
+  "triggerCount": 1,
+  "updatedAt": "2026-02-25T17:06:08.300Z",
+  "versionId": "dcd1881b-43af-49d5-8d6a-b57267f79c59"
 }
