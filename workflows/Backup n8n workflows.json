@@ -143,15 +143,15 @@
       ]
     }
   },
-  "createdAt": "2025-12-08T09:07:30.128Z",
-  "id": "hKu4h0ymcuCtFVnI",
-  "isArchived": true,
+  "createdAt": "2026-02-25T16:39:33.972Z",
+  "id": "9zShVWYNS8Hmk0V3",
+  "isArchived": false,
   "meta": null,
   "name": "Backup n8n workflows",
   "nodes": [
     {
       "parameters": {},
-      "id": "e5eec405-7739-42a0-9923-8f04ae696fad",
+      "id": "5151dba3-7e31-471f-98f8-df9a2514a963",
       "name": "Execute workflow",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -164,7 +164,7 @@
       "parameters": {
         "options": {}
       },
-      "id": "3b1adad9-b099-44d3-98dd-b72040534f5e",
+      "id": "d131b517-1612-4d1a-9453-80a69f03d004",
       "name": "Set date",
       "type": "n8n-nodes-base.dateTime",
       "typeVersion": 2,
@@ -181,7 +181,7 @@
         "customFormat": "dd-MM-yyyy/H:mm",
         "options": {}
       },
-      "id": "63cb0517-1799-4f41-8021-1dfba6958ff2",
+      "id": "ef3e3670-c4b9-42d5-8471-d53c2df17984",
       "name": "Format date",
       "type": "n8n-nodes-base.dateTime",
       "typeVersion": 2,
@@ -203,7 +203,7 @@
         },
         "options": {}
       },
-      "id": "4b31a5fc-b5ad-4249-a704-045dfeb74ff7",
+      "id": "ac6575d6-9e49-4515-b7a1-94ed3c3b9ef1",
       "name": "Set commit date",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
@@ -229,7 +229,7 @@
         },
         "filePath": "="
       },
-      "id": "304064aa-b0a4-4fa7-86ff-3c0ff339eeb6",
+      "id": "6a917d92-365b-45f7-868a-64dabf198a6f",
       "name": "List files from repository [GITHUB]",
       "type": "n8n-nodes-base.github",
       "typeVersion": 1,
@@ -252,7 +252,7 @@
         },
         "options": {}
       },
-      "id": "f5c2e9ae-2640-4cc2-a19a-2d90f330bfc0",
+      "id": "116b8f93-6702-4a8e-931b-bd77c94246a7",
       "name": "Combine file names [GITHUB]",
       "type": "n8n-nodes-base.itemLists",
       "typeVersion": 2.1,
@@ -266,20 +266,14 @@
         "filters": {},
         "requestOptions": {}
       },
-      "id": "d4f176a1-4c8c-47f6-be21-6500b9434877",
+      "id": "df6f74a1-3476-4fb3-9f8e-c30455785454",
       "name": "Retrieve workflows [N8N]",
       "type": "n8n-nodes-base.n8n",
       "typeVersion": 1,
       "position": [
         1248,
         416
-      ],
-      "credentials": {
-        "n8nApi": {
-          "id": "qEJ3gWoYTfXYgkN2",
-          "name": "n8n account"
-        }
-      }
+      ]
     },
     {
       "parameters": {
@@ -288,7 +282,7 @@
           "fileName": "={{ $json.name.replace(/\\s+/g, '-').toLowerCase() }}-{{ $json.id }}.json"
         }
       },
-      "id": "23ef7bc7-4fba-411b-9239-02d94711b006",
+      "id": "e2ad11de-8136-4f8f-8b66-297b2eff5485",
       "name": "Move JSON to binary",
       "type": "n8n-nodes-base.moveBinaryData",
       "typeVersion": 1,
@@ -302,7 +296,7 @@
         "batchSize": 1,
         "options": {}
       },
-      "id": "a397a689-7ada-467e-b110-8bcda9c132a4",
+      "id": "d45c3c9d-6a34-452c-9bd9-759edb44f2aa",
       "name": "Split to single items",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
@@ -323,7 +317,7 @@
           ]
         }
       },
-      "id": "ddc7797a-7eb7-4b5a-97ee-2e986572f8b6",
+      "id": "333dc288-b52c-44f8-918e-41725f557db3",
       "name": "Check if file exists in repository",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
@@ -351,7 +345,7 @@
         "binaryData": true,
         "commitMessage": "=backup-{{ $node['Set commit date'].json.commitDate }}"
       },
-      "id": "21794616-7ea0-46e6-b8d7-aad829f88824",
+      "id": "2cbc40cb-64c1-4012-a003-d695de15ebe8",
       "name": "Update file [GITHUB]",
       "type": "n8n-nodes-base.github",
       "typeVersion": 1,
@@ -379,7 +373,7 @@
         "binaryData": true,
         "commitMessage": "=backup-{{ $node['Set commit date'].json.commitDate }}"
       },
-      "id": "3b3532fa-6580-44c3-9933-1a1a5b7ec943",
+      "id": "9fbcb44f-cd3b-4367-8c8a-f22e218f3614",
       "name": "Upload file [GITHUB]",
       "type": "n8n-nodes-base.github",
       "typeVersion": 1,
@@ -395,7 +389,7 @@
         "height": 339.51767272727324,
         "width": 182.4715262478496
       },
-      "id": "bb4d514b-f904-4a15-9b54-755f5b5ab009",
+      "id": "50591f01-10a0-4278-85e3-53e224a236dd",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -410,7 +404,7 @@
         "height": 339.42690909090965,
         "width": 585.4045090909088
       },
-      "id": "6b91f508-d0d7-45e4-8a20-874bf22b0ac1",
+      "id": "a886f879-8112-4306-83cd-c478dc440304",
       "name": "Sticky Note1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -425,7 +419,7 @@
         "height": 339.42690909090965,
         "width": 389.89265454545443
       },
-      "id": "8502e197-552a-47e6-9f69-2a7ac0e6474f",
+      "id": "c8dc6e4f-5d4e-4f50-b023-5ddc906fafa3",
       "name": "Sticky Note2",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -440,7 +434,7 @@
         "height": 339.42690909090965,
         "width": 384.14708363636373
       },
-      "id": "3b892c1a-1142-4573-bd11-376ced3f54ee",
+      "id": "26660fbf-52d2-4b31-aa49-6b6708dfb9ab",
       "name": "Sticky Note3",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -455,7 +449,7 @@
         "height": 731.633426614796,
         "width": 703.8733020263451
       },
-      "id": "fe768469-1044-473a-b9f7-d48171aed8d2",
+      "id": "8c5ee259-38ce-420b-9328-15eb099cd66e",
       "name": "Sticky Note4",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -470,7 +464,7 @@
         "height": 234.82946582693546,
         "width": 508.8662091091177
       },
-      "id": "e1b62d52-70c6-4661-af9d-18b2d7ca5979",
+      "id": "a6e98966-0258-4ab0-8f86-ebcb99b49112",
       "name": "Sticky Note5",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -482,20 +476,22 @@
   ],
   "pinData": {},
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
   },
   "shared": [
     {
-      "updatedAt": "2025-12-08T09:07:30.133Z",
-      "createdAt": "2025-12-08T09:07:30.133Z",
+      "updatedAt": "2026-02-25T16:39:33.976Z",
+      "createdAt": "2026-02-25T16:39:33.976Z",
       "role": "workflow:owner",
-      "workflowId": "hKu4h0ymcuCtFVnI",
-      "projectId": "f4dAeEYwbhnfFVsh"
+      "workflowId": "9zShVWYNS8Hmk0V3",
+      "projectId": "goe6nejb5G8RJyVd"
     }
   ],
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2025-12-12T22:22:15.000Z",
-  "versionId": "eaa1b8cb-5022-4849-a39f-891e142851f1"
+  "updatedAt": "2026-02-25T16:39:33.972Z",
+  "versionId": "cd990f4b-17c1-4170-a906-62ebe6ad8cc5"
 }
