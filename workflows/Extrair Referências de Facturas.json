@@ -1,14 +1,461 @@
 {
-  "active": false,
-  "activeVersion": null,
-  "activeVersionId": null,
-  "connections": {},
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-02-27T22:14:08.000Z",
+    "createdAt": "2026-02-27T22:14:04.016Z",
+    "versionId": "d1403cc3-57d3-41d1-bb4d-a01b60b835ee",
+    "workflowId": "dw16mF1EkovHUngb",
+    "nodes": [
+      {
+        "parameters": {
+          "pollTimes": {
+            "item": [
+              {
+                "mode": "everyWeek"
+              }
+            ]
+          },
+          "simple": false,
+          "filters": {
+            "sender": "info.desporto@cm-alcochete.pt"
+          },
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "type": "n8n-nodes-base.gmailTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          -608,
+          -288
+        ],
+        "id": "78817171-2e5d-4184-9e8c-e6ba3a773b15",
+        "name": "Gmail Trigger",
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "jzpvK2FSOXbCUp3E",
+            "name": "Gmail Pessoal"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "write",
+          "fileName": "=/home/node/.n8n-files/{{$binary.attachment_0.fileName || 'input.pdf'}}",
+          "dataPropertyName": "=attachment_0",
+          "options": {
+            "append": true
+          }
+        },
+        "type": "n8n-nodes-base.readWriteFile",
+        "typeVersion": 1.1,
+        "position": [
+          -400,
+          -288
+        ],
+        "id": "9cda9be7-a9c0-4ecf-8146-7514418fc62f",
+        "name": "Read/Write Files from Disk"
+      },
+      {
+        "parameters": {
+          "command": "=mkdir -p /home/node/.n8n-files/pdfout && pdftocairo -jpeg -r 200 \"{{$json.fileName}}\" \"/home/node/.n8n-files/pdfout/page\""
+        },
+        "type": "n8n-nodes-base.executeCommand",
+        "typeVersion": 1,
+        "position": [
+          -192,
+          -288
+        ],
+        "id": "0e8ddb2c-4cee-4f5b-924d-7a4c2c9aef86",
+        "name": "Execute Command"
+      },
+      {
+        "parameters": {
+          "fileSelector": "/home/node/.n8n-files/cropout/*-bottom.jpg",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.readWriteFile",
+        "typeVersion": 1.1,
+        "position": [
+          224,
+          -288
+        ],
+        "id": "56795a3d-725b-4964-a7a8-de4da64ff82e",
+        "name": "Read/Write Files from Disk1"
+      },
+      {
+        "parameters": {
+          "command": "mkdir -p /home/node/.n8n-files/cropout && for f in /home/node/.n8n-files/pdfout/page-*.jpg; do base=\"$(basename \"$f\" .jpg)\"; magick \"$f\" -gravity south -crop 100%x25%+0+0 +repage -strip -quality 90 \"/home/node/.n8n-files/cropout/${base}-bottom.jpg\"; done"
+        },
+        "type": "n8n-nodes-base.executeCommand",
+        "typeVersion": 1,
+        "position": [
+          16,
+          -288
+        ],
+        "id": "af612c46-dff5-4357-a8bc-3dd31f84745d",
+        "name": "Execute Command1"
+      },
+      {
+        "parameters": {
+          "resource": "image",
+          "modelId": {
+            "__rl": true,
+            "value": "qwen3-vl:8b",
+            "mode": "list",
+            "cachedResultName": "qwen3-vl:8b"
+          },
+          "text": "You are extracting Multibanco payment data from a Portuguese invoice image.\nLook ONLY at the section titled “PAGAMENTO POR MULTIBANCO” (or similar).\nFind the labels:\n- “ENTIDADE:” (numeric code after it)\n- “REFERÊNCIA:” (numeric code after it, usually like “123 456 789”)\n- “MONTANTE:” (amount to be paid)\nIgnore all other numbers (NIF, ATCUD, invoice number, IBAN, totals outside the Multibanco box).\nReturn ONLY valid JSON exactly in this schema:\n{\"entidade\": string|null, \"referencia\": string|null, \"montante\": string|null}\nRules:\n- entidade must contain only digits (no spaces).\n- referencia must keep the spaces between 3-digit blocks if present.\n- montante must keep the currency format exactly as shown (e.g., \"45,32 €\" or \"45.32 EUR\").\n- If you cannot find a field, return null for that field.\n- Do not include any extra text.",
+          "options": {
+            "temperature": 0
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.ollama",
+        "typeVersion": 1,
+        "position": [
+          432,
+          -288
+        ],
+        "id": "c1b57f77-7833-4647-9176-5744f5b727e9",
+        "name": "Analyze image",
+        "credentials": {
+          "ollamaApi": {
+            "id": "wTr3Lp3AnkqNAECj",
+            "name": "Ollama account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "pollTimes": {
+            "item": [
+              {
+                "mode": "everyMonth",
+                "dayOfMonth": 5
+              }
+            ]
+          },
+          "filters": {
+            "q": "",
+            "sender": "geral@alcocheteup.pt"
+          }
+        },
+        "type": "n8n-nodes-base.gmailTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          -640,
+          -512
+        ],
+        "id": "935dc13b-9972-4676-92a4-cf9c9c1268ee",
+        "name": "Gmail Trigger1",
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "9pkmNZ2pAN09eDhX",
+            "name": "Gmail Empresa"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Gmail Trigger": {
+        "main": [
+          [
+            {
+              "node": "Read/Write Files from Disk",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read/Write Files from Disk": {
+        "main": [
+          [
+            {
+              "node": "Execute Command",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Execute Command": {
+        "main": [
+          [
+            {
+              "node": "Execute Command1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Execute Command1": {
+        "main": [
+          [
+            {
+              "node": "Read/Write Files from Disk1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read/Write Files from Disk1": {
+        "main": [
+          [
+            {
+              "node": "Analyze image",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gmail Trigger1": {
+        "main": [
+          [
+            {
+              "node": "Read/Write Files from Disk",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Ramon ramon@pereirariosoftware.com",
+    "name": "Version d1403cc3",
+    "description": "",
+    "autosaved": true
+  },
+  "activeVersionId": "d1403cc3-57d3-41d1-bb4d-a01b60b835ee",
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "Execute Command1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command1": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk1": {
+      "main": [
+        [
+          {
+            "node": "Analyze image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
   "createdAt": "2026-02-25T17:07:47.300Z",
   "id": "dw16mF1EkovHUngb",
   "isArchived": false,
-  "meta": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
   "name": "Extrair Referências de Facturas",
-  "nodes": [],
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyWeek"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "sender": "info.desporto@cm-alcochete.pt"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -608,
+        -288
+      ],
+      "id": "78817171-2e5d-4184-9e8c-e6ba3a773b15",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jzpvK2FSOXbCUp3E",
+          "name": "Gmail Pessoal"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/.n8n-files/{{$binary.attachment_0.fileName || 'input.pdf'}}",
+        "dataPropertyName": "=attachment_0",
+        "options": {
+          "append": true
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -400,
+        -288
+      ],
+      "id": "9cda9be7-a9c0-4ecf-8146-7514418fc62f",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "command": "=mkdir -p /home/node/.n8n-files/pdfout && pdftocairo -jpeg -r 200 \"{{$json.fileName}}\" \"/home/node/.n8n-files/pdfout/page\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -192,
+        -288
+      ],
+      "id": "0e8ddb2c-4cee-4f5b-924d-7a4c2c9aef86",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/node/.n8n-files/cropout/*-bottom.jpg",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        -288
+      ],
+      "id": "56795a3d-725b-4964-a7a8-de4da64ff82e",
+      "name": "Read/Write Files from Disk1"
+    },
+    {
+      "parameters": {
+        "command": "mkdir -p /home/node/.n8n-files/cropout && for f in /home/node/.n8n-files/pdfout/page-*.jpg; do base=\"$(basename \"$f\" .jpg)\"; magick \"$f\" -gravity south -crop 100%x25%+0+0 +repage -strip -quality 90 \"/home/node/.n8n-files/cropout/${base}-bottom.jpg\"; done"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        16,
+        -288
+      ],
+      "id": "af612c46-dff5-4357-a8bc-3dd31f84745d",
+      "name": "Execute Command1"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "modelId": {
+          "__rl": true,
+          "value": "qwen3-vl:8b",
+          "mode": "list",
+          "cachedResultName": "qwen3-vl:8b"
+        },
+        "text": "You are extracting Multibanco payment data from a Portuguese invoice image.\nLook ONLY at the section titled “PAGAMENTO POR MULTIBANCO” (or similar).\nFind the labels:\n- “ENTIDADE:” (numeric code after it)\n- “REFERÊNCIA:” (numeric code after it, usually like “123 456 789”)\n- “MONTANTE:” (amount to be paid)\nIgnore all other numbers (NIF, ATCUD, invoice number, IBAN, totals outside the Multibanco box).\nReturn ONLY valid JSON exactly in this schema:\n{\"entidade\": string|null, \"referencia\": string|null, \"montante\": string|null}\nRules:\n- entidade must contain only digits (no spaces).\n- referencia must keep the spaces between 3-digit blocks if present.\n- montante must keep the currency format exactly as shown (e.g., \"45,32 €\" or \"45.32 EUR\").\n- If you cannot find a field, return null for that field.\n- Do not include any extra text.",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        432,
+        -288
+      ],
+      "id": "c1b57f77-7833-4647-9176-5744f5b727e9",
+      "name": "Analyze image",
+      "credentials": {
+        "ollamaApi": {
+          "id": "wTr3Lp3AnkqNAECj",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMonth",
+              "dayOfMonth": 5
+            }
+          ]
+        },
+        "filters": {
+          "q": "",
+          "sender": "geral@alcocheteup.pt"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -640,
+        -512
+      ],
+      "id": "935dc13b-9972-4676-92a4-cf9c9c1268ee",
+      "name": "Gmail Trigger1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "9pkmNZ2pAN09eDhX",
+          "name": "Gmail Empresa"
+        }
+      }
+    }
+  ],
   "pinData": {},
   "settings": {
     "executionOrder": "v1",
@@ -24,9 +471,20 @@
       "projectId": "goe6nejb5G8RJyVd"
     }
   ],
-  "staticData": null,
+  "staticData": {
+    "node:Gmail Trigger": {
+      "Gmail Trigger": {
+        "lastTimeChecked": 1772230447
+      }
+    },
+    "node:Gmail Trigger1": {
+      "Gmail Trigger1": {
+        "lastTimeChecked": 1772230448
+      }
+    }
+  },
   "tags": [],
-  "triggerCount": 0,
-  "updatedAt": "2026-02-25T17:07:47.300Z",
-  "versionId": "157f3af2-fc79-4cda-9a6e-d4d3ed6d5df5"
+  "triggerCount": 2,
+  "updatedAt": "2026-02-27T22:14:04.013Z",
+  "versionId": "d1403cc3-57d3-41d1-bb4d-a01b60b835ee"
 }
