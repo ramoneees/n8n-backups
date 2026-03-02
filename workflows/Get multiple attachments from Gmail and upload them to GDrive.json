@@ -1,9 +1,9 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-02-25T17:06:51.000Z",
-    "createdAt": "2026-02-25T17:05:02.391Z",
-    "versionId": "b24aa835-1a1c-4065-887a-403cc9c349d1",
+    "updatedAt": "2026-03-02T13:21:34.000Z",
+    "createdAt": "2026-03-02T13:19:49.156Z",
+    "versionId": "6d223dea-eff9-4d44-91a9-ddaca2ea96e0",
     "workflowId": "DmQsO9RWHGBGZyoU",
     "nodes": [
       {
@@ -43,7 +43,7 @@
           "operation": "getAll",
           "simple": false,
           "filters": {
-            "q": "has:attachment filename:pdf newer_than:30d (\n  label:to-process/invoice\n  OR from:noreply@grupoyour.com\n  OR from:noreply@weoinvoice.com\n  OR from:noreply@factura.grenke.pt\n  OR from:payments-noreply@google.com\n  OR from:noreply@documentos.meoempresas.pt\n  OR from:geral@alcocheteup.pt\n  OR from:no_reply@mun-montijo.pt\n)"
+            "q": "=has:attachment filename:pdf newer_than:30d (\n  label:to-process/invoice\n  OR from:noreply@grupoyour.com\n  OR from:noreply@weoinvoice.com\n  OR from:noreply@factura.grenke.pt\n  OR from:payments-noreply@google.com\n  OR from:noreply@documentos.meoempresas.pt\n  OR from:geral@alcocheteup.pt\n  OR from:no_reply@mun-montijo.pt\n  OR from:extractoelectronico@extracto.viaverde.pt\n)"
           },
           "options": {
             "downloadAttachments": true
@@ -67,7 +67,7 @@
       },
       {
         "parameters": {
-          "jsCode": "let items = $input.all();\n\nlet results = [];\n\nfor (const item of items) {\n\n  // ---- 1) Resolve email date (fallback = now) ----\n  const rawDate =\n    item.json.internalDate ||\n    item.json.date ||\n    item.json.headers?.date ||\n    null;\n\n  let date;\n  if (rawDate && !isNaN(rawDate)) {\n    date = new Date(Number(rawDate));\n  } else if (rawDate) {\n    date = new Date(rawDate);\n  } else {\n    date = new Date();\n  }\n\n  if (isNaN(date.getTime())) {\n    date = new Date();\n  }\n\n  // ---- 2) Build MM-YYYY ----\n  const month = String(date.getMonth() + 1).padStart(2, '0');\n  const year = date.getFullYear();\n  const monthYear = `${month}-${year}`;\n\n  // ---- 3) Explode attachments ----\n  for (const key of Object.keys(item.binary ?? {})) {\n    const bin = item.binary[key];\n\n    const isPdf =\n      (bin.mimeType && bin.mimeType.toLowerCase().includes('pdf')) ||\n      (bin.fileName && bin.fileName.toLowerCase().endsWith('.pdf'));\n\n    if (!isPdf) continue;\n\n    results.push({\n      json: {\n        monthYear,             // <-- folder name\n        fileName: bin.fileName,\n        folderId: $input.first().json.id\n      },\n      binary: {\n        data: bin              // normalize for Drive Upload\n      }\n    });\n  }\n}\n\nreturn results;"
+          "jsCode": "let items = $input.all();\n\nlet results = [];\n\n// ---- Config ----\nconst EXCLUDE_PREFIXES = [/^Detalhe_/i, /^News_/i];      // starts-with filters\nconst EXCLUDE_CONTAINS = []; // e.g. [/details_/i, /news_/i] if you want \"contains\" too\n\n// Optional: require invoice-ish keywords in filename (set to true to enable)\nconst REQUIRE_INVOICE_KEYWORDS = false;\nconst INVOICE_KEYWORDS = /(invoice|inv\\b|fatura|factura|recibo|nota\\s*fiscal|tax\\s*invoice|vat|iva)/i;\n\nfor (const item of items) {\n\n  // ---- 1) Resolve email date (fallback = now) ----\n  const rawDate =\n    item.json.internalDate ||\n    item.json.date ||\n    item.json.headers?.date ||\n    null;\n\n  let date;\n  if (rawDate && !isNaN(rawDate)) {\n    date = new Date(Number(rawDate));\n  } else if (rawDate) {\n    date = new Date(rawDate);\n  } else {\n    date = new Date();\n  }\n\n  if (isNaN(date.getTime())) {\n    date = new Date();\n  }\n\n  // ---- 2) Build MM-YYYY ----\n  const month = String(date.getMonth() + 1).padStart(2, '0');\n  const year = date.getFullYear();\n  const monthYear = `${month}-${year}`;\n\n  // ---- 3) Explode attachments ----\n  for (const key of Object.keys(item.binary ?? {})) {\n    const bin = item.binary[key];\n\n    const fileName = (bin.fileName || '').trim();\n    const fileNameLc = fileName.toLowerCase();\n\n    const isPdf =\n      (bin.mimeType && bin.mimeType.toLowerCase().includes('pdf')) ||\n      fileNameLc.endsWith('.pdf');\n\n    if (!isPdf) continue;\n\n    // ---- 4) Exclude non-invoice PDFs by filename patterns ----\n    const excludedByPrefix = EXCLUDE_PREFIXES.some((re) => re.test(fileName));\n    const excludedByContains = EXCLUDE_CONTAINS.some((re) => re.test(fileName));\n\n    if (excludedByPrefix || excludedByContains) continue;\n\n    // ---- 5) Optional: only keep files that look like invoices by name ----\n    if (REQUIRE_INVOICE_KEYWORDS && !INVOICE_KEYWORDS.test(fileName)) {\n      continue;\n    }\n\n    results.push({\n      json: {\n        monthYear,             // <-- folder name\n        fileName: bin.fileName,\n        folderId: $input.first().json.id\n      },\n      binary: {\n        data: bin              // normalize for Drive Upload\n      }\n    });\n  }\n}\n\nreturn results;"
         },
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
@@ -112,12 +112,14 @@
         }
       },
       {
-        "parameters": {},
+        "parameters": {
+          "numberInputs": 3
+        },
         "type": "n8n-nodes-base.merge",
         "typeVersion": 3.2,
         "position": [
           32,
-          288
+          256
         ],
         "id": "0e90006e-2926-4fab-9c85-c53542bdba03",
         "name": "Merge"
@@ -134,41 +136,6 @@
         ],
         "id": "d094d0d4-dd99-40fa-ac42-40f54ddc29de",
         "name": "Code in JavaScript"
-      },
-      {
-        "parameters": {
-          "method": "POST",
-          "url": "https://app.assistro.co/api/v1/wapushplus/single/message",
-          "sendHeaders": true,
-          "headerParameters": {
-            "parameters": [
-              {
-                "name": "Authorization",
-                "value": "Bearer  eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2FwcC5hc3Npc3Ryby5jby9wbGFuL3dhcHVzaC1wbHVzL244biIsImlhdCI6MTc2OTM3NTc3NCwiZXhwIjoyNDAwMDk1Nzc0LCJuYmYiOjE3NjkzNzU3NzQsImp0aSI6Indrb0FKRjd1NXRJUnozdGMiLCJzdWIiOiI3MDQ4IiwicHJ2IjoiMjNiZDVjODk0OWY2MDBhZGIzOWU3MDFjNDAwODcyZGI3YTU5NzZmNyIsInVzZXJfY29tcGFueV9pZCI6NTAwNiwidXNlcl9wdXNoX3BsdXNfd2ViaG9va19pZCI6NDkwOSwiY3VycmVudF93ZWJob29rX2lkIjoyNDksInByb2R1Y3RfaWQiOjUsImludGVncmF0aW9uIjoibjhuIn0.MgISQPV0y5pMUmbK4Cr7H9hSwSav4rBnwp03y4k5xp4 "
-              },
-              {
-                "name": "Integration",
-                "value": "n8n"
-              }
-            ]
-          },
-          "sendBody": true,
-          "specifyBody": "json",
-          "jsonBody": "{\n  \"msgs\": [\n    {\n      \"number\": \"+351926565596\",\n      \"message\": \"Routine worked\",\n      \"type\": 1\n    }\n  ]\n}",
-          "options": {
-            "redirect": {
-              "redirect": {}
-            }
-          }
-        },
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.3,
-        "position": [
-          944,
-          192
-        ],
-        "id": "88782d16-c827-4945-a611-5f51d4cad45a",
-        "name": "HTTP Request"
       },
       {
         "parameters": {
@@ -190,6 +157,33 @@
         ],
         "id": "e4800f5a-e923-4f50-8309-ed5fa1a1194c",
         "name": "Schedule Trigger"
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "simple": false,
+          "filters": {
+            "q": "has:attachment filename:pdf newer_than:30d (|  label:to-process/invoice|  OR from:loja@egitana.pt|  OR from:alertas.empresas@millenniumbcp.pt| )"
+          },
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.2,
+        "position": [
+          -304,
+          256
+        ],
+        "id": "4a0ad377-95ce-4817-8c57-dd2888ffc853",
+        "name": "Get many messages1",
+        "webhookId": "0308a1ac-cfc5-4348-9054-ff68a1ad63c9",
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "jzpvK2FSOXbCUp3E",
+            "name": "Gmail Pessoal"
+          }
+        }
       }
     ],
     "connections": {
@@ -228,13 +222,7 @@
       },
       "upload files to google drive": {
         "main": [
-          [
-            {
-              "node": "HTTP Request",
-              "type": "main",
-              "index": 0
-            }
-          ]
+          []
         ]
       },
       "Merge": {
@@ -271,17 +259,33 @@
               "node": "Get many messages",
               "type": "main",
               "index": 0
+            },
+            {
+              "node": "Get many messages1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get many messages1": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 2
             }
           ]
         ]
       }
     },
     "authors": "Ramon ramon@pereirariosoftware.com",
-    "name": "Version b24aa835",
+    "name": "Version 6d223dea",
     "description": "",
     "autosaved": true
   },
-  "activeVersionId": "b24aa835-1a1c-4065-887a-403cc9c349d1",
+  "activeVersionId": "6d223dea-eff9-4d44-91a9-ddaca2ea96e0",
   "connections": {
     "Get many messages": {
       "main": [
@@ -318,13 +322,7 @@
     },
     "upload files to google drive": {
       "main": [
-        [
-          {
-            "node": "HTTP Request",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Merge": {
@@ -361,6 +359,22 @@
             "node": "Get many messages",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Get many messages1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
           }
         ]
       ]
@@ -411,7 +425,7 @@
         "operation": "getAll",
         "simple": false,
         "filters": {
-          "q": "has:attachment filename:pdf newer_than:30d (\n  label:to-process/invoice\n  OR from:noreply@grupoyour.com\n  OR from:noreply@weoinvoice.com\n  OR from:noreply@factura.grenke.pt\n  OR from:payments-noreply@google.com\n  OR from:noreply@documentos.meoempresas.pt\n  OR from:geral@alcocheteup.pt\n  OR from:no_reply@mun-montijo.pt\n)"
+          "q": "=has:attachment filename:pdf newer_than:30d (\n  label:to-process/invoice\n  OR from:noreply@grupoyour.com\n  OR from:noreply@weoinvoice.com\n  OR from:noreply@factura.grenke.pt\n  OR from:payments-noreply@google.com\n  OR from:noreply@documentos.meoempresas.pt\n  OR from:geral@alcocheteup.pt\n  OR from:no_reply@mun-montijo.pt\n  OR from:extractoelectronico@extracto.viaverde.pt\n)"
         },
         "options": {
           "downloadAttachments": true
@@ -435,7 +449,7 @@
     },
     {
       "parameters": {
-        "jsCode": "let items = $input.all();\n\nlet results = [];\n\nfor (const item of items) {\n\n  // ---- 1) Resolve email date (fallback = now) ----\n  const rawDate =\n    item.json.internalDate ||\n    item.json.date ||\n    item.json.headers?.date ||\n    null;\n\n  let date;\n  if (rawDate && !isNaN(rawDate)) {\n    date = new Date(Number(rawDate));\n  } else if (rawDate) {\n    date = new Date(rawDate);\n  } else {\n    date = new Date();\n  }\n\n  if (isNaN(date.getTime())) {\n    date = new Date();\n  }\n\n  // ---- 2) Build MM-YYYY ----\n  const month = String(date.getMonth() + 1).padStart(2, '0');\n  const year = date.getFullYear();\n  const monthYear = `${month}-${year}`;\n\n  // ---- 3) Explode attachments ----\n  for (const key of Object.keys(item.binary ?? {})) {\n    const bin = item.binary[key];\n\n    const isPdf =\n      (bin.mimeType && bin.mimeType.toLowerCase().includes('pdf')) ||\n      (bin.fileName && bin.fileName.toLowerCase().endsWith('.pdf'));\n\n    if (!isPdf) continue;\n\n    results.push({\n      json: {\n        monthYear,             // <-- folder name\n        fileName: bin.fileName,\n        folderId: $input.first().json.id\n      },\n      binary: {\n        data: bin              // normalize for Drive Upload\n      }\n    });\n  }\n}\n\nreturn results;"
+        "jsCode": "let items = $input.all();\n\nlet results = [];\n\n// ---- Config ----\nconst EXCLUDE_PREFIXES = [/^Detalhe_/i, /^News_/i];      // starts-with filters\nconst EXCLUDE_CONTAINS = []; // e.g. [/details_/i, /news_/i] if you want \"contains\" too\n\n// Optional: require invoice-ish keywords in filename (set to true to enable)\nconst REQUIRE_INVOICE_KEYWORDS = false;\nconst INVOICE_KEYWORDS = /(invoice|inv\\b|fatura|factura|recibo|nota\\s*fiscal|tax\\s*invoice|vat|iva)/i;\n\nfor (const item of items) {\n\n  // ---- 1) Resolve email date (fallback = now) ----\n  const rawDate =\n    item.json.internalDate ||\n    item.json.date ||\n    item.json.headers?.date ||\n    null;\n\n  let date;\n  if (rawDate && !isNaN(rawDate)) {\n    date = new Date(Number(rawDate));\n  } else if (rawDate) {\n    date = new Date(rawDate);\n  } else {\n    date = new Date();\n  }\n\n  if (isNaN(date.getTime())) {\n    date = new Date();\n  }\n\n  // ---- 2) Build MM-YYYY ----\n  const month = String(date.getMonth() + 1).padStart(2, '0');\n  const year = date.getFullYear();\n  const monthYear = `${month}-${year}`;\n\n  // ---- 3) Explode attachments ----\n  for (const key of Object.keys(item.binary ?? {})) {\n    const bin = item.binary[key];\n\n    const fileName = (bin.fileName || '').trim();\n    const fileNameLc = fileName.toLowerCase();\n\n    const isPdf =\n      (bin.mimeType && bin.mimeType.toLowerCase().includes('pdf')) ||\n      fileNameLc.endsWith('.pdf');\n\n    if (!isPdf) continue;\n\n    // ---- 4) Exclude non-invoice PDFs by filename patterns ----\n    const excludedByPrefix = EXCLUDE_PREFIXES.some((re) => re.test(fileName));\n    const excludedByContains = EXCLUDE_CONTAINS.some((re) => re.test(fileName));\n\n    if (excludedByPrefix || excludedByContains) continue;\n\n    // ---- 5) Optional: only keep files that look like invoices by name ----\n    if (REQUIRE_INVOICE_KEYWORDS && !INVOICE_KEYWORDS.test(fileName)) {\n      continue;\n    }\n\n    results.push({\n      json: {\n        monthYear,             // <-- folder name\n        fileName: bin.fileName,\n        folderId: $input.first().json.id\n      },\n      binary: {\n        data: bin              // normalize for Drive Upload\n      }\n    });\n  }\n}\n\nreturn results;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -480,12 +494,14 @@
       }
     },
     {
-      "parameters": {},
+      "parameters": {
+        "numberInputs": 3
+      },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
         32,
-        288
+        256
       ],
       "id": "0e90006e-2926-4fab-9c85-c53542bdba03",
       "name": "Merge"
@@ -502,41 +518,6 @@
       ],
       "id": "d094d0d4-dd99-40fa-ac42-40f54ddc29de",
       "name": "Code in JavaScript"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://app.assistro.co/api/v1/wapushplus/single/message",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "Bearer  eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2FwcC5hc3Npc3Ryby5jby9wbGFuL3dhcHVzaC1wbHVzL244biIsImlhdCI6MTc2OTM3NTc3NCwiZXhwIjoyNDAwMDk1Nzc0LCJuYmYiOjE3NjkzNzU3NzQsImp0aSI6Indrb0FKRjd1NXRJUnozdGMiLCJzdWIiOiI3MDQ4IiwicHJ2IjoiMjNiZDVjODk0OWY2MDBhZGIzOWU3MDFjNDAwODcyZGI3YTU5NzZmNyIsInVzZXJfY29tcGFueV9pZCI6NTAwNiwidXNlcl9wdXNoX3BsdXNfd2ViaG9va19pZCI6NDkwOSwiY3VycmVudF93ZWJob29rX2lkIjoyNDksInByb2R1Y3RfaWQiOjUsImludGVncmF0aW9uIjoibjhuIn0.MgISQPV0y5pMUmbK4Cr7H9hSwSav4rBnwp03y4k5xp4 "
-            },
-            {
-              "name": "Integration",
-              "value": "n8n"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "{\n  \"msgs\": [\n    {\n      \"number\": \"+351926565596\",\n      \"message\": \"Routine worked\",\n      \"type\": 1\n    }\n  ]\n}",
-        "options": {
-          "redirect": {
-            "redirect": {}
-          }
-        }
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.3,
-      "position": [
-        944,
-        192
-      ],
-      "id": "88782d16-c827-4945-a611-5f51d4cad45a",
-      "name": "HTTP Request"
     },
     {
       "parameters": {
@@ -558,6 +539,33 @@
       ],
       "id": "e4800f5a-e923-4f50-8309-ed5fa1a1194c",
       "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "simple": false,
+        "filters": {
+          "q": "has:attachment filename:pdf newer_than:30d (|  label:to-process/invoice|  OR from:loja@egitana.pt|  OR from:alertas.empresas@millenniumbcp.pt| )"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -304,
+        256
+      ],
+      "id": "4a0ad377-95ce-4817-8c57-dd2888ffc853",
+      "name": "Get many messages1",
+      "webhookId": "0308a1ac-cfc5-4348-9054-ff68a1ad63c9",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jzpvK2FSOXbCUp3E",
+          "name": "Gmail Pessoal"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -582,6 +590,6 @@
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-02-25T17:05:02.391Z",
-  "versionId": "b24aa835-1a1c-4065-887a-403cc9c349d1"
+  "updatedAt": "2026-03-02T13:19:49.155Z",
+  "versionId": "6d223dea-eff9-4d44-91a9-ddaca2ea96e0"
 }
