@@ -1,9 +1,9 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-03-02T13:21:34.000Z",
-    "createdAt": "2026-03-02T13:19:49.156Z",
-    "versionId": "6d223dea-eff9-4d44-91a9-ddaca2ea96e0",
+    "updatedAt": "2026-03-03T11:51:10.000Z",
+    "createdAt": "2026-03-03T11:51:03.824Z",
+    "versionId": "33d169e3-c968-4230-a995-d02f0bdfad94",
     "workflowId": "DmQsO9RWHGBGZyoU",
     "nodes": [
       {
@@ -43,7 +43,7 @@
           "operation": "getAll",
           "simple": false,
           "filters": {
-            "q": "=has:attachment filename:pdf newer_than:30d (\n  label:to-process/invoice\n  OR from:noreply@grupoyour.com\n  OR from:noreply@weoinvoice.com\n  OR from:noreply@factura.grenke.pt\n  OR from:payments-noreply@google.com\n  OR from:noreply@documentos.meoempresas.pt\n  OR from:geral@alcocheteup.pt\n  OR from:no_reply@mun-montijo.pt\n  OR from:extractoelectronico@extracto.viaverde.pt\n)"
+            "q": "=has:attachment filename:pdf newer_than:30d (\n  label:to-process/invoice\n  OR from:noreply@grupoyour.com\n  OR from:noreply@weoinvoice.com\n  OR from:noreply@factura.grenke.pt\n  OR from:payments-noreply@google.com\n  OR from:noreply@documentos.meoempresas.pt\n  OR from:geral@alcocheteup.pt\n  OR from:no_reply@mun-montijo.pt\n  OR from:extractoelectronico@extracto.viaverde.pt\nOR from:apoiocliente@prio.pt\n)"
           },
           "options": {
             "downloadAttachments": true
@@ -281,11 +281,11 @@
       }
     },
     "authors": "Ramon ramon@pereirariosoftware.com",
-    "name": "Version 6d223dea",
+    "name": "Version 33d169e3",
     "description": "",
     "autosaved": true
   },
-  "activeVersionId": "6d223dea-eff9-4d44-91a9-ddaca2ea96e0",
+  "activeVersionId": "33d169e3-c968-4230-a995-d02f0bdfad94",
   "connections": {
     "Get many messages": {
       "main": [
@@ -425,7 +425,7 @@
         "operation": "getAll",
         "simple": false,
         "filters": {
-          "q": "=has:attachment filename:pdf newer_than:30d (\n  label:to-process/invoice\n  OR from:noreply@grupoyour.com\n  OR from:noreply@weoinvoice.com\n  OR from:noreply@factura.grenke.pt\n  OR from:payments-noreply@google.com\n  OR from:noreply@documentos.meoempresas.pt\n  OR from:geral@alcocheteup.pt\n  OR from:no_reply@mun-montijo.pt\n  OR from:extractoelectronico@extracto.viaverde.pt\n)"
+          "q": "=has:attachment filename:pdf newer_than:30d (\n  label:to-process/invoice\n  OR from:noreply@grupoyour.com\n  OR from:noreply@weoinvoice.com\n  OR from:noreply@factura.grenke.pt\n  OR from:payments-noreply@google.com\n  OR from:noreply@documentos.meoempresas.pt\n  OR from:geral@alcocheteup.pt\n  OR from:no_reply@mun-montijo.pt\n  OR from:extractoelectronico@extracto.viaverde.pt\nOR from:apoiocliente@prio.pt\n)"
         },
         "options": {
           "downloadAttachments": true
@@ -590,6 +590,6 @@
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-03-02T13:19:49.155Z",
-  "versionId": "6d223dea-eff9-4d44-91a9-ddaca2ea96e0"
+  "updatedAt": "2026-03-03T11:51:03.823Z",
+  "versionId": "33d169e3-c968-4230-a995-d02f0bdfad94"
 }
