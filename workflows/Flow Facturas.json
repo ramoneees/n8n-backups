@@ -1,10 +1,10 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-02-25T17:06:26.000Z",
-    "createdAt": "2026-02-25T17:06:08.301Z",
-    "versionId": "dcd1881b-43af-49d5-8d6a-b57267f79c59",
-    "workflowId": "F7PXuPaJuDaBizk7",
+    "updatedAt": "2026-03-23T14:55:23.929Z",
+    "createdAt": "2026-03-23T14:55:16.719Z",
+    "versionId": "46853e07-5df3-4030-8605-1c6887055f60",
+    "workflowId": "efsXhLKRWp0LOreC",
     "nodes": [
       {
         "parameters": {
@@ -18,7 +18,7 @@
           -240,
           144
         ],
-        "id": "044a66cc-a533-4f03-91d0-32edd8bbdf07",
+        "id": "19340b44-5f6f-404a-ad17-cbc6d7bbc955",
         "name": "Webhook",
         "webhookId": "7a1bfae9-62dc-4eb6-bb2a-bd885881ce05"
       },
@@ -33,7 +33,7 @@
           0,
           0
         ],
-        "id": "ef628d7d-7548-4aff-99b1-d0f414cb0d95",
+        "id": "6352f5bd-0a13-4663-a5ab-0ffcfcea101c",
         "name": "HTTP Request"
       },
       {
@@ -44,7 +44,7 @@
           128,
           128
         ],
-        "id": "8e71e7e2-357f-4d47-80cd-638df828d9d1",
+        "id": "598e0f35-2580-4ecb-876a-8c81c523518d",
         "name": "Merge"
       },
       {
@@ -57,7 +57,7 @@
           336,
           128
         ],
-        "id": "838d3ca1-5a3c-4a54-adc5-ddc12240e059",
+        "id": "42417b6f-4620-4fc2-a922-eaccb383907f",
         "name": "Code in JavaScript"
       },
       {
@@ -76,12 +76,12 @@
           576,
           128
         ],
-        "id": "f8854b33-bfa0-4553-9055-a3e13439698a",
+        "id": "da5bbbfc-ede2-481d-828f-71e947089532",
         "name": "Send a message",
         "webhookId": "9ff8dec5-3f5b-49d7-a26f-91e02ce94154",
         "credentials": {
           "gmailOAuth2": {
-            "id": "9pkmNZ2pAN09eDhX",
+            "id": "LLEsxPgdZEQU8Y68",
             "name": "Gmail Empresa"
           }
         }
@@ -139,11 +139,11 @@
       }
     },
     "authors": "Ramon ramon@pereirariosoftware.com",
-    "name": "Version dcd1881b",
+    "name": "Version 46853e07",
     "description": "",
     "autosaved": true
   },
-  "activeVersionId": "dcd1881b-43af-49d5-8d6a-b57267f79c59",
+  "activeVersionId": "46853e07-5df3-4030-8605-1c6887055f60",
   "connections": {
     "Webhook": {
       "main": [
@@ -195,8 +195,8 @@
       ]
     }
   },
-  "createdAt": "2026-02-25T16:40:11.676Z",
-  "id": "F7PXuPaJuDaBizk7",
+  "createdAt": "2026-03-22T21:49:13.170Z",
+  "id": "efsXhLKRWp0LOreC",
   "isArchived": false,
   "meta": {
     "templateCredsSetupCompleted": true
@@ -215,7 +215,7 @@
         -240,
         144
       ],
-      "id": "044a66cc-a533-4f03-91d0-32edd8bbdf07",
+      "id": "19340b44-5f6f-404a-ad17-cbc6d7bbc955",
       "name": "Webhook",
       "webhookId": "7a1bfae9-62dc-4eb6-bb2a-bd885881ce05"
     },
@@ -230,7 +230,7 @@
         0,
         0
       ],
-      "id": "ef628d7d-7548-4aff-99b1-d0f414cb0d95",
+      "id": "6352f5bd-0a13-4663-a5ab-0ffcfcea101c",
       "name": "HTTP Request"
     },
     {
@@ -241,7 +241,7 @@
         128,
         128
       ],
-      "id": "8e71e7e2-357f-4d47-80cd-638df828d9d1",
+      "id": "598e0f35-2580-4ecb-876a-8c81c523518d",
       "name": "Merge"
     },
     {
@@ -254,7 +254,7 @@
         336,
         128
       ],
-      "id": "838d3ca1-5a3c-4a54-adc5-ddc12240e059",
+      "id": "42417b6f-4620-4fc2-a922-eaccb383907f",
       "name": "Code in JavaScript"
     },
     {
@@ -273,12 +273,12 @@
         576,
         128
       ],
-      "id": "f8854b33-bfa0-4553-9055-a3e13439698a",
+      "id": "da5bbbfc-ede2-481d-828f-71e947089532",
       "name": "Send a message",
       "webhookId": "9ff8dec5-3f5b-49d7-a26f-91e02ce94154",
       "credentials": {
         "gmailOAuth2": {
-          "id": "9pkmNZ2pAN09eDhX",
+          "id": "LLEsxPgdZEQU8Y68",
           "name": "Gmail Empresa"
         }
       }
@@ -287,21 +287,20 @@
   "pinData": {},
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": false
+    "binaryMode": "separate"
   },
   "shared": [
     {
-      "updatedAt": "2026-02-25T16:40:11.678Z",
-      "createdAt": "2026-02-25T16:40:11.678Z",
+      "updatedAt": "2026-03-22T21:49:13.170Z",
+      "createdAt": "2026-03-22T21:49:13.170Z",
       "role": "workflow:owner",
-      "workflowId": "F7PXuPaJuDaBizk7",
-      "projectId": "goe6nejb5G8RJyVd"
+      "workflowId": "efsXhLKRWp0LOreC",
+      "projectId": "1AjsEedso5AIlN6L"
     }
   ],
   "staticData": null,
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-02-25T17:06:08.300Z",
-  "versionId": "dcd1881b-43af-49d5-8d6a-b57267f79c59"
+  "updatedAt": "2026-03-23T14:55:16.719Z",
+  "versionId": "46853e07-5df3-4030-8605-1c6887055f60"
 }
