@@ -1,10 +1,10 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-03-17T12:10:37.000Z",
-    "createdAt": "2026-03-17T11:52:49.224Z",
-    "versionId": "da5b5d3f-74a3-40a5-b90f-a5e04bfcfafe",
-    "workflowId": "DmQsO9RWHGBGZyoU",
+    "updatedAt": "2026-03-23T14:53:09.603Z",
+    "createdAt": "2026-03-23T14:53:05.970Z",
+    "versionId": "46305f02-526e-44d6-a5ac-76b9ea671f76",
+    "workflowId": "u1616pQTGBlFZkq9",
     "nodes": [
       {
         "parameters": {
@@ -23,17 +23,17 @@
           },
           "options": {}
         },
-        "id": "572f61a5-db40-40e3-95c6-8d9557a9aaa4",
+        "id": "54307e03-8196-430c-a710-6d23277daad2",
         "name": "upload files to google drive",
         "type": "n8n-nodes-base.googleDrive",
         "position": [
-          736,
-          192
+          784,
+          224
         ],
         "typeVersion": 3,
         "credentials": {
           "googleDriveOAuth2Api": {
-            "id": "rnXE2tdRZn5XVmp6",
+            "id": "vvmiY9U9TBrlwUCt",
             "name": "Google Drive Empresa"
           }
         }
@@ -52,15 +52,15 @@
         "type": "n8n-nodes-base.gmail",
         "typeVersion": 2.2,
         "position": [
-          -336,
-          432
+          -288,
+          464
         ],
-        "id": "8e980026-ea77-4a2c-a19b-ecf30a8dcb6a",
+        "id": "0e369bd0-c269-4de2-bc29-1233d98176cb",
         "name": "Get many messages",
         "webhookId": "c886792f-129b-4d66-9aad-34902805d9c0",
         "credentials": {
           "gmailOAuth2": {
-            "id": "9pkmNZ2pAN09eDhX",
+            "id": "LLEsxPgdZEQU8Y68",
             "name": "Gmail Empresa"
           }
         }
@@ -72,10 +72,10 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          368,
-          208
+          416,
+          240
         ],
-        "id": "ee4a4d5b-43ca-40ee-ba3f-3cdc904d689f",
+        "id": "af4a5c9d-3513-437c-9cd1-66eafea03b8a",
         "name": "Code in JavaScript1"
       },
       {
@@ -99,14 +99,14 @@
         "type": "n8n-nodes-base.googleDrive",
         "typeVersion": 3,
         "position": [
-          0,
-          0
+          48,
+          32
         ],
-        "id": "7b384412-f619-4d4c-a85d-4ea1fac5dd05",
+        "id": "d4b7c1bb-c06d-44e4-b859-8a1fa1ab8bf5",
         "name": "Create folder1",
         "credentials": {
           "googleDriveOAuth2Api": {
-            "id": "rnXE2tdRZn5XVmp6",
+            "id": "vvmiY9U9TBrlwUCt",
             "name": "Google Drive Empresa"
           }
         }
@@ -118,10 +118,10 @@
         "type": "n8n-nodes-base.merge",
         "typeVersion": 3.2,
         "position": [
-          32,
-          256
+          80,
+          288
         ],
-        "id": "0e90006e-2926-4fab-9c85-c53542bdba03",
+        "id": "830e9c49-6ef2-46ba-b020-f0c26a40d354",
         "name": "Merge"
       },
       {
@@ -131,10 +131,10 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          -208,
-          96
+          -160,
+          128
         ],
-        "id": "d094d0d4-dd99-40fa-ac42-40f54ddc29de",
+        "id": "35f3dc32-74d9-41ff-b2eb-2864ebb3b862",
         "name": "Code in JavaScript"
       },
       {
@@ -152,10 +152,10 @@
         "type": "n8n-nodes-base.scheduleTrigger",
         "typeVersion": 1.3,
         "position": [
-          -656,
-          16
+          -608,
+          48
         ],
-        "id": "e4800f5a-e923-4f50-8309-ed5fa1a1194c",
+        "id": "04e872e5-d5a2-4ef3-9aa6-60d51c32b112",
         "name": "Schedule Trigger"
       },
       {
@@ -172,15 +172,15 @@
         "type": "n8n-nodes-base.gmail",
         "typeVersion": 2.2,
         "position": [
-          -304,
-          256
+          -256,
+          288
         ],
-        "id": "4a0ad377-95ce-4817-8c57-dd2888ffc853",
+        "id": "dee66a56-17ab-496c-acde-3465d8e30242",
         "name": "Get many messages1",
         "webhookId": "0308a1ac-cfc5-4348-9054-ff68a1ad63c9",
         "credentials": {
           "gmailOAuth2": {
-            "id": "jzpvK2FSOXbCUp3E",
+            "id": "4LMBDvjXf4blrkme",
             "name": "Gmail Pessoal"
           }
         }
@@ -218,11 +218,6 @@
               "index": 0
             }
           ]
-        ]
-      },
-      "upload files to google drive": {
-        "main": [
-          []
         ]
       },
       "Merge": {
@@ -281,11 +276,11 @@
       }
     },
     "authors": "Ramon ramon@pereirariosoftware.com",
-    "name": "Version da5b5d3f",
+    "name": "Version 46305f02",
     "description": "",
     "autosaved": true
   },
-  "activeVersionId": "da5b5d3f-74a3-40a5-b90f-a5e04bfcfafe",
+  "activeVersionId": "46305f02-526e-44d6-a5ac-76b9ea671f76",
   "connections": {
     "Get many messages": {
       "main": [
@@ -318,11 +313,6 @@
             "index": 0
           }
         ]
-      ]
-    },
-    "upload files to google drive": {
-      "main": [
-        []
       ]
     },
     "Merge": {
@@ -380,8 +370,8 @@
       ]
     }
   },
-  "createdAt": "2026-02-25T16:40:33.820Z",
-  "id": "DmQsO9RWHGBGZyoU",
+  "createdAt": "2026-03-22T21:46:34.299Z",
+  "id": "u1616pQTGBlFZkq9",
   "isArchived": false,
   "meta": {
     "templateCredsSetupCompleted": true
@@ -405,17 +395,17 @@
         },
         "options": {}
       },
-      "id": "572f61a5-db40-40e3-95c6-8d9557a9aaa4",
+      "id": "54307e03-8196-430c-a710-6d23277daad2",
       "name": "upload files to google drive",
       "type": "n8n-nodes-base.googleDrive",
       "position": [
-        736,
-        192
+        784,
+        224
       ],
       "typeVersion": 3,
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "rnXE2tdRZn5XVmp6",
+          "id": "vvmiY9U9TBrlwUCt",
           "name": "Google Drive Empresa"
         }
       }
@@ -434,15 +424,15 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        -336,
-        432
+        -288,
+        464
       ],
-      "id": "8e980026-ea77-4a2c-a19b-ecf30a8dcb6a",
+      "id": "0e369bd0-c269-4de2-bc29-1233d98176cb",
       "name": "Get many messages",
       "webhookId": "c886792f-129b-4d66-9aad-34902805d9c0",
       "credentials": {
         "gmailOAuth2": {
-          "id": "9pkmNZ2pAN09eDhX",
+          "id": "LLEsxPgdZEQU8Y68",
           "name": "Gmail Empresa"
         }
       }
@@ -454,10 +444,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        368,
-        208
+        416,
+        240
       ],
-      "id": "ee4a4d5b-43ca-40ee-ba3f-3cdc904d689f",
+      "id": "af4a5c9d-3513-437c-9cd1-66eafea03b8a",
       "name": "Code in JavaScript1"
     },
     {
@@ -481,14 +471,14 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        0,
-        0
+        48,
+        32
       ],
-      "id": "7b384412-f619-4d4c-a85d-4ea1fac5dd05",
+      "id": "d4b7c1bb-c06d-44e4-b859-8a1fa1ab8bf5",
       "name": "Create folder1",
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "rnXE2tdRZn5XVmp6",
+          "id": "vvmiY9U9TBrlwUCt",
           "name": "Google Drive Empresa"
         }
       }
@@ -500,10 +490,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        32,
-        256
+        80,
+        288
       ],
-      "id": "0e90006e-2926-4fab-9c85-c53542bdba03",
+      "id": "830e9c49-6ef2-46ba-b020-f0c26a40d354",
       "name": "Merge"
     },
     {
@@ -513,10 +503,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -208,
-        96
+        -160,
+        128
       ],
-      "id": "d094d0d4-dd99-40fa-ac42-40f54ddc29de",
+      "id": "35f3dc32-74d9-41ff-b2eb-2864ebb3b862",
       "name": "Code in JavaScript"
     },
     {
@@ -534,10 +524,10 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.3,
       "position": [
-        -656,
-        16
+        -608,
+        48
       ],
-      "id": "e4800f5a-e923-4f50-8309-ed5fa1a1194c",
+      "id": "04e872e5-d5a2-4ef3-9aa6-60d51c32b112",
       "name": "Schedule Trigger"
     },
     {
@@ -554,15 +544,15 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        -304,
-        256
+        -256,
+        288
       ],
-      "id": "4a0ad377-95ce-4817-8c57-dd2888ffc853",
+      "id": "dee66a56-17ab-496c-acde-3465d8e30242",
       "name": "Get many messages1",
       "webhookId": "0308a1ac-cfc5-4348-9054-ff68a1ad63c9",
       "credentials": {
         "gmailOAuth2": {
-          "id": "jzpvK2FSOXbCUp3E",
+          "id": "4LMBDvjXf4blrkme",
           "name": "Gmail Pessoal"
         }
       }
@@ -571,16 +561,15 @@
   "pinData": {},
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": false
+    "binaryMode": "separate"
   },
   "shared": [
     {
-      "updatedAt": "2026-02-25T16:40:33.822Z",
-      "createdAt": "2026-02-25T16:40:33.822Z",
+      "updatedAt": "2026-03-22T21:46:34.299Z",
+      "createdAt": "2026-03-22T21:46:34.299Z",
       "role": "workflow:owner",
-      "workflowId": "DmQsO9RWHGBGZyoU",
-      "projectId": "goe6nejb5G8RJyVd"
+      "workflowId": "u1616pQTGBlFZkq9",
+      "projectId": "1AjsEedso5AIlN6L"
     }
   ],
   "staticData": {
@@ -590,6 +579,6 @@
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-03-17T11:52:49.223Z",
-  "versionId": "da5b5d3f-74a3-40a5-b90f-a5e04bfcfafe"
+  "updatedAt": "2026-03-23T14:53:05.971Z",
+  "versionId": "46305f02-526e-44d6-a5ac-76b9ea671f76"
 }
