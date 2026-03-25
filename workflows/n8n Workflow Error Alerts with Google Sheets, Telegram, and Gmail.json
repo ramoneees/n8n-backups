@@ -15,23 +15,20 @@
       ]
     }
   },
-  "createdAt": "2026-03-10T12:23:18.956Z",
-  "id": "HA45bOYLaTVML4zB",
+  "createdAt": "2026-03-25T16:33:42.187Z",
+  "id": "2g1iY6Uo3R0kg0w6",
   "isArchived": false,
-  "meta": {
-    "templateId": "4407",
-    "templateCredsSetupCompleted": true
-  },
+  "meta": null,
   "name": "n8n Workflow Error Alerts with Google Sheets, Telegram, and Gmail",
   "nodes": [
     {
       "parameters": {},
-      "id": "ad41781c-30ed-4408-b3a4-7bfa592c3dd0",
+      "id": "e30a589a-37a9-43db-804e-d104d308bc73",
       "name": "Error Trigger",
       "type": "n8n-nodes-base.errorTrigger",
       "position": [
-        304,
-        160
+        0,
+        0
       ],
       "typeVersion": 1
     },
@@ -55,37 +52,30 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        720,
-        176
+        416,
+        16
       ],
-      "id": "9c5f68d6-7e76-4c5b-8094-9cb583d2e082",
-      "name": "HTTP Request",
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "AHKoqjSnjnvOl5ff",
-          "name": "Openclaw Bearer Auth"
-        }
-      }
+      "id": "822c5375-90c3-46a7-a788-c6eff5eef38c",
+      "name": "HTTP Request"
     }
   ],
   "pinData": {},
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": false
+    "binaryMode": "separate"
   },
   "shared": [
     {
-      "updatedAt": "2026-03-10T12:23:18.959Z",
-      "createdAt": "2026-03-10T12:23:18.959Z",
+      "updatedAt": "2026-03-25T16:33:42.187Z",
+      "createdAt": "2026-03-25T16:33:42.187Z",
       "role": "workflow:owner",
-      "workflowId": "HA45bOYLaTVML4zB",
-      "projectId": "goe6nejb5G8RJyVd"
+      "workflowId": "2g1iY6Uo3R0kg0w6",
+      "projectId": "NIWdtECswkBCcQBM"
     }
   ],
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-03-10T23:34:31.994Z",
-  "versionId": "25a11e8e-5be1-4d0b-b8fb-3144f7b23b22"
+  "updatedAt": "2026-03-25T16:33:42.187Z",
+  "versionId": "2e46af45-bf70-4537-8bca-16b0f1f2b44c"
 }
