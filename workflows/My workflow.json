@@ -1,0 +1,91 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-03-27T14:15:25.062Z",
+  "id": "Pp76aRgcPfGctdoV",
+  "isArchived": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyWeek"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "sender": "fatura@xpi.com.br"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -256,
+        -176
+      ],
+      "id": "2e366f5f-6890-4abd-bad4-c35da32469e9",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "=echo \"{{ $('Gmail Trigger').item.binary.attachment_0.data }}\" | base64 -d > /tmp/protected.pdf && (qpdf --password=\"07120\" --decrypt --no-warn /tmp/protected.pdf /tmp/unlocked.pdf 2>/dev/null || cp /tmp/protected.pdf /tmp/unlocked.pdf) && base64 /tmp/unlocked.pdf"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        64,
+        -144
+      ],
+      "id": "ac8c0c6b-d4e5-4d72-853a-f3afc428fad6",
+      "name": "Execute Command"
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-03-27T14:15:25.062Z",
+      "createdAt": "2026-03-27T14:15:25.062Z",
+      "role": "workflow:owner",
+      "workflowId": "Pp76aRgcPfGctdoV",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-03-27T23:08:21.242Z",
+  "versionId": "37845ec2-2737-4650-a356-891af33d0522"
+}
