@@ -1,0 +1,77 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Create an invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-03-31T15:26:21.462Z",
+  "id": "lWxjTf0KqoApvdDe",
+  "isArchived": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "name": "Gerar Faturamento",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "67f57b60-1dcd-41a9-ac9b-9c91c9a9cc16",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "resource": "invoice",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.invoiceNinja",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "b89ab813-bd7c-4ce0-89a0-f0fe4f225f1a",
+      "name": "Create an invoice",
+      "credentials": {
+        "invoiceNinjaApi": {
+          "id": "FkVqRrTPXDmqJMv8",
+          "name": "Invoice Ninja account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-03-31T15:26:21.462Z",
+      "createdAt": "2026-03-31T15:26:21.462Z",
+      "role": "workflow:owner",
+      "workflowId": "lWxjTf0KqoApvdDe",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-03-31T15:33:23.093Z",
+  "versionId": "40d5e81b-983b-44bc-a2fc-efd9d25083d4"
+}
