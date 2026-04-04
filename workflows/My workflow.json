@@ -7,11 +7,38 @@
       "main": [
         [
           {
-            "node": "Execute Command",
+            "node": "HTTP Request",
             "type": "main",
             "index": 0
           }
         ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        []
       ]
     }
   },
@@ -57,16 +84,82 @@
     },
     {
       "parameters": {
-        "command": "=echo \"{{ $('Gmail Trigger').item.binary.attachment_0.data }}\" | base64 -d > /tmp/protected.pdf && (qpdf --password=\"07120\" --decrypt --no-warn /tmp/protected.pdf /tmp/unlocked.pdf 2>/dev/null || cp /tmp/protected.pdf /tmp/unlocked.pdf) && base64 /tmp/unlocked.pdf"
+        "method": "POST",
+        "url": "http://127.0.0.1:5000/to-images",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "multipart/form-data"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "attachment_0"
+            },
+            {
+              "name": "password",
+              "value": "07120"
+            }
+          ]
+        },
+        "options": {}
       },
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
       "position": [
-        64,
-        -144
+        -48,
+        -176
       ],
-      "id": "ac8c0c6b-d4e5-4d72-853a-f3afc428fad6",
-      "name": "Execute Command"
+      "id": "5e932d90-6d59-431c-9137-fd109fec1167",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://ollama.olympus.svc.cluster.local:11434/api/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen3-vl:8b\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Tell me the total amount of the invoice.\",\n      \"images\": [{{ JSON.stringify($json.base64Images.first()) }}]\n    }\n  ],\n  \"stream\": false\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        368,
+        -176
+      ],
+      "id": "ff06ce65-afbb-46d2-98a4-fb1513dce08b",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base64Images = [];\n\nfor (const item of $input.all()) {\n  // Add the new field as in original\n  item.json.myNewField = 1;\n\n  // Extract base64 images recursively\n  function extractBase64(obj) {\n    const images = [];\n    if (typeof obj === 'string') {\n      // Match base64 images (common formats: png, jpeg, gif, webp)\n      const base64Regex = /image\\/(png|jpeg|jpg|gif|webp);base64,([A-Za-z0-9+/=]+)/g;\n      let match;\n      while ((match = base64Regex.exec(obj)) !== null) {\n        images.push(match[2]); // Capture just the base64 data\n      }\n      // Also catch raw base64 without data URL (as in your file)\n      if (/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(obj) && obj.startsWith('iVBORw0KGgo')) {\n        images.push(obj);\n      }\n    } else if (obj && typeof obj === 'object') {\n      for (const key in obj) {\n        images.push(...extractBase64(obj[key]));\n      }\n    }\n    return images;\n  }\n\n  const images = extractBase64(item.json);\n  base64Images.push(...images);\n}\n\nreturn [{ json: { base64Images: [...new Set(base64Images)] } }]; // Dedupe and return\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -176
+      ],
+      "id": "dbc2217f-3236-4640-81e6-1534fe59e920",
+      "name": "Code in JavaScript"
     }
   ],
   "pinData": {},
@@ -86,6 +179,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-03-27T23:08:21.242Z",
-  "versionId": "37845ec2-2737-4650-a356-891af33d0522"
+  "updatedAt": "2026-03-31T11:19:29.571Z",
+  "versionId": "52d49c43-f18c-4d60-af9e-0f3ff0df0032"
 }
