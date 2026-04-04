@@ -81,8 +81,8 @@
       ]
     }
   },
-  "createdAt": "2026-03-22T21:53:59.990Z",
-  "id": "GHM7WDcdSyJ6xEY5",
+  "createdAt": "2026-03-28T19:12:04.411Z",
+  "id": "QtzPayM6X6meC6r1",
   "isArchived": false,
   "meta": null,
   "name": "Extrair Referências de Facturas",
@@ -112,7 +112,7 @@
         32,
         224
       ],
-      "id": "6d60374e-0dc3-4f51-bf92-a9657bcd1d2d",
+      "id": "668808bb-0a1e-4ab4-877e-bacbc4a49703",
       "name": "Gmail Trigger"
     },
     {
@@ -130,7 +130,7 @@
         352,
         0
       ],
-      "id": "128a1e87-5d43-40be-9189-c5815ef2bae9",
+      "id": "6d14d7ea-b6ff-43da-92a8-8c33288dc0d8",
       "name": "Read/Write Files from Disk"
     },
     {
@@ -144,7 +144,7 @@
         816,
         224
       ],
-      "id": "c2645bb3-aabd-42a6-8025-3586bba36058",
+      "id": "99e0fde9-f19a-4fec-a586-f055687ca58e",
       "name": "Execute Command"
     },
     {
@@ -158,7 +158,7 @@
         1232,
         224
       ],
-      "id": "5c567e88-5c82-46c8-a83f-4b7616aeeb18",
+      "id": "33d66729-1142-4a56-9d6c-11c8b98f8079",
       "name": "Read/Write Files from Disk1"
     },
     {
@@ -171,7 +171,7 @@
         1024,
         224
       ],
-      "id": "721b3b63-5ebd-48c6-a457-a725186d9adf",
+      "id": "05acd8a9-af4c-493a-b063-b57d2fc634f2",
       "name": "Execute Command1"
     },
     {
@@ -194,8 +194,14 @@
         1440,
         224
       ],
-      "id": "57b187d5-366d-4499-87f7-206a3124cfd5",
-      "name": "Analyze image"
+      "id": "e1b74c22-dca5-40f2-b66e-da0c0a07d6a4",
+      "name": "Analyze image",
+      "credentials": {
+        "ollamaApi": {
+          "id": "9HRTB63WDG4doFlk",
+          "name": "Ollama account"
+        }
+      }
     },
     {
       "parameters": {
@@ -222,7 +228,7 @@
         0,
         0
       ],
-      "id": "05405430-b2e1-4dda-a5b3-5648cff80259",
+      "id": "7158c115-7f64-4298-98d9-d795152f7465",
       "name": "Gmail Trigger1"
     },
     {
@@ -248,7 +254,7 @@
         1808,
         208
       ],
-      "id": "04999cc2-b835-4ef0-9a11-1ec41d86c676",
+      "id": "f5d6156c-1418-4f01-91c3-e59d0006e524",
       "name": "HTTP Request"
     },
     {
@@ -271,7 +277,7 @@
         1648,
         224
       ],
-      "id": "f8ace4a2-2b19-4dc7-be78-05ec8a22bc9c",
+      "id": "ceac3b23-7287-4f4a-8c9c-caf2ff373873",
       "name": "Edit Fields"
     },
     {
@@ -282,7 +288,7 @@
         240,
         224
       ],
-      "id": "c6035d86-98d8-45c4-abbb-2eee0f26bb3e",
+      "id": "21078f19-675c-496d-ad3e-2a7107bdd1c5",
       "name": "Merge"
     }
   ],
@@ -293,16 +299,16 @@
   },
   "shared": [
     {
-      "updatedAt": "2026-03-22T21:53:59.990Z",
-      "createdAt": "2026-03-22T21:53:59.990Z",
+      "updatedAt": "2026-03-28T19:12:04.411Z",
+      "createdAt": "2026-03-28T19:12:04.411Z",
       "role": "workflow:owner",
-      "workflowId": "GHM7WDcdSyJ6xEY5",
-      "projectId": "1AjsEedso5AIlN6L"
+      "workflowId": "QtzPayM6X6meC6r1",
+      "projectId": "NIWdtECswkBCcQBM"
     }
   ],
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-03-23T13:37:36.459Z",
-  "versionId": "692bc9bc-3e81-4358-a4de-963c559d8aa3"
+  "updatedAt": "2026-03-28T19:12:17.275Z",
+  "versionId": "d9158010-46ac-4065-9482-e2454a990a21"
 }
