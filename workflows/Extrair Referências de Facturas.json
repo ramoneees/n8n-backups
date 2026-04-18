@@ -84,7 +84,9 @@
   "createdAt": "2026-03-28T19:12:04.411Z",
   "id": "QtzPayM6X6meC6r1",
   "isArchived": false,
-  "meta": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
   "name": "Extrair Referências de Facturas",
   "nodes": [
     {
@@ -113,7 +115,13 @@
         224
       ],
       "id": "668808bb-0a1e-4ab4-877e-bacbc4a49703",
-      "name": "Gmail Trigger"
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      }
     },
     {
       "parameters": {
@@ -179,9 +187,9 @@
         "resource": "image",
         "modelId": {
           "__rl": true,
-          "value": "qwen3-vl:8b",
+          "value": "gemma4:e2b",
           "mode": "list",
-          "cachedResultName": "qwen3-vl:8b"
+          "cachedResultName": "gemma4:e2b"
         },
         "text": "You are extracting Multibanco payment data from a Portuguese invoice image.\nLook ONLY at the section titled “PAGAMENTO POR MULTIBANCO” (or similar).\nFind the labels:\n- “ENTIDADE:” (numeric code after it)\n- “REFERÊNCIA:” (numeric code after it, usually like “123 456 789”)\n- “MONTANTE:” (amount to be paid)\nIgnore all other numbers (NIF, ATCUD, invoice number, IBAN, totals outside the Multibanco box).\nReturn ONLY valid JSON exactly in this schema:\n{\"entidade\": string|null, \"referencia\": string|null, \"montante\": string|null}\nRules:\n- entidade must contain only digits (no spaces).\n- referencia must keep the spaces between 3-digit blocks if present.\n- montante must keep the currency format exactly as shown (e.g., \"45,32 €\" or \"45.32 EUR\").\n- If you cannot find a field, return null for that field.\n- Do not include any extra text.",
         "options": {
@@ -229,7 +237,13 @@
         0
       ],
       "id": "7158c115-7f64-4298-98d9-d795152f7465",
-      "name": "Gmail Trigger1"
+      "name": "Gmail Trigger1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      }
     },
     {
       "parameters": {
@@ -309,6 +323,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-03-28T19:12:17.275Z",
-  "versionId": "d9158010-46ac-4065-9482-e2454a990a21"
+  "updatedAt": "2026-04-14T09:42:00.753Z",
+  "versionId": "a1a021b5-c162-41fe-868a-ca61a76f5b85"
 }
