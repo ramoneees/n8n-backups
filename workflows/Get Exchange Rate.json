@@ -73,12 +73,23 @@
   },
   "activeVersionId": "b26aa317-3208-4bee-b0cb-1f00da02a677",
   "connections": {
-    "Get Exchange Rate": {
-      "ai_tool": [
+    "Webhook Trigger": {
+      "main": [
         [
           {
-            "node": "MCP Server Trigger",
-            "type": "ai_tool",
+            "node": "Get Exchange Rate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Exchange Rate",
+            "type": "main",
             "index": 0
           }
         ]
@@ -88,54 +99,45 @@
   "createdAt": "2026-04-05T20:49:43.849Z",
   "id": "GHoOCyO1zSw4D2be",
   "isArchived": false,
-  "meta": null,
+  "meta": {
+    "aiBuilderAssisted": true
+  },
   "name": "Get Exchange Rate",
   "nodes": [
     {
-      "parameters": {
-        "path": "get-exchange-rate"
-      },
-      "id": "7bc288c2-5c2e-495c-b84e-13dbbf7bc950",
-      "name": "MCP Server Trigger",
-      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "id": "b12807bb-8708-421d-b528-48286a7aae5b",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
       "position": [
-        1152,
-        -416
+        240,
+        200
       ],
-      "typeVersion": 1,
-      "webhookId": "72c835d4-c9ae-407c-a912-fe5973bb001f"
+      "webhookId": "56b5bdbd-6021-4fda-a22c-433c25528450"
     },
     {
-      "parameters": {
-        "url": "=https://api.frankfurter.app/latest?from={{ $fromAI('from_currency') }}&to={{ $fromAI('to_currency') }}&amount={{ $fromAI('amount', '1') }}",
-        "placeholderDefinitions": {
-          "values": [
-            {
-              "name": "from_currency",
-              "description": "The source currency code (BRL, EUR, or GBP)",
-              "type": "string"
-            },
-            {
-              "name": "to_currency",
-              "description": "The target currency code (BRL, EUR, or GBP)",
-              "type": "string"
-            },
-            {
-              "name": "amount",
-              "description": "The amount to convert. Defaults to 1.",
-              "type": "number"
-            }
-          ]
-        }
-      },
-      "id": "45d4a73f-a109-4dc9-82ac-db417393a001",
+      "id": "dbf3800d-d1f1-478e-8366-d04f8e21e595",
       "name": "Get Exchange Rate",
-      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
       "position": [
-        1600,
-        -176
+        540,
+        300
       ],
-      "typeVersion": 1.1
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.frankfurter.app/latest?from={{ $json.from || $json.query.from }}&to={{ $json.to || $json.query.to }}&amount={{ $json.amount || $json.query.amount || 1 }}"
+      }
+    },
+    {
+      "id": "8876d781-59d1-4837-a5cd-a6a210d8bce6",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        400
+      ]
     }
   ],
   "pinData": {},
@@ -156,6 +158,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-04-05T21:17:04.733Z",
-  "versionId": "0f7686e7-919c-447f-99f3-351e890c4d69"
+  "updatedAt": "2026-04-21T22:12:49.955Z",
+  "versionId": "1db563fc-675d-4463-aa0c-9488d999c9c0"
 }
