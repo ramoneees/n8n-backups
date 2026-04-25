@@ -1,0 +1,647 @@
+{
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-04-20T21:37:47.555Z",
+    "createdAt": "2026-04-20T21:37:12.907Z",
+    "versionId": "21ea8336-3fe0-4ea5-9473-b928bf06e6ce",
+    "workflowId": "SisPeH2PERe7NLjv",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "months",
+                "triggerAtDayOfMonth": 10,
+                "triggerAtHour": 10
+              }
+            ]
+          }
+        },
+        "id": "3203ecc2-3df4-4c72-9c0c-2cc10558af0a",
+        "name": "Schedule Trigger",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          -656,
+          16
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const rawDate = $json.internalDate || $json.date || $json.headers?.date || null; let date; if (rawDate && !isNaN(rawDate)) { date = new Date(Number(rawDate)); } else if (rawDate) { date = new Date(rawDate); } else { date = new Date(); } if (isNaN(date.getTime())) date = new Date(); const mes = String(date.getMonth() + 1).padStart(2, \"0\"); const ano = date.getFullYear(); const mesAno = mes + \"-\" + ano; return [{ json: { ...$json, mesAno }, binary: $binary }];"
+        },
+        "id": "f8f51d99-3fc2-43cb-9853-d49562bfaee9",
+        "name": "Extract Month-Year",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -208,
+          96
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "folder",
+          "name": "={{ $json.mesAno }}",
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30",
+            "mode": "list"
+          },
+          "options": {}
+        },
+        "id": "71518105-ce5b-4a91-a83f-81c1b7fe67fb",
+        "name": "Create folder1",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          0,
+          0
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lOUQgEfyXT0EShei",
+            "name": "Google Drive Empresa"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "numberInputs": 3
+        },
+        "id": "8f9e326b-b320-49b6-be16-75013dab8a30",
+        "name": "Merge",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          32,
+          256
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "simple": false,
+          "filters": {
+            "q": "has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:noreply@grupoyour.com OR from:noreply@weoinvoice.com OR from:noreply@factura.grenke.pt OR from:payments-noreply@google.com OR from:noreply@documentos.meoempresas.pt OR from:geral@alcocheteup.pt OR from:no_reply@mun-montijo.pt OR from:extractoelectronico@extracto.viaverde.pt OR from:apoiocliente@prio.pt OR from:no-reply@bbvacf.pt)"
+          },
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "id": "5910c064-d2e4-4a78-8eac-e14c4da2264d",
+        "name": "Get many messages",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.2,
+        "position": [
+          -336,
+          432
+        ],
+        "webhookId": "db811c2f-8c10-4dc9-9db6-b2110e5398f9",
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "c1WKHJm3FAubKV8P",
+            "name": "Gmail Empresas"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "simple": false,
+          "filters": {
+            "q": "has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:loja@egitana.pt OR from:alertas.empresas@millenniumbcp.pt)"
+          },
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "id": "55167f4e-0e7e-44af-a9c3-e30701765f04",
+        "name": "Get many messages1",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.2,
+        "position": [
+          -304,
+          256
+        ],
+        "webhookId": "ec6b89c0-3b7c-4c51-b9b7-51f965743036",
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "IZ5cS1EUXpPOEEPu",
+            "name": "Gmail Pessoal"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "let items = $input.all(); let results = []; const EXCLUDE_PREFIXES = [/^Detalhe_/i, /^News_/i]; const seenFiles = new Set(); for (const item of items) { const rawDate = item.json.internalDate || item.json.date || item.json.headers?.date || null; let date; if (rawDate && !isNaN(rawDate)) date = new Date(Number(rawDate)); else if (rawDate) date = new Date(rawDate); else date = new Date(); if (isNaN(date.getTime())) date = new Date(); const month = String(date.getMonth() + 1).padStart(2, \"0\"); const year = date.getFullYear(); const monthYear = month + \"-\" + year; for (const key of Object.keys(item.binary || {})) { const bin = item.binary[key]; const fileName = (bin.fileName || \"\").trim(); const fileNameLc = fileName.toLowerCase(); const isPdf = (bin.mimeType && bin.mimeType.toLowerCase().includes(\"pdf\")) || fileNameLc.endsWith(\".pdf\"); if (!isPdf) continue; if (EXCLUDE_PREFIXES.some((re) => re.test(fileName))) continue; const uniqueKey = monthYear + \"-\" + fileName; if (seenFiles.has(uniqueKey)) continue; seenFiles.add(uniqueKey); results.push({ json: { monthYear, fileName: bin.fileName, folderId: $input.first().json.id }, binary: { data: bin } }); } } return results;"
+        },
+        "id": "0e8606ef-0aef-40f9-b8fc-ba93b49138ee",
+        "name": "Filter and Check Duplicates",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          368,
+          208
+        ]
+      },
+      {
+        "parameters": {
+          "name": "={{ $json.fileName }}",
+          "driveId": {
+            "__rl": true,
+            "value": "My Drive",
+            "mode": "list"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "={{ $json.folderId }}",
+            "mode": "id"
+          },
+          "options": {}
+        },
+        "id": "e6f0a8c9-520d-46e2-98c8-c12e1076f299",
+        "name": "Upload files to google drive",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          736,
+          192
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lOUQgEfyXT0EShei",
+            "name": "Google Drive Empresa"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "chatId": "8257687396",
+          "text": "=?Faturas processadas! {{.length || 0}} arquivo(s) enviado(s) para o GDrive.",
+          "additionalFields": {}
+        },
+        "id": "8015857c-6659-49f7-b940-14abf26c178d",
+        "name": "Notify Success",
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          960,
+          192
+        ],
+        "webhookId": "c12ce0da-8c43-476c-963a-96d4caa99b0f",
+        "credentials": {
+          "telegramApi": {
+            "id": "Gw7ZSKH1QvpRHnAD",
+            "name": "Telegram account"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Schedule Trigger": {
+        "main": [
+          [
+            {
+              "node": "Extract Month-Year",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Get many messages",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Get many messages1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Month-Year": {
+        "main": [
+          [
+            {
+              "node": "Create folder1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create folder1": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Merge": {
+        "main": [
+          [
+            {
+              "node": "Filter and Check Duplicates",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get many messages": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Get many messages1": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 2
+            }
+          ]
+        ]
+      },
+      "Filter and Check Duplicates": {
+        "main": [
+          [
+            {
+              "node": "Upload files to google drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upload files to google drive": {
+        "main": [
+          [
+            {
+              "node": "Notify Success",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Ramon ramon@pereirariosoftware.com",
+    "name": "Version 21ea8336",
+    "description": "",
+    "autosaved": true
+  },
+  "activeVersionId": "21ea8336-3fe0-4ea5-9473-b928bf06e6ce",
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Month-Year",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get many messages1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Month-Year": {
+      "main": [
+        [
+          {
+            "node": "Create folder1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create folder1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Filter and Check Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get many messages1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Filter and Check Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Upload files to google drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload files to google drive": {
+      "main": [
+        [
+          {
+            "node": "Notify Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-03-25T16:33:27.336Z",
+  "id": "SisPeH2PERe7NLjv",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "templateCredsSetupCompleted": true
+  },
+  "name": "Monthly Invoice extracts",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtDayOfMonth": 10,
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "id": "3203ecc2-3df4-4c72-9c0c-2cc10558af0a",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -656,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawDate = $json.internalDate || $json.date || $json.headers?.date || null; let date; if (rawDate && !isNaN(rawDate)) { date = new Date(Number(rawDate)); } else if (rawDate) { date = new Date(rawDate); } else { date = new Date(); } if (isNaN(date.getTime())) date = new Date(); const mes = String(date.getMonth() + 1).padStart(2, \"0\"); const ano = date.getFullYear(); const mesAno = mes + \"-\" + ano; return [{ json: { ...$json, mesAno }, binary: $binary }];"
+      },
+      "id": "f8f51d99-3fc2-43cb-9853-d49562bfaee9",
+      "name": "Extract Month-Year",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $json.mesAno }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30",
+          "mode": "list"
+        },
+        "options": {}
+      },
+      "id": "71518105-ce5b-4a91-a83f-81c1b7fe67fb",
+      "name": "Create folder1",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "id": "8f9e326b-b320-49b6-be16-75013dab8a30",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        32,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "simple": false,
+        "filters": {
+          "q": "has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:noreply@grupoyour.com OR from:noreply@weoinvoice.com OR from:noreply@factura.grenke.pt OR from:payments-noreply@google.com OR from:noreply@documentos.meoempresas.pt OR from:geral@alcocheteup.pt OR from:no_reply@mun-montijo.pt OR from:extractoelectronico@extracto.viaverde.pt OR from:apoiocliente@prio.pt OR from:no-reply@bbvacf.pt)"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "5910c064-d2e4-4a78-8eac-e14c4da2264d",
+      "name": "Get many messages",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -336,
+        432
+      ],
+      "webhookId": "db811c2f-8c10-4dc9-9db6-b2110e5398f9",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "c1WKHJm3FAubKV8P",
+          "name": "Gmail Empresas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "simple": false,
+        "filters": {
+          "q": "has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:loja@egitana.pt OR from:alertas.empresas@millenniumbcp.pt)"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "55167f4e-0e7e-44af-a9c3-e30701765f04",
+      "name": "Get many messages1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -304,
+        256
+      ],
+      "webhookId": "ec6b89c0-3b7c-4c51-b9b7-51f965743036",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let items = $input.all(); let results = []; const EXCLUDE_PREFIXES = [/^Detalhe_/i, /^News_/i]; const seenFiles = new Set(); for (const item of items) { const rawDate = item.json.internalDate || item.json.date || item.json.headers?.date || null; let date; if (rawDate && !isNaN(rawDate)) date = new Date(Number(rawDate)); else if (rawDate) date = new Date(rawDate); else date = new Date(); if (isNaN(date.getTime())) date = new Date(); const month = String(date.getMonth() + 1).padStart(2, \"0\"); const year = date.getFullYear(); const monthYear = month + \"-\" + year; for (const key of Object.keys(item.binary || {})) { const bin = item.binary[key]; const fileName = (bin.fileName || \"\").trim(); const fileNameLc = fileName.toLowerCase(); const isPdf = (bin.mimeType && bin.mimeType.toLowerCase().includes(\"pdf\")) || fileNameLc.endsWith(\".pdf\"); if (!isPdf) continue; if (EXCLUDE_PREFIXES.some((re) => re.test(fileName))) continue; const uniqueKey = monthYear + \"-\" + fileName; if (seenFiles.has(uniqueKey)) continue; seenFiles.add(uniqueKey); results.push({ json: { monthYear, fileName: bin.fileName, folderId: $input.first().json.id }, binary: { data: bin } }); } } return results;"
+      },
+      "id": "0e8606ef-0aef-40f9-b8fc-ba93b49138ee",
+      "name": "Filter and Check Duplicates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ $json.fileName }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $json.folderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "e6f0a8c9-520d-46e2-98c8-c12e1076f299",
+      "name": "Upload files to google drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        736,
+        192
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "8257687396",
+        "text": "=?Faturas processadas! {{.length || 0}} arquivo(s) enviado(s) para o GDrive.",
+        "additionalFields": {}
+      },
+      "id": "8015857c-6659-49f7-b940-14abf26c178d",
+      "name": "Notify Success",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        192
+      ],
+      "webhookId": "c12ce0da-8c43-476c-963a-96d4caa99b0f",
+      "credentials": {
+        "telegramApi": {
+          "id": "Gw7ZSKH1QvpRHnAD",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Lisbon",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-03-25T16:33:27.336Z",
+      "createdAt": "2026-03-25T16:33:27.336Z",
+      "role": "workflow:owner",
+      "workflowId": "SisPeH2PERe7NLjv",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-04-20T21:37:12.905Z",
+  "versionId": "21ea8336-3fe0-4ea5-9473-b928bf06e6ce"
+}
