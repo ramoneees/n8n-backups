@@ -3,18 +3,56 @@
   "activeVersion": null,
   "activeVersionId": null,
   "connections": {
-    "Gmail Trigger": {
+    "Gmail Trigger 1": {
       "main": [
         [
           {
             "node": "Merge",
             "type": "main",
-            "index": 1
+            "index": 0
           }
         ]
       ]
     },
-    "Read/Write Files from Disk1": {
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "PDF to Images",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Loop Over Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF to Images": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Image URL": {
+      "main": [
+        [
+          {
+            "node": "Build Vision Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Vision Message": {
       "main": [
         [
           {
@@ -25,22 +63,18 @@
         ]
       ]
     },
-    "Gmail Trigger1": {
-      "main": [
-        [
-          {
-            "node": "Merge",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Analyze image": {
+    "Loop Over Pages": {
       "main": [
         [
           {
             "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Image URL",
             "type": "main",
             "index": 0
           }
@@ -57,160 +91,17 @@
           }
         ]
       ]
-    },
-    "Merge": {
-      "main": [
-        [
-          {
-            "node": "Read/Write Files from Disk",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Read/Write Files from Disk": {
-      "main": [
-        [
-          {
-            "node": "Execute Command",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "createdAt": "2026-03-28T19:12:04.411Z",
   "id": "QtzPayM6X6meC6r1",
   "isArchived": false,
   "meta": {
-    "templateCredsSetupCompleted": true
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
   },
   "name": "Extrair Referências de Facturas",
   "nodes": [
-    {
-      "parameters": {
-        "pollTimes": {
-          "item": [
-            {
-              "mode": "everyMonth",
-              "dayOfMonth": 5
-            }
-          ]
-        },
-        "simple": false,
-        "filters": {
-          "q": "has:attachment filename:pdf newer_than:30d",
-          "sender": "info.desporto@cm-alcochete.pt"
-        },
-        "options": {
-          "downloadAttachments": true
-        }
-      },
-      "type": "n8n-nodes-base.gmailTrigger",
-      "typeVersion": 1.3,
-      "position": [
-        32,
-        224
-      ],
-      "id": "668808bb-0a1e-4ab4-877e-bacbc4a49703",
-      "name": "Gmail Trigger",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "IZ5cS1EUXpPOEEPu",
-          "name": "Gmail Pessoal"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "write",
-        "fileName": "=/home/node/.n8n-files/{{$binary.attachment_0.fileName || 'input.pdf'}}",
-        "dataPropertyName": "=attachment_0",
-        "options": {
-          "append": true
-        }
-      },
-      "type": "n8n-nodes-base.readWriteFile",
-      "typeVersion": 1.1,
-      "position": [
-        352,
-        0
-      ],
-      "id": "6d14d7ea-b6ff-43da-92a8-8c33288dc0d8",
-      "name": "Read/Write Files from Disk"
-    },
-    {
-      "parameters": {
-        "executeOnce": false,
-        "command": "=mkdir -p /home/node/.n8n-files/pdfout && pdftocairo -jpeg -r 200 \"{{$json.fileName}}\" \"/home/node/.n8n-files/pdfout/page\""
-      },
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [
-        816,
-        224
-      ],
-      "id": "99e0fde9-f19a-4fec-a586-f055687ca58e",
-      "name": "Execute Command"
-    },
-    {
-      "parameters": {
-        "fileSelector": "/home/node/.n8n-files/cropout/*-bottom.jpg",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.readWriteFile",
-      "typeVersion": 1.1,
-      "position": [
-        1232,
-        224
-      ],
-      "id": "33d66729-1142-4a56-9d6c-11c8b98f8079",
-      "name": "Read/Write Files from Disk1"
-    },
-    {
-      "parameters": {
-        "command": "mkdir -p /home/node/.n8n-files/cropout && for f in /home/node/.n8n-files/pdfout/page-*.jpg; do base=\"$(basename \"$f\" .jpg)\"; magick \"$f\" -gravity south -crop 100%x25%+0+0 +repage -strip -quality 90 \"/home/node/.n8n-files/cropout/${base}-bottom.jpg\"; done"
-      },
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [
-        1024,
-        224
-      ],
-      "id": "05acd8a9-af4c-493a-b063-b57d2fc634f2",
-      "name": "Execute Command1"
-    },
-    {
-      "parameters": {
-        "resource": "image",
-        "modelId": {
-          "__rl": true,
-          "value": "gemma4:e2b",
-          "mode": "list",
-          "cachedResultName": "gemma4:e2b"
-        },
-        "text": "You are extracting Multibanco payment data from a Portuguese invoice image.\nLook ONLY at the section titled “PAGAMENTO POR MULTIBANCO” (or similar).\nFind the labels:\n- “ENTIDADE:” (numeric code after it)\n- “REFERÊNCIA:” (numeric code after it, usually like “123 456 789”)\n- “MONTANTE:” (amount to be paid)\nIgnore all other numbers (NIF, ATCUD, invoice number, IBAN, totals outside the Multibanco box).\nReturn ONLY valid JSON exactly in this schema:\n{\"entidade\": string|null, \"referencia\": string|null, \"montante\": string|null}\nRules:\n- entidade must contain only digits (no spaces).\n- referencia must keep the spaces between 3-digit blocks if present.\n- montante must keep the currency format exactly as shown (e.g., \"45,32 €\" or \"45.32 EUR\").\n- If you cannot find a field, return null for that field.\n- Do not include any extra text.",
-        "options": {
-          "temperature": 0
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.ollama",
-      "typeVersion": 1,
-      "position": [
-        1440,
-        224
-      ],
-      "id": "e1b74c22-dca5-40f2-b66e-da0c0a07d6a4",
-      "name": "Analyze image",
-      "credentials": {
-        "ollamaApi": {
-          "id": "9HRTB63WDG4doFlk",
-          "name": "Ollama account"
-        }
-      }
-    },
     {
       "parameters": {
         "pollTimes": {
@@ -230,14 +121,14 @@
           "downloadAttachments": true
         }
       },
+      "id": "6db120a7-91fe-4c76-a731-16a3c37e185b",
+      "name": "Gmail Trigger",
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1.3,
       "position": [
         0,
         0
       ],
-      "id": "7158c115-7f64-4298-98d9-d795152f7465",
-      "name": "Gmail Trigger1",
       "credentials": {
         "gmailOAuth2": {
           "id": "IZ5cS1EUXpPOEEPu",
@@ -247,69 +138,173 @@
     },
     {
       "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMonth",
+              "dayOfMonth": 5
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "has:attachment filename:pdf newer_than:30d",
+          "sender": "info.desporto@cm-alcochete.pt"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "5a0082e3-7e28-48fe-bc76-d7c7a17aeb17",
+      "name": "Gmail Trigger 1",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        320
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "137b45b5-0129-4bcc-a89b-8a1540ede353",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        224,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "id": "40cf177f-688b-48a0-961d-15a1de2634fb",
+      "name": "PDF to Images",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": {
+          "imageUrl": "={{ \"data:image/jpeg;base64,\" + $json.image }}"
+        },
+        "options": {}
+      },
+      "id": "5bc86dbb-2041-490e-87e4-fee757407808",
+      "name": "Set Image URL",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        416
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b681c298-4508-43df-b65c-66d2721eb424",
+      "name": "Build Vision Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "responseFormat": "json_object"
+        }
+      },
+      "id": "a2a2a498-963d-4120-bc06-b3627e34b322",
+      "name": "Analyze image",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        416
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "0YQdZPvwhFHBdt3S",
+          "name": "LiteLLM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "353e8eb2-41be-43c2-a717-586ee1556b36",
+      "name": "Loop Over Pages",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        672,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": {
+          "invoice": "={{ JSON.parse($json.content) }}"
+        },
+        "options": {}
+      },
+      "id": "dae6be75-ea39-44b2-849e-c6afcab9296f",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        224
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "http://host.docker.internal:18789/hooks/agent",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "httpBearerAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {}
-          ]
-        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"name\": \"n8n\",\n  \"message\": \"Jarvis, avise a Ramon que chegou um email com uma factura para ele pagar. Pergunte se ele quer ser lembrado de pagar em um outro momento. Detalhes da fatura:\\nEntidade: {{$json.invoice.entidade}}\\nReferência: {{$json.invoice.referencia}}\\nMontante: {{$json.invoice.montante}}\",\n  \"deliver\": true,\n  \"channel\": \"whatsapp\",\n  \"to\": \"+351926565596\",\n  \"wakeMode\": \"now\",\n  \"timeoutSeconds\": 120\n}",
+        "jsonBody": "={\n  \"name\": \"n8n\",\n  \"message\": \"Jarvis, avise a Ramon que chegou um email com uma factura para ele pagar. Detalhes da fatura:\\nEntidade: {{$json.invoice.entidade}}\\nReferência: {{$json.invoice.referencia}}\\nMontante: {{$json.invoice.montante}}\",\n  \"deliver\": true,\n  \"channel\": \"whatsapp\",\n  \"to\": \"+351926565596\",\n  \"wakeMode\": \"now\",\n  \"timeoutSeconds\": 120\n}",
         "options": {}
       },
+      "id": "9e0b38f4-d0b4-45c7-87a1-b82d24aef217",
+      "name": "HTTP Request",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        1808,
-        208
-      ],
-      "id": "f5d6156c-1418-4f01-91c3-e59d0006e524",
-      "name": "HTTP Request"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "a50c703c-414e-465d-a357-b790989633b4",
-              "name": "invoice",
-              "value": "={{ JSON.parse($json.content) }}",
-              "type": "object"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        1648,
+        1120,
         224
-      ],
-      "id": "ceac3b23-7287-4f4a-8c9c-caf2ff373873",
-      "name": "Edit Fields"
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        240,
-        224
-      ],
-      "id": "21078f19-675c-496d-ad3e-2a7107bdd1c5",
-      "name": "Merge"
+      ]
     }
   ],
   "pinData": {},
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "availableInMCP": true
   },
   "shared": [
     {
@@ -323,6 +318,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-04-14T09:42:00.753Z",
-  "versionId": "a1a021b5-c162-41fe-868a-ca61a76f5b85"
+  "updatedAt": "2026-05-06T18:29:39.607Z",
+  "versionId": "3765cb4a-1291-4bab-90f8-ee4ebdf209c2"
 }
