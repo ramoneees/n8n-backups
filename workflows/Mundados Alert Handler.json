@@ -1,0 +1,194 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Mundados Alert Webhook": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pod Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pod Logs": {
+      "main": [
+        [
+          {
+            "node": "Build Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Notification": {
+      "main": [
+        [
+          {
+            "node": "Notify Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-05-15T12:47:52.326Z",
+  "id": "lT7m8vvlCLfMboul",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Mundados Alert Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mundados-alerts",
+        "options": {}
+      },
+      "id": "cb7adb66-891d-4a07-b20a-550bcb8245d0",
+      "name": "Mundados Alert Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "c827aae8-082a-40dd-ba69-0acf9bf65043"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst fs = require('fs');\nconst body = $input.first().json.body;\nconst alert = body?.alerts?.[0] || {};\nconst labels = alert.labels || {};\nconst annotations = alert.annotations || {};\nconst alertname = labels.alertname || 'Unknown';\nconst severity = labels.severity || 'warning';\nconst ns = labels.namespace || 'apps';\nconst deployment = labels.deployment || '';\nconst jobName = labels.job_name || '';\nconst summary = annotations.summary || '';\nconst description = annotations.description || '';\nconst status = body.status || '';\n\nlet token = '';\ntry {\n  token = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8').trim();\n} catch (e) {\n  return [{ json: {\n    alertname, severity, namespace: ns, deployment, job_name: jobName,\n    summary, description, status, podName: '', logs: 'No K8s token: ' + e.message\n  }}];\n}\n\nlet podName = '';\nlet logs = '';\n\ntry {\n  let labelSelector = '';\n  if (alertname === 'MundadosPortalDown') {\n    labelSelector = 'app=mundados-portal';\n  } else if (jobName) {\n    labelSelector = 'job-name=' + jobName;\n  } else if (alertname === 'MundadosRecolhaMissed') {\n    labelSelector = 'app=mundados-recolha';\n  } else {\n    labelSelector = 'app=mundados';\n  }\n\n  const podsResp = await fetch(\n    'https://kubernetes.default.svc/api/v1/namespaces/' + ns + '/pods?labelSelector=' + labelSelector,\n    { headers: { 'Authorization': 'Bearer ' + token } }\n  );\n  const podsData = await podsResp.json();\n  const pods = podsData.items || [];\n  podName = pods.length > 0 ? pods[0].metadata.name : '';\n\n  if (podName) {\n    const logResp = await fetch(\n      'https://kubernetes.default.svc/api/v1/namespaces/' + ns + '/pods/' + podName + '/log?tailLines=50',\n      { headers: { 'Authorization': 'Bearer ' + token } }\n    );\n    logs = await logResp.text();\n  } else {\n    logs = 'No pods found for selector: ' + labelSelector;\n  }\n} catch (e) {\n  logs = 'Failed to fetch logs: ' + e.message;\n}\n\nreturn [{ json: {\n  alertname, severity, namespace: ns, deployment, job_name: jobName,\n  summary, description, status, podName, logs\n}}];\n"
+      },
+      "id": "b8abfa6a-c6d4-4326-b02d-762084353205",
+      "name": "Fetch Pod Logs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "msg-field",
+              "name": "message",
+              "type": "string",
+              "value": "={{ $json.severity === \"critical\" ? \"🔴\" : \"🟡\" }} MUNDADOS ALERT: {{ $json.alertname }}\\n\\nSummary: {{ $json.summary }}\\nStatus: {{ $json.status }}\\nNamespace: {{ $json.namespace }}{{ $json.deployment ? \"\\nDeployment: \" + $json.deployment : \"\" }}{{ $json.podName ? \"\\nPod: \" + $json.podName : \"\" }}{{ $json.job_name ? \"\\nJob: \" + $json.job_name : \"\" }}\\n\\n--- Recent Logs (tail 50) ---\\n{{ $json.logs ? $json.logs.substring(0, 2000) : \"No logs available\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aad1269d-11b5-443c-9dff-57feb9e2944d",
+      "name": "Build Notification",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "D1X5OyGlkuo7UwdR",
+        "workflowInputs": {
+          "0": "{",
+          "1": "{",
+          "2": " ",
+          "3": "J",
+          "4": "S",
+          "5": "O",
+          "6": "N",
+          "7": ".",
+          "8": "s",
+          "9": "t",
+          "10": "r",
+          "11": "i",
+          "12": "n",
+          "13": "g",
+          "14": "i",
+          "15": "f",
+          "16": "y",
+          "17": "(",
+          "18": "{",
+          "19": " ",
+          "20": "m",
+          "21": "e",
+          "22": "s",
+          "23": "s",
+          "24": "a",
+          "25": "g",
+          "26": "e",
+          "27": ":",
+          "28": " ",
+          "29": "$",
+          "30": "j",
+          "31": "s",
+          "32": "o",
+          "33": "n",
+          "34": ".",
+          "35": "m",
+          "36": "e",
+          "37": "s",
+          "38": "s",
+          "39": "a",
+          "40": "g",
+          "41": "e",
+          "42": " ",
+          "43": "}",
+          "44": ")",
+          "45": " ",
+          "46": "}",
+          "47": "}",
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "849a96f7-04c9-480b-89a0-572bd397f953",
+      "name": "Notify Hermes",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-05-15T12:47:52.326Z",
+      "createdAt": "2026-05-15T12:47:52.326Z",
+      "role": "workflow:owner",
+      "workflowId": "lT7m8vvlCLfMboul",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-05-15T13:19:38.920Z",
+  "versionId": "8f6fdb7a-a4d0-4959-a6ae-f240c22ec8fe"
+}
