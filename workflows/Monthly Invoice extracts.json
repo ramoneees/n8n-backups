@@ -400,13 +400,7 @@
     },
     "Upload files to google drive": {
       "main": [
-        [
-          {
-            "node": "Notify Success",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },
@@ -593,28 +587,6 @@
           "name": "Google Drive Empresa"
         }
       }
-    },
-    {
-      "parameters": {
-        "chatId": "8257687396",
-        "text": "=?Faturas processadas! {{.length || 0}} arquivo(s) enviado(s) para o GDrive.",
-        "additionalFields": {}
-      },
-      "id": "8015857c-6659-49f7-b940-14abf26c178d",
-      "name": "Notify Success",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        960,
-        192
-      ],
-      "webhookId": "c12ce0da-8c43-476c-963a-96d4caa99b0f",
-      "credentials": {
-        "telegramApi": {
-          "id": "Gw7ZSKH1QvpRHnAD",
-          "name": "Telegram account"
-        }
-      }
     }
   ],
   "pinData": {},
@@ -642,6 +614,6 @@
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-04-20T21:37:12.905Z",
-  "versionId": "21ea8336-3fe0-4ea5-9473-b928bf06e6ce"
+  "updatedAt": "2026-05-11T08:46:34.935Z",
+  "versionId": "cc378203-1e82-4215-987b-2ae99456e35e"
 }
