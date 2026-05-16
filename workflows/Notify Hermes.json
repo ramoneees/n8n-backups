@@ -1,0 +1,373 @@
+{
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-05-13T19:53:43.724Z",
+    "createdAt": "2026-05-13T19:53:43.724Z",
+    "versionId": "cd4d2d23-eef9-4cff-8e45-221bd5647f5e",
+    "workflowId": "D1X5OyGlkuo7UwdR",
+    "nodes": [
+      {
+        "id": "1f0a9337-af7b-49aa-a7b7-8eb7175ad5b0",
+        "name": "When Called by Another Workflow",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "cd8a7caa-b245-4ac9-aea9-759d3fed9e5d",
+        "name": "Build Body",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          224,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "body-field",
+                "name": "body",
+                "type": "string",
+                "value": "={{ JSON.stringify({ message: $json.message }) }}"
+              },
+              {
+                "id": "secret-field",
+                "name": "webhook_secret",
+                "type": "string",
+                "value": "={{ $json.webhook_secret }}"
+              },
+              {
+                "id": "url-field",
+                "name": "webhook_url",
+                "type": "string",
+                "value": "={{ $json.webhook_url }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "0958b33e-8b46-4a47-8c88-953b7d29eef7",
+        "name": "Compute HMAC",
+        "type": "n8n-nodes-base.crypto",
+        "typeVersion": 1,
+        "position": [
+          448,
+          0
+        ],
+        "parameters": {
+          "action": "hmac",
+          "type": "SHA256",
+          "value": "={{ $json.body }}",
+          "secret": "={{ $json.webhook_secret }}",
+          "dataPropertyName": "hmac",
+          "encoding": "hex"
+        }
+      },
+      {
+        "id": "a1bb60b2-f183-49d6-a05c-9f97dfed6e5c",
+        "name": "Build Signature",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": true,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "sig-field",
+                "name": "signature",
+                "type": "string",
+                "value": "={{ \"sha256=\" + $json.hmac }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "067434a8-a5ec-4c14-9c65-d8e3cdc1dac7",
+        "name": "Send to Hermes",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $json.webhook_url || \"http://192.168.50.11:8644/webhooks/n8n-complete\" }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-Hub-Signature-256",
+                "value": "={{ $json.signature }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.body }}"
+        }
+      }
+    ],
+    "connections": {
+      "When Called by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Build Body",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Body": {
+        "main": [
+          [
+            {
+              "node": "Compute HMAC",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Compute HMAC": {
+        "main": [
+          [
+            {
+              "node": "Build Signature",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Signature": {
+        "main": [
+          [
+            {
+              "node": "Send to Hermes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Ramon ramon@pereirariosoftware.com",
+    "name": null,
+    "description": null,
+    "autosaved": false
+  },
+  "activeVersionId": "cd4d2d23-eef9-4cff-8e45-221bd5647f5e",
+  "connections": {
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Build Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Body": {
+      "main": [
+        [
+          {
+            "node": "Compute HMAC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute HMAC": {
+      "main": [
+        [
+          {
+            "node": "Build Signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Signature": {
+      "main": [
+        [
+          {
+            "node": "Send to Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-05-11T13:56:56.009Z",
+  "id": "D1X5OyGlkuo7UwdR",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Notify Hermes",
+  "nodes": [
+    {
+      "id": "1f0a9337-af7b-49aa-a7b7-8eb7175ad5b0",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "cd8a7caa-b245-4ac9-aea9-759d3fed9e5d",
+      "name": "Build Body",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "body-field",
+              "name": "body",
+              "type": "string",
+              "value": "={{ JSON.stringify({ message: $json.message }) }}"
+            },
+            {
+              "id": "secret-field",
+              "name": "webhook_secret",
+              "type": "string",
+              "value": "={{ $json.webhook_secret }}"
+            },
+            {
+              "id": "url-field",
+              "name": "webhook_url",
+              "type": "string",
+              "value": "={{ $json.webhook_url }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "0958b33e-8b46-4a47-8c88-953b7d29eef7",
+      "name": "Compute HMAC",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "action": "hmac",
+        "type": "SHA256",
+        "value": "={{ $json.body }}",
+        "secret": "={{ $json.webhook_secret }}",
+        "dataPropertyName": "hmac",
+        "encoding": "hex"
+      }
+    },
+    {
+      "id": "a1bb60b2-f183-49d6-a05c-9f97dfed6e5c",
+      "name": "Build Signature",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "sig-field",
+              "name": "signature",
+              "type": "string",
+              "value": "={{ \"sha256=\" + $json.hmac }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "067434a8-a5ec-4c14-9c65-d8e3cdc1dac7",
+      "name": "Send to Hermes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.webhook_url || \"http://192.168.50.11:8644/webhooks/n8n-complete\" }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Hub-Signature-256",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}"
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-05-11T13:56:56.009Z",
+      "createdAt": "2026-05-11T13:56:56.009Z",
+      "role": "workflow:owner",
+      "workflowId": "D1X5OyGlkuo7UwdR",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-05-13T19:53:43.723Z",
+  "versionId": "cd4d2d23-eef9-4cff-8e45-221bd5647f5e"
+}
