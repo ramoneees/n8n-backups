@@ -1,0 +1,157 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Alert Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Alert Message": {
+      "main": [
+        [
+          {
+            "node": "Notify Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-05-13T19:29:36.125Z",
+  "id": "IH9hlXFpXJ6WL1nO",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Prometheus Alert Handler",
+  "nodes": [
+    {
+      "id": "fde86a92-c8bc-4742-8faa-869526a1173c",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "path": "prometheus-alerts",
+        "httpMethod": "POST"
+      },
+      "webhookId": "6735c0da-4c7d-4553-b51a-44444df6bdea"
+    },
+    {
+      "id": "ad0ad3a0-7b1c-442b-8476-4ec57049c86b",
+      "name": "Build Alert Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "severity-field",
+              "name": "severity",
+              "type": "string",
+              "value": "={{ $json.body.alerts[0]?.labels?.severity || \"warning\" }}"
+            },
+            {
+              "id": "emoji-field",
+              "name": "emoji",
+              "type": "string",
+              "value": "={{ {critical: \"🔴\", warning: \"🟡\", info: \"🔵\"}[$json.body.alerts[0]?.labels?.severity] || \"📌\" }}"
+            },
+            {
+              "id": "alertname-field",
+              "name": "alertname",
+              "type": "string",
+              "value": "={{ $json.body.alerts[0]?.labels?.alertname || \"Unknown\" }}"
+            },
+            {
+              "id": "namespace-field",
+              "name": "namespace",
+              "type": "string",
+              "value": "={{ $json.body.alerts[0]?.labels?.namespace || \"\" }}"
+            },
+            {
+              "id": "pod-field",
+              "name": "pod",
+              "type": "string",
+              "value": "={{ $json.body.alerts[0]?.labels?.pod || $json.body.alerts[0]?.labels?.deployment || \"\" }}"
+            },
+            {
+              "id": "summary-field",
+              "name": "summary",
+              "type": "string",
+              "value": "={{ $json.body.alerts[0]?.annotations?.summary || \"\" }}"
+            },
+            {
+              "id": "description-field",
+              "name": "description",
+              "type": "string",
+              "value": "={{ $json.body.alerts[0]?.annotations?.description || \"\" }}"
+            },
+            {
+              "id": "message-field",
+              "name": "message",
+              "type": "string",
+              "value": "={{ { critical: \"🔴 *CRITICAL*\", warning: \"🟡 *WARNING*\", info: \"🔵 *INFO*\" }[$json.body.alerts[0]?.labels?.severity] || \"📌\" }} + \" \" + ($json.body.alerts[0]?.labels?.alertname || \"Unknown\") + \"\\n\\n📦 *\" + ($json.body.alerts[0]?.labels?.namespace || \"unknown\") + \"*\" + ($json.body.alerts[0]?.labels?.pod ? \" / 🫙 *\" + ($json.body.alerts[0]?.labels?.pod || $json.body.alerts[0]?.labels?.deployment) + \"*\" : \"\") + \"\\n\\n📝 \" + ($json.body.alerts[0]?.annotations?.summary || \"No summary\") + ($json.body.alerts[0]?.annotations?.description && $json.body.alerts[0]?.annotations?.description !== $json.body.alerts[0]?.annotations?.summary ? \"\\n\\n\" + ($json.body.alerts[0]?.annotations?.description.length > 300 ? $json.body.alerts[0]?.annotations?.description.substring(0, 300) + \"...\" : $json.body.alerts[0]?.annotations?.description) : \"\")"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "92c9f9e1-0f42-4c41-909f-52d132d89883",
+      "name": "Notify Hermes",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "D1X5OyGlkuo7UwdR"
+        },
+        "workflowInputs": "={{ JSON.stringify({ message: $json.message, webhook_url: \"http://192.168.50.11:8644/webhooks/k8s-alerts\", webhook_secret: \"m2ND3bmlhsDQcQFHqGAw-kx-pOKFVvxeEKvuNbj2HTM\" }) }}"
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-05-13T19:29:36.125Z",
+      "createdAt": "2026-05-13T19:29:36.125Z",
+      "role": "workflow:owner",
+      "workflowId": "IH9hlXFpXJ6WL1nO",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-05-14T19:51:22.487Z",
+  "versionId": "84b90e2b-1055-4375-a837-0bad3e189cc1"
+}
