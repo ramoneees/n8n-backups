@@ -9,7 +9,7 @@
           {
             "node": "Merge",
             "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -21,11 +21,6 @@
             "node": "PDF to Images",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Loop Over Pages",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -34,7 +29,18 @@
       "main": [
         [
           {
-            "node": "Loop Over Pages",
+            "node": "Split Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Pages": {
+      "main": [
+        [
+          {
+            "node": "Set Image URL",
             "type": "main",
             "index": 0
           }
@@ -45,17 +51,6 @@
       "main": [
         [
           {
-            "node": "Build Vision Message",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Vision Message": {
-      "main": [
-        [
-          {
             "node": "Analyze image",
             "type": "main",
             "index": 0
@@ -63,18 +58,11 @@
         ]
       ]
     },
-    "Loop Over Pages": {
+    "Analyze image": {
       "main": [
         [
           {
             "node": "Edit Fields",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Set Image URL",
             "type": "main",
             "index": 0
           }
@@ -85,7 +73,18 @@
       "main": [
         [
           {
-            "node": "HTTP Request",
+            "node": "Build Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Message": {
+      "main": [
+        [
+          {
+            "node": "Notify Hermes",
             "type": "main",
             "index": 0
           }
@@ -131,8 +130,8 @@
       ],
       "credentials": {
         "gmailOAuth2": {
-          "id": "IZ5cS1EUXpPOEEPu",
-          "name": "Gmail Pessoal"
+          "id": "c1WKHJm3FAubKV8P",
+          "name": "Gmail Empresas"
         }
       }
     },
@@ -161,7 +160,7 @@
       "typeVersion": 1.3,
       "position": [
         0,
-        320
+        224
       ],
       "credentials": {
         "gmailOAuth2": {
@@ -178,100 +177,59 @@
       "typeVersion": 3.2,
       "position": [
         224,
-        320
+        224
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+        "method": "POST",
+        "url": "http://toolbox.apps.svc.cluster.local:8000/api/v1/convert-all",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "attachment_0"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
       },
-      "id": "40cf177f-688b-48a0-961d-15a1de2634fb",
+      "id": "e2fb1e6f-5e65-4287-98aa-33db45f179a3",
       "name": "PDF to Images",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
       "position": [
         448,
-        256
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "pages",
+        "options": {}
+      },
+      "id": "0b79fd69-aacd-46e1-a2d3-7e7a52ce4a1d",
+      "name": "Split Pages",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        672,
+        224
       ]
     },
     {
       "parameters": {
         "mode": "raw",
-        "jsonOutput": {
-          "imageUrl": "={{ \"data:image/jpeg;base64,\" + $json.image }}"
-        },
+        "jsonOutput": "={{ { \"imageUrl\": \"data:image/png;base64,\" + $json.image.data } }}",
         "options": {}
       },
       "id": "5bc86dbb-2041-490e-87e4-fee757407808",
       "name": "Set Image URL",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        896,
-        416
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "b681c298-4508-43df-b65c-66d2721eb424",
-      "name": "Build Vision Message",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1120,
-        416
-      ]
-    },
-    {
-      "parameters": {
-        "model": {
-          "__rl": true,
-          "mode": "list",
-          "value": "gpt-5-mini"
-        },
-        "responsesApiEnabled": false,
-        "options": {
-          "responseFormat": "json_object"
-        }
-      },
-      "id": "a2a2a498-963d-4120-bc06-b3627e34b322",
-      "name": "Analyze image",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.3,
-      "position": [
-        1344,
-        416
-      ],
-      "credentials": {
-        "openAiApi": {
-          "id": "0YQdZPvwhFHBdt3S",
-          "name": "LiteLLM"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "id": "353e8eb2-41be-43c2-a717-586ee1556b36",
-      "name": "Loop Over Pages",
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        672,
-        320
-      ]
-    },
-    {
-      "parameters": {
-        "mode": "raw",
-        "jsonOutput": {
-          "invoice": "={{ JSON.parse($json.content) }}"
-        },
-        "options": {}
-      },
-      "id": "dae6be75-ea39-44b2-849e-c6afcab9296f",
-      "name": "Edit Fields",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
@@ -282,20 +240,85 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:18789/hooks/agent",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "httpBearerAuth",
+        "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"name\": \"n8n\",\n  \"message\": \"Jarvis, avise a Ramon que chegou um email com uma factura para ele pagar. Detalhes da fatura:\\nEntidade: {{$json.invoice.entidade}}\\nReferência: {{$json.invoice.referencia}}\\nMontante: {{$json.invoice.montante}}\",\n  \"deliver\": true,\n  \"channel\": \"whatsapp\",\n  \"to\": \"+351926565596\",\n  \"wakeMode\": \"now\",\n  \"timeoutSeconds\": 120\n}",
-        "options": {}
+        "jsonBody": "={{ { \"model\": \"openai/glm-4.6v\", \"messages\": [{ \"role\": \"user\", \"content\": [{ \"type\": \"text\", \"text\": \"Extract the Multibanco payment reference from this invoice. Return ONLY a valid JSON object with: entidade (string), referencia (string), montante (string with currency). No markdown, no code block.\" }, { \"type\": \"image_url\", \"image_url\": { \"url\": $json.imageUrl } }] }] } }}",
+        "options": {
+          "timeout": 60000
+        }
       },
-      "id": "9e0b38f4-d0b4-45c7-87a1-b82d24aef217",
-      "name": "HTTP Request",
+      "id": "5bb23de9-1f6a-4d1f-a82d-f6d76a2a5e44",
+      "name": "Analyze image",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
         1120,
+        224
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "wXO4qmCuKINk321e",
+          "name": "LiteLLM KEY"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { \"invoice\": JSON.parse($json.choices[0].message.content) } }}",
+        "options": {}
+      },
+      "id": "dae6be75-ea39-44b2-849e-c6afcab9296f",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { \"message\": \"Workflow concluído! Entidade: \" + ($json.invoice.entidade || \"?\") + \" | Referência: \" + ($json.invoice.referencia || \"?\") + \" | Montante: \" + ($json.invoice.montante || \"?\") } }}",
+        "options": {}
+      },
+      "id": "8c3c2b17-b0ea-4a16-bbab-1fc114e3cbb0",
+      "name": "Build Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1568,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "D1X5OyGlkuo7UwdR"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "id": "231aa539-7de0-4a18-8447-5d6826ab9271",
+      "name": "Notify Hermes",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1792,
         224
       ]
     }
@@ -318,6 +341,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-05-06T18:29:39.607Z",
-  "versionId": "3765cb4a-1291-4bab-90f8-ee4ebdf209c2"
+  "updatedAt": "2026-05-11T14:06:23.411Z",
+  "versionId": "6360bf9b-bad0-44a6-bf62-b750cf723ea6"
 }
