@@ -1,0 +1,423 @@
+{
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-05-18T12:01:02.790Z",
+    "createdAt": "2026-05-18T12:01:02.790Z",
+    "versionId": "3e75a504-4f08-4a66-890e-c6273d63c6aa",
+    "workflowId": "e7Wa9qTW5OP3ITVI",
+    "nodes": [
+      {
+        "id": "0a4589d5-ae35-4d09-9c23-16279c8e3cbe",
+        "name": "Schedule Trigger",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 5 * * *"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "a9e73214-9e4a-473b-bbd1-9eb023739c59",
+        "name": "Fetch PG Backup Logs",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          0
+        ],
+        "parameters": {
+          "language": "javaScript",
+          "jsCode": "const fs = require('fs');\nlet token = '';\ntry {\n  token = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8').trim();\n} catch (e) {\n  return [{ json: { pg_logs: 'No K8s token: ' + e.message } }];\n}\nconst headers = { 'Authorization': 'Bearer ' + token };\nlet pgLogs = '';\ntry {\n  const jobsResp = await fetch('https://kubernetes.default.svc/apis/batch/v1/namespaces/databases/jobs?labelSelector=app%3Dpg-backup', { headers });\n  const jobsData = await jobsResp.json();\n  const jobs = (jobsData.items || []).sort((a, b) => new Date(b.metadata.creationTimestamp) - new Date(a.metadata.creationTimestamp)).slice(0, 1);\n  for (const job of jobs) {\n    const podsResp = await fetch('https://kubernetes.default.svc/api/v1/namespaces/databases/pods?labelSelector=job-name%3D' + job.metadata.name, { headers });\n    const podsData = await podsResp.json();\n    const pod = (podsData.items || [])[0];\n    if (pod) {\n      const logResp = await fetch('https://kubernetes.default.svc/api/v1/namespaces/databases/pods/' + pod.metadata.name + '/log', { headers });\n      pgLogs = await logResp.text();\n    }\n  }\n} catch (e) {\n  pgLogs = 'Error fetching PG backup logs: ' + e.message;\n}\nreturn [{ json: { pg_logs: pgLogs || 'No pg-backup job found' } }];"
+        }
+      },
+      {
+        "id": "b7ee23b1-04d5-447a-b7b0-b5e5311e2693",
+        "name": "Fetch MariaDB Backup Logs",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          448,
+          0
+        ],
+        "parameters": {
+          "language": "javaScript",
+          "jsCode": "const fs = require('fs');\nconst pgLogs = $input.first().json.pg_logs;\nlet token = '';\ntry {\n  token = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8').trim();\n} catch (e) {\n  return [{ json: { pg_logs: pgLogs, mariadb_logs: 'No K8s token: ' + e.message } }];\n}\nconst headers = { 'Authorization': 'Bearer ' + token };\nlet mariaLogs = '';\ntry {\n  const jobsResp = await fetch('https://kubernetes.default.svc/apis/batch/v1/namespaces/databases/jobs?labelSelector=app%3Dmariadb-backup', { headers });\n  const jobsData = await jobsResp.json();\n  const jobs = (jobsData.items || []).sort((a, b) => new Date(b.metadata.creationTimestamp) - new Date(a.metadata.creationTimestamp)).slice(0, 1);\n  for (const job of jobs) {\n    const podsResp = await fetch('https://kubernetes.default.svc/api/v1/namespaces/databases/pods?labelSelector=job-name%3D' + job.metadata.name, { headers });\n    const podsData = await podsResp.json();\n    const pod = (podsData.items || [])[0];\n    if (pod) {\n      const logResp = await fetch('https://kubernetes.default.svc/api/v1/namespaces/databases/pods/' + pod.metadata.name + '/log', { headers });\n      mariaLogs = await logResp.text();\n    }\n  }\n} catch (e) {\n  mariaLogs = 'Error fetching MariaDB backup logs: ' + e.message;\n}\nreturn [{ json: { pg_logs: pgLogs, mariadb_logs: mariaLogs || 'No mariadb-backup job found' } }];"
+        }
+      },
+      {
+        "id": "7c0d35ab-2177-418f-9bda-7264b040b2a9",
+        "name": "Fetch rclone Sync Logs",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "language": "javaScript",
+          "jsCode": "const fs = require('fs');\nconst prev = $input.first().json;\nlet token = '';\ntry {\n  token = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8').trim();\n} catch (e) {\n  return [{ json: { ...prev, rclone_logs: 'No K8s token: ' + e.message } }];\n}\nconst headers = { 'Authorization': 'Bearer ' + token };\nlet rcloneLogs = '';\ntry {\n  const jobsResp = await fetch('https://kubernetes.default.svc/apis/batch/v1/namespaces/databases/jobs?labelSelector=app%3Drclone-sync', { headers });\n  const jobsData = await jobsResp.json();\n  const jobs = (jobsData.items || []).sort((a, b) => new Date(b.metadata.creationTimestamp) - new Date(a.metadata.creationTimestamp)).slice(0, 1);\n  for (const job of jobs) {\n    const podsResp = await fetch('https://kubernetes.default.svc/api/v1/namespaces/databases/pods?labelSelector=job-name%3D' + job.metadata.name, { headers });\n    const podsData = await podsResp.json();\n    const pod = (podsData.items || [])[0];\n    if (pod) {\n      const logResp = await fetch('https://kubernetes.default.svc/api/v1/namespaces/databases/pods/' + pod.metadata.name + '/log', { headers });\n      rcloneLogs = await logResp.text();\n    }\n  }\n} catch (e) {\n  rcloneLogs = 'Error fetching rclone logs: ' + e.message;\n}\nreturn [{ json: { ...prev, rclone_logs: rcloneLogs || 'No rclone-sync job found' } }];"
+        }
+      },
+      {
+        "id": "50f9eb62-a968-4133-807a-991c24a1e7cd",
+        "name": "Fetch Restore Verify Logs",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "language": "javaScript",
+          "jsCode": "const fs = require('fs');\nconst prev = $input.first().json;\n\n// Only fetch on Sundays (getDay() === 0)\nconst isSunday = new Date().getDay() === 0;\nif (!isSunday) {\n  return [{ json: { ...prev, restore_verify_logs: '', is_sunday: false } }];\n}\n\nlet token = '';\ntry {\n  token = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8').trim();\n} catch (e) {\n  return [{ json: { ...prev, restore_verify_logs: 'No K8s token: ' + e.message, is_sunday: true } }];\n}\n\nconst headers = { 'Authorization': 'Bearer ' + token };\nlet restoreLogs = '';\n\ntry {\n  // Most recent restore-verify job (runs Sundays 6am — this fetches last week's completed result)\n  const jobsResp = await fetch(\n    'https://kubernetes.default.svc/apis/batch/v1/namespaces/databases/jobs?labelSelector=app%3Drestore-verify',\n    { headers }\n  );\n  const jobsData = await jobsResp.json();\n  const jobs = (jobsData.items || [])\n    .sort((a, b) => new Date(b.metadata.creationTimestamp) - new Date(a.metadata.creationTimestamp))\n    .slice(0, 1);\n\n  for (const job of jobs) {\n    const podsResp = await fetch(\n      'https://kubernetes.default.svc/api/v1/namespaces/databases/pods?labelSelector=job-name%3D' + job.metadata.name,\n      { headers }\n    );\n    const podsData = await podsResp.json();\n    const pod = (podsData.items || [])[0];\n    if (pod) {\n      const logResp = await fetch(\n        'https://kubernetes.default.svc/api/v1/namespaces/databases/pods/' + pod.metadata.name + '/log',\n        { headers }\n      );\n      restoreLogs = await logResp.text();\n    }\n    const jobStatus = job.status.succeeded ? 'SUCCEEDED' : job.status.failed ? 'FAILED' : 'UNKNOWN';\n    restoreLogs = '[Job: ' + job.metadata.name + ' — ' + jobStatus + ']\\n' + restoreLogs;\n  }\n} catch (e) {\n  restoreLogs = 'Error fetching restore-verify logs: ' + e.message;\n}\n\nreturn [{ json: { ...prev, restore_verify_logs: restoreLogs || 'No restore-verify job found', is_sunday: true } }];"
+        }
+      },
+      {
+        "id": "81cc5943-ac67-48ce-874a-c56a74b1a4ac",
+        "name": "Call OpenClaude Digest",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://openclaude.olympus.svc.cluster.local:8080/review",
+          "sendBody": true,
+          "contentType": "json",
+          "body": "=JSON.stringify({\n  diff: '=== PostgreSQL Backup Logs ===\\n' + $json.pg_logs +\n        '\\n\\n=== MariaDB Backup Logs ===\\n' + $json.mariadb_logs +\n        '\\n\\n=== rclone Sync Logs ===\\n' + $json.rclone_logs +\n        ($json.restore_verify_logs ? '\\n\\n=== Weekly Restore Verification Logs ===\\n' + $json.restore_verify_logs : ''),\n  depth: 'quick',\n  pr_number: 0,\n  commit_sha: '',\n  repo_url: '',\n  branch: '',\n  prompt_type: 'backup-digest'\n})",
+          "options": {
+            "timeout": 60000,
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "39d2e7e3-0827-418f-9a18-6ad635e88abe",
+        "name": "Notify Hermes",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          1344,
+          0
+        ],
+        "parameters": {
+          "source": "database",
+          "workflowId": "='D1X5OyGlkuo7UwdR'",
+          "workflowInputs": "=JSON.stringify({ message: $json.review_text || $json.error || '⚠️ Backup digest generation failed — check manually', webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete' })",
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Schedule Trigger": {
+        "main": [
+          [
+            {
+              "node": "Fetch PG Backup Logs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch PG Backup Logs": {
+        "main": [
+          [
+            {
+              "node": "Fetch MariaDB Backup Logs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch MariaDB Backup Logs": {
+        "main": [
+          [
+            {
+              "node": "Fetch rclone Sync Logs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch rclone Sync Logs": {
+        "main": [
+          [
+            {
+              "node": "Fetch Restore Verify Logs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Restore Verify Logs": {
+        "main": [
+          [
+            {
+              "node": "Call OpenClaude Digest",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call OpenClaude Digest": {
+        "main": [
+          [
+            {
+              "node": "Notify Hermes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Ramon ramon@pereirariosoftware.com",
+    "name": null,
+    "description": null,
+    "autosaved": false
+  },
+  "activeVersionId": "3e75a504-4f08-4a66-890e-c6273d63c6aa",
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch PG Backup Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch PG Backup Logs": {
+      "main": [
+        [
+          {
+            "node": "Fetch MariaDB Backup Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch MariaDB Backup Logs": {
+      "main": [
+        [
+          {
+            "node": "Fetch rclone Sync Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch rclone Sync Logs": {
+      "main": [
+        [
+          {
+            "node": "Fetch Restore Verify Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Restore Verify Logs": {
+      "main": [
+        [
+          {
+            "node": "Call OpenClaude Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call OpenClaude Digest": {
+      "main": [
+        [
+          {
+            "node": "Notify Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-05-18T10:47:26.233Z",
+  "id": "e7Wa9qTW5OP3ITVI",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Daily Backup Health Digest",
+  "nodes": [
+    {
+      "id": "0a4589d5-ae35-4d09-9c23-16279c8e3cbe",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 5 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a9e73214-9e4a-473b-bbd1-9eb023739c59",
+      "name": "Fetch PG Backup Logs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const fs = require('fs');\nlet token = '';\ntry {\n  token = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8').trim();\n} catch (e) {\n  return [{ json: { pg_logs: 'No K8s token: ' + e.message } }];\n}\nconst headers = { 'Authorization': 'Bearer ' + token };\nlet pgLogs = '';\ntry {\n  const jobsResp = await fetch('https://kubernetes.default.svc/apis/batch/v1/namespaces/databases/jobs?labelSelector=app%3Dpg-backup', { headers });\n  const jobsData = await jobsResp.json();\n  const jobs = (jobsData.items || []).sort((a, b) => new Date(b.metadata.creationTimestamp) - new Date(a.metadata.creationTimestamp)).slice(0, 1);\n  for (const job of jobs) {\n    const podsResp = await fetch('https://kubernetes.default.svc/api/v1/namespaces/databases/pods?labelSelector=job-name%3D' + job.metadata.name, { headers });\n    const podsData = await podsResp.json();\n    const pod = (podsData.items || [])[0];\n    if (pod) {\n      const logResp = await fetch('https://kubernetes.default.svc/api/v1/namespaces/databases/pods/' + pod.metadata.name + '/log', { headers });\n      pgLogs = await logResp.text();\n    }\n  }\n} catch (e) {\n  pgLogs = 'Error fetching PG backup logs: ' + e.message;\n}\nreturn [{ json: { pg_logs: pgLogs || 'No pg-backup job found' } }];"
+      }
+    },
+    {
+      "id": "b7ee23b1-04d5-447a-b7b0-b5e5311e2693",
+      "name": "Fetch MariaDB Backup Logs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const fs = require('fs');\nconst pgLogs = $input.first().json.pg_logs;\nlet token = '';\ntry {\n  token = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8').trim();\n} catch (e) {\n  return [{ json: { pg_logs: pgLogs, mariadb_logs: 'No K8s token: ' + e.message } }];\n}\nconst headers = { 'Authorization': 'Bearer ' + token };\nlet mariaLogs = '';\ntry {\n  const jobsResp = await fetch('https://kubernetes.default.svc/apis/batch/v1/namespaces/databases/jobs?labelSelector=app%3Dmariadb-backup', { headers });\n  const jobsData = await jobsResp.json();\n  const jobs = (jobsData.items || []).sort((a, b) => new Date(b.metadata.creationTimestamp) - new Date(a.metadata.creationTimestamp)).slice(0, 1);\n  for (const job of jobs) {\n    const podsResp = await fetch('https://kubernetes.default.svc/api/v1/namespaces/databases/pods?labelSelector=job-name%3D' + job.metadata.name, { headers });\n    const podsData = await podsResp.json();\n    const pod = (podsData.items || [])[0];\n    if (pod) {\n      const logResp = await fetch('https://kubernetes.default.svc/api/v1/namespaces/databases/pods/' + pod.metadata.name + '/log', { headers });\n      mariaLogs = await logResp.text();\n    }\n  }\n} catch (e) {\n  mariaLogs = 'Error fetching MariaDB backup logs: ' + e.message;\n}\nreturn [{ json: { pg_logs: pgLogs, mariadb_logs: mariaLogs || 'No mariadb-backup job found' } }];"
+      }
+    },
+    {
+      "id": "7c0d35ab-2177-418f-9bda-7264b040b2a9",
+      "name": "Fetch rclone Sync Logs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const fs = require('fs');\nconst prev = $input.first().json;\nlet token = '';\ntry {\n  token = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8').trim();\n} catch (e) {\n  return [{ json: { ...prev, rclone_logs: 'No K8s token: ' + e.message } }];\n}\nconst headers = { 'Authorization': 'Bearer ' + token };\nlet rcloneLogs = '';\ntry {\n  const jobsResp = await fetch('https://kubernetes.default.svc/apis/batch/v1/namespaces/databases/jobs?labelSelector=app%3Drclone-sync', { headers });\n  const jobsData = await jobsResp.json();\n  const jobs = (jobsData.items || []).sort((a, b) => new Date(b.metadata.creationTimestamp) - new Date(a.metadata.creationTimestamp)).slice(0, 1);\n  for (const job of jobs) {\n    const podsResp = await fetch('https://kubernetes.default.svc/api/v1/namespaces/databases/pods?labelSelector=job-name%3D' + job.metadata.name, { headers });\n    const podsData = await podsResp.json();\n    const pod = (podsData.items || [])[0];\n    if (pod) {\n      const logResp = await fetch('https://kubernetes.default.svc/api/v1/namespaces/databases/pods/' + pod.metadata.name + '/log', { headers });\n      rcloneLogs = await logResp.text();\n    }\n  }\n} catch (e) {\n  rcloneLogs = 'Error fetching rclone logs: ' + e.message;\n}\nreturn [{ json: { ...prev, rclone_logs: rcloneLogs || 'No rclone-sync job found' } }];"
+      }
+    },
+    {
+      "id": "50f9eb62-a968-4133-807a-991c24a1e7cd",
+      "name": "Fetch Restore Verify Logs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const fs = require('fs');\nconst prev = $input.first().json;\n\n// Only fetch on Sundays (getDay() === 0)\nconst isSunday = new Date().getDay() === 0;\nif (!isSunday) {\n  return [{ json: { ...prev, restore_verify_logs: '', is_sunday: false } }];\n}\n\nlet token = '';\ntry {\n  token = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8').trim();\n} catch (e) {\n  return [{ json: { ...prev, restore_verify_logs: 'No K8s token: ' + e.message, is_sunday: true } }];\n}\n\nconst headers = { 'Authorization': 'Bearer ' + token };\nlet restoreLogs = '';\n\ntry {\n  // Most recent restore-verify job (runs Sundays 6am — this fetches last week's completed result)\n  const jobsResp = await fetch(\n    'https://kubernetes.default.svc/apis/batch/v1/namespaces/databases/jobs?labelSelector=app%3Drestore-verify',\n    { headers }\n  );\n  const jobsData = await jobsResp.json();\n  const jobs = (jobsData.items || [])\n    .sort((a, b) => new Date(b.metadata.creationTimestamp) - new Date(a.metadata.creationTimestamp))\n    .slice(0, 1);\n\n  for (const job of jobs) {\n    const podsResp = await fetch(\n      'https://kubernetes.default.svc/api/v1/namespaces/databases/pods?labelSelector=job-name%3D' + job.metadata.name,\n      { headers }\n    );\n    const podsData = await podsResp.json();\n    const pod = (podsData.items || [])[0];\n    if (pod) {\n      const logResp = await fetch(\n        'https://kubernetes.default.svc/api/v1/namespaces/databases/pods/' + pod.metadata.name + '/log',\n        { headers }\n      );\n      restoreLogs = await logResp.text();\n    }\n    const jobStatus = job.status.succeeded ? 'SUCCEEDED' : job.status.failed ? 'FAILED' : 'UNKNOWN';\n    restoreLogs = '[Job: ' + job.metadata.name + ' — ' + jobStatus + ']\\n' + restoreLogs;\n  }\n} catch (e) {\n  restoreLogs = 'Error fetching restore-verify logs: ' + e.message;\n}\n\nreturn [{ json: { ...prev, restore_verify_logs: restoreLogs || 'No restore-verify job found', is_sunday: true } }];"
+      }
+    },
+    {
+      "id": "81cc5943-ac67-48ce-874a-c56a74b1a4ac",
+      "name": "Call OpenClaude Digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://openclaude.olympus.svc.cluster.local:8080/review",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "=JSON.stringify({\n  diff: '=== PostgreSQL Backup Logs ===\\n' + $json.pg_logs +\n        '\\n\\n=== MariaDB Backup Logs ===\\n' + $json.mariadb_logs +\n        '\\n\\n=== rclone Sync Logs ===\\n' + $json.rclone_logs +\n        ($json.restore_verify_logs ? '\\n\\n=== Weekly Restore Verification Logs ===\\n' + $json.restore_verify_logs : ''),\n  depth: 'quick',\n  pr_number: 0,\n  commit_sha: '',\n  repo_url: '',\n  branch: '',\n  prompt_type: 'backup-digest'\n})",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "39d2e7e3-0827-418f-9a18-6ad635e88abe",
+      "name": "Notify Hermes",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        0
+      ],
+      "parameters": {
+        "source": "database",
+        "workflowId": "='D1X5OyGlkuo7UwdR'",
+        "workflowInputs": "=JSON.stringify({ message: $json.review_text || $json.error || '⚠️ Backup digest generation failed — check manually', webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete' })",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-05-18T10:47:26.233Z",
+      "createdAt": "2026-05-18T10:47:26.233Z",
+      "role": "workflow:owner",
+      "workflowId": "e7Wa9qTW5OP3ITVI",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-05-18T12:01:02.787Z",
+  "versionId": "3e75a504-4f08-4a66-890e-c6273d63c6aa"
+}
