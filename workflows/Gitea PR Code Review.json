@@ -1,0 +1,519 @@
+{
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-05-18T13:49:12.414Z",
+    "createdAt": "2026-05-18T13:48:29.333Z",
+    "versionId": "7a1e5400-a7df-4b33-9a8b-9189d75bb2bc",
+    "workflowId": "4eHLRJ0k4i3O4HeO",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "gitea-pr-review",
+          "options": {}
+        },
+        "id": "3989328e-b96e-4676-8bdc-63a47c53c101",
+        "name": "Gitea PR Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          0
+        ],
+        "webhookId": "a1aa2c07-d496-4bf7-a62c-b3bbb4e7af26"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "repo",
+                "name": "repo",
+                "type": "string",
+                "value": "={{ $json.body.repository.full_name }}"
+              },
+              {
+                "id": "pr_number",
+                "name": "pr_number",
+                "type": "number",
+                "value": "={{ $json.body.pull_request.number }}"
+              },
+              {
+                "id": "commit_sha",
+                "name": "commit_sha",
+                "type": "string",
+                "value": "={{ $json.body.pull_request.head.sha }}"
+              },
+              {
+                "id": "depth",
+                "name": "depth",
+                "type": "string",
+                "value": "={{ ($json.body.pull_request.labels || []).some(l => l.name === 'deep-review') ? 'deep' : 'quick' }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "ce55572b-ae15-4d7c-9f72-59f9fbdfbb04",
+        "name": "Extract PR Params",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          224,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "url": "={{ 'http://gitea-gitea-web.apps.svc.cluster.local:3000/api/v1/repos/' + $('Extract PR Params').item.json.repo + '/pulls/' + $('Extract PR Params').item.json.pr_number + '.diff' }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "text"
+              }
+            }
+          }
+        },
+        "id": "d91746f6-0d36-421d-b9b1-960db31d7e94",
+        "name": "Fetch PR Diff",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          448,
+          0
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "zPLpGufpzzOF9CLq",
+            "name": "Gitea API Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const params = $('Extract PR Params').first().json;\nconst rawDiff = $input.first().json.data || '';\nconst depth = params.depth;\nconst maxChars = depth === 'deep' ? 32000 : 16000;\nconst diff = rawDiff.length > maxChars ? rawDiff.substring(0, maxChars) + '\\n\\n... [diff truncated]' : rawDiff;\nlet result = { review_text: '', model_used: 'unknown' };\ntry {\n  const resp = await fetch('http://openclaude.olympus.svc.cluster.local:8080/review', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ diff, repo_url: 'http://gitea-gitea-web.apps.svc.cluster.local:3000/' + params.repo, pr_number: params.pr_number, branch: '', depth, commit_sha: params.commit_sha, prompt_type: 'code-review' }),\n    signal: AbortSignal.timeout(depth === 'deep' ? 310000 : 130000)\n  });\n  result = await resp.json();\n} catch (err) {\n  result.review_text = 'Review unavailable: ' + err.message;\n}\nreturn [{ json: { ...params, review_text: result.review_text || result.error || 'No review generated', model_used: result.model_used || 'unknown' } }];"
+        },
+        "id": "1b957542-a4de-49d4-ab92-4ab3e3ca3efa",
+        "name": "Call OpenClaude Review",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://gitea-gitea-web.apps.svc.cluster.local:3000/api/v1/repos/' + $('Extract PR Params').item.json.repo + '/issues/' + $('Extract PR Params').item.json.pr_number + '/comments' }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { body: '[AI Review - ' + $('Call OpenClaude Review').item.json.depth.toUpperCase() + '] (model: ' + $('Call OpenClaude Review').item.json.model_used + ' | commit: ' + $('Call OpenClaude Review').item.json.commit_sha.substring(0, 7) + ')\\n\\n' + $('Call OpenClaude Review').item.json.review_text } }}",
+          "options": {}
+        },
+        "id": "4bd70427-02a4-439b-9f87-ea70ab6b6666",
+        "name": "Post Gitea PR Comment",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          896,
+          0
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "zPLpGufpzzOF9CLq",
+            "name": "Gitea API Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "message",
+                "name": "message",
+                "type": "string",
+                "value": "={{ '✅ Code review — PR #' + $('Call OpenClaude Review').item.json.pr_number + ' in ' + $('Call OpenClaude Review').item.json.repo + ' [' + $('Call OpenClaude Review').item.json.depth + ' via ' + $('Call OpenClaude Review').item.json.model_used + ']' }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "929ceacd-dfae-4131-81b0-a29181d73544",
+        "name": "Build Hermes Message",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1120,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "D1X5OyGlkuo7UwdR"
+          },
+          "workflowInputs": "{{ JSON.stringify({ message: $json.message, webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete' }) }}",
+          "options": {
+            "waitForSubWorkflow": false
+          }
+        },
+        "id": "fe86a7e0-2cb4-484b-818c-32134556e00b",
+        "name": "Notify Hermes",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1344,
+          0
+        ]
+      }
+    ],
+    "connections": {
+      "Gitea PR Webhook": {
+        "main": [
+          [
+            {
+              "node": "Extract PR Params",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract PR Params": {
+        "main": [
+          [
+            {
+              "node": "Fetch PR Diff",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch PR Diff": {
+        "main": [
+          [
+            {
+              "node": "Call OpenClaude Review",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call OpenClaude Review": {
+        "main": [
+          [
+            {
+              "node": "Post Gitea PR Comment",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Post Gitea PR Comment": {
+        "main": [
+          [
+            {
+              "node": "Build Hermes Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Hermes Message": {
+        "main": [
+          [
+            {
+              "node": "Notify Hermes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Ramon ramon@pereirariosoftware.com",
+    "name": "Version 7a1e5400",
+    "description": "",
+    "autosaved": true
+  },
+  "activeVersionId": "7a1e5400-a7df-4b33-9a8b-9189d75bb2bc",
+  "connections": {
+    "Gitea PR Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract PR Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PR Params": {
+      "main": [
+        [
+          {
+            "node": "Fetch PR Diff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch PR Diff": {
+      "main": [
+        [
+          {
+            "node": "Call OpenClaude Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call OpenClaude Review": {
+      "main": [
+        [
+          {
+            "node": "Post Gitea PR Comment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Gitea PR Comment": {
+      "main": [
+        [
+          {
+            "node": "Build Hermes Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Hermes Message": {
+      "main": [
+        [
+          {
+            "node": "Notify Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-05-18T10:43:40.644Z",
+  "id": "4eHLRJ0k4i3O4HeO",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "templateCredsSetupCompleted": true
+  },
+  "name": "Gitea PR Code Review",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gitea-pr-review",
+        "options": {}
+      },
+      "id": "3989328e-b96e-4676-8bdc-63a47c53c101",
+      "name": "Gitea PR Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "a1aa2c07-d496-4bf7-a62c-b3bbb4e7af26"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "repo",
+              "name": "repo",
+              "type": "string",
+              "value": "={{ $json.body.repository.full_name }}"
+            },
+            {
+              "id": "pr_number",
+              "name": "pr_number",
+              "type": "number",
+              "value": "={{ $json.body.pull_request.number }}"
+            },
+            {
+              "id": "commit_sha",
+              "name": "commit_sha",
+              "type": "string",
+              "value": "={{ $json.body.pull_request.head.sha }}"
+            },
+            {
+              "id": "depth",
+              "name": "depth",
+              "type": "string",
+              "value": "={{ ($json.body.pull_request.labels || []).some(l => l.name === 'deep-review') ? 'deep' : 'quick' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ce55572b-ae15-4d7c-9f72-59f9fbdfbb04",
+      "name": "Extract PR Params",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'http://gitea-gitea-web.apps.svc.cluster.local:3000/api/v1/repos/' + $('Extract PR Params').item.json.repo + '/pulls/' + $('Extract PR Params').item.json.pr_number + '.diff' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "d91746f6-0d36-421d-b9b1-960db31d7e94",
+      "name": "Fetch PR Diff",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "zPLpGufpzzOF9CLq",
+          "name": "Gitea API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const params = $('Extract PR Params').first().json;\nconst rawDiff = $input.first().json.data || '';\nconst depth = params.depth;\nconst maxChars = depth === 'deep' ? 32000 : 16000;\nconst diff = rawDiff.length > maxChars ? rawDiff.substring(0, maxChars) + '\\n\\n... [diff truncated]' : rawDiff;\nlet result = { review_text: '', model_used: 'unknown' };\ntry {\n  const resp = await fetch('http://openclaude.olympus.svc.cluster.local:8080/review', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ diff, repo_url: 'http://gitea-gitea-web.apps.svc.cluster.local:3000/' + params.repo, pr_number: params.pr_number, branch: '', depth, commit_sha: params.commit_sha, prompt_type: 'code-review' }),\n    signal: AbortSignal.timeout(depth === 'deep' ? 310000 : 130000)\n  });\n  result = await resp.json();\n} catch (err) {\n  result.review_text = 'Review unavailable: ' + err.message;\n}\nreturn [{ json: { ...params, review_text: result.review_text || result.error || 'No review generated', model_used: result.model_used || 'unknown' } }];"
+      },
+      "id": "1b957542-a4de-49d4-ab92-4ab3e3ca3efa",
+      "name": "Call OpenClaude Review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://gitea-gitea-web.apps.svc.cluster.local:3000/api/v1/repos/' + $('Extract PR Params').item.json.repo + '/issues/' + $('Extract PR Params').item.json.pr_number + '/comments' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { body: '[AI Review - ' + $('Call OpenClaude Review').item.json.depth.toUpperCase() + '] (model: ' + $('Call OpenClaude Review').item.json.model_used + ' | commit: ' + $('Call OpenClaude Review').item.json.commit_sha.substring(0, 7) + ')\\n\\n' + $('Call OpenClaude Review').item.json.review_text } }}",
+        "options": {}
+      },
+      "id": "4bd70427-02a4-439b-9f87-ea70ab6b6666",
+      "name": "Post Gitea PR Comment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        896,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "zPLpGufpzzOF9CLq",
+          "name": "Gitea API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "message",
+              "name": "message",
+              "type": "string",
+              "value": "={{ '✅ Code review — PR #' + $('Call OpenClaude Review').item.json.pr_number + ' in ' + $('Call OpenClaude Review').item.json.repo + ' [' + $('Call OpenClaude Review').item.json.depth + ' via ' + $('Call OpenClaude Review').item.json.model_used + ']' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "929ceacd-dfae-4131-81b0-a29181d73544",
+      "name": "Build Hermes Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "D1X5OyGlkuo7UwdR"
+        },
+        "workflowInputs": "{{ JSON.stringify({ message: $json.message, webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete' }) }}",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "fe86a7e0-2cb4-484b-818c-32134556e00b",
+      "name": "Notify Hermes",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-05-18T10:43:40.644Z",
+      "createdAt": "2026-05-18T10:43:40.644Z",
+      "role": "workflow:owner",
+      "workflowId": "4eHLRJ0k4i3O4HeO",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-05-18T13:48:29.332Z",
+  "versionId": "7a1e5400-a7df-4b33-9a8b-9189d75bb2bc"
+}
