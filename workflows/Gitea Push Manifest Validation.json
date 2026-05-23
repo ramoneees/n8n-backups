@@ -1,0 +1,575 @@
+{
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-05-18T13:38:39.216Z",
+    "createdAt": "2026-05-18T13:38:39.216Z",
+    "versionId": "9d70f08a-dbf2-413d-a984-d214700dae47",
+    "workflowId": "0N6TcGdlox95JzJq",
+    "nodes": [
+      {
+        "id": "666a96b9-28cc-4c53-bc85-ad2a5f3b1937",
+        "name": "Push Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          96
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "gitea-push-validate",
+          "authentication": "none",
+          "responseMode": "onReceived"
+        },
+        "webhookId": "83c34cca-ed12-43ef-912e-1d1ad5639ed6"
+      },
+      {
+        "id": "c4349965-ffd6-43d8-bfd3-fdf95238be01",
+        "name": "Filter YAML Changes",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          96
+        ],
+        "parameters": {
+          "language": "javaScript",
+          "jsCode": "const body = $input.first().json.body;\nconst sha = body.after || '';\nconst repo = body.repository?.full_name || '';\nconst changedFiles = [];\nfor (const commit of (body.commits || [])) {\n  for (const f of [...(commit.added || []), ...(commit.modified || [])]) {\n    if ((f.endsWith('.yaml') || f.endsWith('.yml')) && /^(olympus|apps|infrastructure|databases|monitoring)\\//.test(f)) {\n      if (!changedFiles.includes(f)) changedFiles.push(f);\n    }\n  }\n}\nif (changedFiles.length === 0) {\n  return [{ json: { skip: true, sha, repo } }];\n}\nreturn [{ json: { skip: false, sha, repo, yaml_files: changedFiles } }];"
+        }
+      },
+      {
+        "id": "b3471bd7-5c6c-4d4d-82ad-c37effeee0a4",
+        "name": "Skip if No YAML",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          448,
+          96
+        ],
+        "parameters": {
+          "conditions": {
+            "conditions": [
+              {
+                "leftValue": "={{ $json.skip }}",
+                "rightValue": false,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "9a21d7a7-b257-4e83-b62f-a0fcf0fdfb94",
+        "name": "Set YAML File List",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "assignments": {
+            "assignments": [
+              {
+                "id": "sha",
+                "name": "sha",
+                "type": "string",
+                "value": "={{ $json.sha }}"
+              },
+              {
+                "id": "repo",
+                "name": "repo",
+                "type": "string",
+                "value": "={{ $json.repo }}"
+              },
+              {
+                "id": "yaml_files",
+                "name": "yaml_files",
+                "type": "string",
+                "value": "={{ JSON.stringify($json.yaml_files) }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "5a814136-0675-45b8-960c-93b9af73f8c8",
+        "name": "Fetch YAML File",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ 'http://gitea-gitea-web.apps.svc.cluster.local:3000/api/v1/repos/' + $('Set YAML File List').item.json.repo + '/raw/' + $('Filter YAML Changes').item.json.yaml_files[0] + '?ref=' + $('Set YAML File List').item.json.sha }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "text"
+              }
+            }
+          }
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "gitea-api-token",
+            "name": "Gitea API Token"
+          }
+        }
+      },
+      {
+        "id": "1159ee71-0a0d-4d14-a4a1-6b02cee40931",
+        "name": "Call OpenClaude Validate",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://openclaude.olympus.svc.cluster.local:8080/review",
+          "sendBody": true,
+          "contentType": "json",
+          "body": "={{ JSON.stringify({ diff: $json.data, depth: 'quick', pr_number: 0, commit_sha: $('Set YAML File List').item.json.sha, repo_url: 'http://gitea-gitea-web.apps.svc.cluster.local:3000/' + $('Set YAML File List').item.json.repo, branch: '', prompt_type: 'manifest-validation' }) }}",
+          "options": {
+            "timeout": 60000,
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "8c601af8-230b-4169-85ff-0ba341568d29",
+        "name": "Post Commit Comment",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          672,
+          192
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://gitea-gitea-web.apps.svc.cluster.local:3000/api/v1/repos/' + $('Set YAML File List').item.json.repo + '/commits/' + $('Set YAML File List').item.json.sha + '/comments' }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "body": "={{ JSON.stringify({ body: $json.review_text || $json.error || '⚠️ Validation unavailable' }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "gitea-api-token",
+            "name": "Gitea API Token"
+          }
+        }
+      },
+      {
+        "id": "1e8c1f0c-8e9f-4719-9cde-970ab079f9cd",
+        "name": "Notify Hermes",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          896,
+          192
+        ],
+        "parameters": {
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "D1X5OyGlkuo7UwdR"
+          },
+          "workflowInputs": "={{ JSON.stringify({ message: '✅ Pre-sync validation — commit ' + $('Set YAML File List').item.json.sha.substring(0,7), webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete' }) }}",
+          "options": {
+            "waitForSubWorkflow": false
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Push Webhook": {
+        "main": [
+          [
+            {
+              "node": "Filter YAML Changes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filter YAML Changes": {
+        "main": [
+          [
+            {
+              "node": "Skip if No YAML",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Skip if No YAML": {
+        "main": [
+          [
+            {
+              "node": "Set YAML File List",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Post Commit Comment",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set YAML File List": {
+        "main": [
+          [
+            {
+              "node": "Fetch YAML File",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch YAML File": {
+        "main": [
+          [
+            {
+              "node": "Call OpenClaude Validate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Post Commit Comment": {
+        "main": [
+          [
+            {
+              "node": "Notify Hermes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Ramon ramon@pereirariosoftware.com",
+    "name": null,
+    "description": null,
+    "autosaved": false
+  },
+  "activeVersionId": "9d70f08a-dbf2-413d-a984-d214700dae47",
+  "connections": {
+    "Push Webhook": {
+      "main": [
+        [
+          {
+            "node": "Filter YAML Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter YAML Changes": {
+      "main": [
+        [
+          {
+            "node": "Skip if No YAML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip if No YAML": {
+      "main": [
+        [
+          {
+            "node": "Set YAML File List",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post Commit Comment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set YAML File List": {
+      "main": [
+        [
+          {
+            "node": "Fetch YAML File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch YAML File": {
+      "main": [
+        [
+          {
+            "node": "Call OpenClaude Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Commit Comment": {
+      "main": [
+        [
+          {
+            "node": "Notify Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-05-18T13:38:39.216Z",
+  "id": "0N6TcGdlox95JzJq",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Gitea Push Manifest Validation",
+  "nodes": [
+    {
+      "id": "666a96b9-28cc-4c53-bc85-ad2a5f3b1937",
+      "name": "Push Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gitea-push-validate",
+        "authentication": "none",
+        "responseMode": "onReceived"
+      },
+      "webhookId": "83c34cca-ed12-43ef-912e-1d1ad5639ed6"
+    },
+    {
+      "id": "c4349965-ffd6-43d8-bfd3-fdf95238be01",
+      "name": "Filter YAML Changes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        96
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const body = $input.first().json.body;\nconst sha = body.after || '';\nconst repo = body.repository?.full_name || '';\nconst changedFiles = [];\nfor (const commit of (body.commits || [])) {\n  for (const f of [...(commit.added || []), ...(commit.modified || [])]) {\n    if ((f.endsWith('.yaml') || f.endsWith('.yml')) && /^(olympus|apps|infrastructure|databases|monitoring)\\//.test(f)) {\n      if (!changedFiles.includes(f)) changedFiles.push(f);\n    }\n  }\n}\nif (changedFiles.length === 0) {\n  return [{ json: { skip: true, sha, repo } }];\n}\nreturn [{ json: { skip: false, sha, repo, yaml_files: changedFiles } }];"
+      }
+    },
+    {
+      "id": "b3471bd7-5c6c-4d4d-82ad-c37effeee0a4",
+      "name": "Skip if No YAML",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        448,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "9a21d7a7-b257-4e83-b62f-a0fcf0fdfb94",
+      "name": "Set YAML File List",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "sha",
+              "name": "sha",
+              "type": "string",
+              "value": "={{ $json.sha }}"
+            },
+            {
+              "id": "repo",
+              "name": "repo",
+              "type": "string",
+              "value": "={{ $json.repo }}"
+            },
+            {
+              "id": "yaml_files",
+              "name": "yaml_files",
+              "type": "string",
+              "value": "={{ JSON.stringify($json.yaml_files) }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "5a814136-0675-45b8-960c-93b9af73f8c8",
+      "name": "Fetch YAML File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'http://gitea-gitea-web.apps.svc.cluster.local:3000/api/v1/repos/' + $('Set YAML File List').item.json.repo + '/raw/' + $('Filter YAML Changes').item.json.yaml_files[0] + '?ref=' + $('Set YAML File List').item.json.sha }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "gitea-api-token",
+          "name": "Gitea API Token"
+        }
+      }
+    },
+    {
+      "id": "1159ee71-0a0d-4d14-a4a1-6b02cee40931",
+      "name": "Call OpenClaude Validate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://openclaude.olympus.svc.cluster.local:8080/review",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ diff: $json.data, depth: 'quick', pr_number: 0, commit_sha: $('Set YAML File List').item.json.sha, repo_url: 'http://gitea-gitea-web.apps.svc.cluster.local:3000/' + $('Set YAML File List').item.json.repo, branch: '', prompt_type: 'manifest-validation' }) }}",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "8c601af8-230b-4169-85ff-0ba341568d29",
+      "name": "Post Commit Comment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        192
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://gitea-gitea-web.apps.svc.cluster.local:3000/api/v1/repos/' + $('Set YAML File List').item.json.repo + '/commits/' + $('Set YAML File List').item.json.sha + '/comments' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ body: $json.review_text || $json.error || '⚠️ Validation unavailable' }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "gitea-api-token",
+          "name": "Gitea API Token"
+        }
+      }
+    },
+    {
+      "id": "1e8c1f0c-8e9f-4719-9cde-970ab079f9cd",
+      "name": "Notify Hermes",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        192
+      ],
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "D1X5OyGlkuo7UwdR"
+        },
+        "workflowInputs": "={{ JSON.stringify({ message: '✅ Pre-sync validation — commit ' + $('Set YAML File List').item.json.sha.substring(0,7), webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete' }) }}",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-05-18T13:38:39.216Z",
+      "createdAt": "2026-05-18T13:38:39.216Z",
+      "role": "workflow:owner",
+      "workflowId": "0N6TcGdlox95JzJq",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-05-18T13:38:39.216Z",
+  "versionId": "9d70f08a-dbf2-413d-a984-d214700dae47"
+}
