@@ -1,0 +1,1192 @@
+{
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-06-05T21:23:32.841Z",
+    "createdAt": "2026-06-05T21:22:18.465Z",
+    "versionId": "b770c12b-0a33-45fc-977a-14b8a582b5a3",
+    "workflowId": "VfdNxA8c7CgGr5q7",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "months",
+                "triggerAtDayOfMonth": 10,
+                "triggerAtHour": 10
+              }
+            ]
+          }
+        },
+        "id": "9a18265c-4801-4014-b734-5b5ec0f2e4ba",
+        "name": "Schedule Trigger",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          -1104,
+          496
+        ]
+      },
+      {
+        "parameters": {},
+        "id": "890e6cdd-536c-458e-8c21-382908e408a7",
+        "name": "Merge",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          -656,
+          496
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const EXCLUDE_PREFIXES = [/^Detalhe_/i, /^News_/i];\nconst items = $input.all();\nconst results = [];\nconst seen = new Set();\n\nfor (const item of items) {\n  const binaryKeys = item.binary ? Object.keys(item.binary) : [];\n  let actualData = null;\n  let mimeType = '';\n  let fileName = '';\n\n  for (const key of binaryKeys) {\n    const wrapper = item.binary[key];\n    if (wrapper?.data) {\n      actualData = wrapper;\n      mimeType = wrapper.mimeType || '';\n      fileName = wrapper.fileName || item.json.fileName || '';\n      break;\n    }\n  }\n\n  if (!actualData) continue;\n\n  fileName = fileName.trim();\n  const isPdf = mimeType.toLowerCase().includes('pdf') || fileName.toLowerCase().endsWith('.pdf');\n  if (!isPdf) continue;\n  if (EXCLUDE_PREFIXES.some(re => re.test(fileName))) continue;\n\n  const msgId = item.json.id || item.json.messageId || fileName;\n  if (seen.has(msgId)) continue;\n  seen.add(msgId);\n\n  // Detect personal banking docs (NL / EXTRATO COMBINADO) — skip LLM rename\n  const isPersonal = /^NL\\s+\\d/i.test(fileName) || /^EXTRATO\\s/i.test(fileName);\n\n  results.push({ json: { fileName, personalDoc: isPersonal }, binary: { data: actualData } });\n}\nreturn results;"
+        },
+        "id": "b9c77005-8c0b-4b8c-a129-d2c84ba9a5ca",
+        "name": "Filter PDFs",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -432,
+          496
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const markdown = item.json.markdown || item.json.text || '';\n  const fileName = item.json.fileName || '';\n\n  if (!markdown || markdown.length < 20) {\n    results.push({ json: { fileName, text: '', extractError: 'No text extracted' } });\n    continue;\n  }\n\n  // Strip markdown images (data URIs with base64 content)\n  let text = markdown.replace(/!\\[.*?\\]\\(data:image\\/[^)]+\\)/gi, '');\n\n  // Strip any remaining HTML img tags\n  text = text.replace(/<img[^>]*>/gi, '');\n\n  // Normalise whitespace — collapse multiple newlines/spaces\n  text = text.replace(/\\n{3,}/g, '\\n\\n').replace(/[ \\t]{2,}/g, ' ').trim();\n\n  // Limit to 5000 chars for LLM context\n  if (text.length > 5000) text = text.substring(0, 5000);\n\n  results.push({ json: { fileName, text } });\n}\nreturn results;\n"
+        },
+        "id": "3100037c-8c65-40f0-8cab-81fce7431297",
+        "name": "Format Extract",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          240,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const text = item.json.text || item.json.markdown || '';\n  const fileName = item.json.fileName || '';\n\n  // Detect NL (Nota de Lancamento) and EX (Extrato) from filename\n  const isNL = /^NL[_-]?/i.test(fileName);\n  const isEX = /^EX[_-]?/i.test(fileName) || /extrato/i.test(fileName);\n\n  let prompt;\n  if (isNL) {\n    prompt = 'Extrai dados da Nota de Lan\\u00e7amento. Retorna APENAS JSON sem explicacao.\\n\\n' +\n      'Campos:\\n' +\n      '- emitente: nome do banco ou entidade em MAIUSCULAS, sem particulas. Max 20 caracteres.\\n' +\n      '- nif: NIF da entidade, so digitos, sem espacos (pode ser null se nao aparecer)\\n' +\n      '- data_emissao: data no formato YYYY-MM\\n' +\n      '- tipo: \"NL\" sempre\\n' +\n      '- numero: numero da nota de lancamento\\n' +\n      '- valor: valor total (string com 2 casas decimais)\\n' +\n      '- descricao: pequena descricao da transacao (max 100 chars)\\n\\n' +\n      'Se nao for Nota de Lancamento: {\"erro\":\"nao_e_nl\"}\\n\\n' +\n      'Texto:\\n' + text.substring(0, 4000);\n  } else if (isEX) {\n    prompt = 'Extrai dados do Extrato Bancario. Retorna APENAS JSON sem explicacao.\\n\\n' +\n      'Campos:\\n' +\n      '- emitente: nome do banco em MAIUSCULAS, sem particulas. Max 20 caracteres.\\n' +\n      '- nif: NIF do banco, so digitos (pode ser null)\\n' +\n      '- data_emissao: data do extrato no formato YYYY-MM\\n' +\n      '- tipo: \"EX\" sempre\\n' +\n      '- numero: numero do extrato ou referencia\\n' +\n      '- saldo_inicial: saldo inicial (string com 2 casas decimais)\\n' +\n      '- saldo_final: saldo final (string com 2 casas decimais)\\n' +\n      '- total_creditos: total de creditos (string com 2 casas decimais)\\n' +\n      '- total_debitos: total de debitos (string com 2 casas decimais)\\n\\n' +\n      'Se nao for Extrato Bancario: {\"erro\":\"nao_e_extrato\"}\\n\\n' +\n      'Texto:\\n' + text.substring(0, 4000);\n  } else {\n    prompt = 'Extrai dados do documento fiscal. Retorna APENAS JSON sem explicacao.\\n\\n' +\n      'Campos:\\n' +\n      '- emitente: nome da empresa que emitiu, em MAIUSCULAS, sem particulas como \"S.A.\", \"Lda.\", \"Unipessoal\", \"Comunicacoes\", \"Servicos\", \"Sociedade\". Apenas a marca principal. Exemplos: \"MEO\", \"NOS\", \"VODAFONE\", \"GRENKE\", \"MILLENNIUMBCP\", \"VIAVERDE\", \"PRIO\", \"ALCOCHETEUP\", \"EGITANA\". Max 20 caracteres.\\n' +\n      '- nif: NIF do emitente, so digitos, sem espacos\\n' +\n      '- data_emissao: data de emissao no formato YYYY-MM\\n' +\n      '- tipo: \"FT\" fatura, \"ND\" nota debito, \"NC\" nota credito, \"FS\" fatura simplificada, \"EX\" extrato bancario, \"NL\" nota liquidacao, \"REC\" recibo, \"OUTRO\" outros\\n' +\n      '- numero: numero do documento\\n\\n' +\n      'Se nao for documento fiscal: {\"erro\":\"nao_e_fiscal\"}\\n' +\n      'Se nao conseguir um campo: null\\n\\n' +\n      'Texto:\\n' + text.substring(0, 4000);\n  }\n\n  results.push({ json: { fileName, prompt } });\n}\nreturn results;\n"
+        },
+        "id": "3de26dd4-dfeb-421f-bb71-87add8adadc8",
+        "name": "Build LLM Prompt",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          464,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst results = [];\nconst seen = new Map();\n\nfor (const item of items) {\n  const fileName = item.json.fileName || 'unknown.pdf';\n  const binary = item.binary?.data;\n  const llmResponse = item.json.llmResponse || item.json.choices?.[0]?.message?.content || '';\n  let invoiceData = {};\n  let renameStatus = 'error';\n  let newName = fileName;\n  let monthYear = '';\n  \n  try {\n    let jsonStr = llmResponse;\n    const codeBlockMatch = llmResponse.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (codeBlockMatch) jsonStr = codeBlockMatch[1];\n    const jsonMatch = jsonStr.match(/\\{[\\s\\S]*\\}/);\n    if (jsonMatch) invoiceData = JSON.parse(jsonMatch[0]);\n  } catch (e) {\n    invoiceData = { erro: 'JSON parse failed: ' + e.message };\n  }\n  \n  if (invoiceData.erro) {\n    renameStatus = 'not_fiscal';\n  } else if (invoiceData.emitente && invoiceData.data_emissao) {\n    const parts = invoiceData.data_emissao.split('-');\n    const year = parts[0];\n    const month = parts[1];\n    monthYear = month + '-' + year;\n    \n    const tipo = (invoiceData.tipo || 'FT').toUpperCase();\n    let emitente = invoiceData.emitente.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30);\n    \n    const dedupKey = ((invoiceData.nif || emitente).toLowerCase()) + '-' + invoiceData.data_emissao;\n    const count = (seen.get(dedupKey) || 0) + 1;\n    seen.set(dedupKey, count);\n    \n    const suffix = count > 1 ? '_' + count : '';\n    newName = month + '_' + year + '_' + tipo + '_' + emitente + suffix + '.pdf';\n    renameStatus = 'renamed';\n  } else {\n    renameStatus = 'partial';\n  }\n  \n  results.push({\n    json: { originalName: fileName, fileName: newName, renameStatus, monthYear, invoiceData },\n    binary: { data: binary }\n  });\n}\nreturn results;\n"
+        },
+        "id": "7c414e8c-f5a3-4e5d-81b7-6a1cb7db7701",
+        "name": "Parse & Rename",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          912,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "name": "={{ $('Join Upload Paths').item.json.fileName }}",
+          "driveId": {
+            "__rl": true,
+            "value": "=My Drive",
+            "mode": "id"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "={{ $json.id }}",
+            "mode": "id"
+          },
+          "options": {}
+        },
+        "id": "1fe740ef-088f-435d-8e8c-b8978be3d3f9",
+        "name": "Upload Google Drive",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1536,
+          640
+        ],
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lOUQgEfyXT0EShei",
+            "name": "Google Drive Empresa"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const binary = item.binary?.data;\n  const fileName = item.json.fileName || '';\n  const folderId = item.json.folderId || '';\n  \n  if (!binary) {\n    results.push({ json: { fileName, folderId, gdriveStatus: 'skipped' } });\n    continue;\n  }\n  results.push({ json: { fileName, folderId, gdriveStatus: 'uploaded' }, binary: { data: binary } });\n}\nreturn results;\n"
+        },
+        "id": "84f47e63-630d-44e1-8994-8e136552d2b4",
+        "name": "Pass Binary Data",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1648,
+          384
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const API_BASE = 'https://api.octacode.pt';\nconst COMPANY = 'RAMONCARLOS';\nconst DOC_TYPE = 'geraldocs';\nconst CLIENT_ID = '336';\nconst EMAIL = 'ramonp.rios@gmail.com';\nconst PASSWORD='***';\nconst items = $input.all();\nconst results = [];\nlet accessToken = '';\ntry {\n  const loginResp = await fetch(API_BASE + '/login', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },\n    body: JSON.stringify({ identifier: EMAIL, password: PASSWORD })\n  });\n  const loginData = await loginResp.json();\n  accessToken = loginData.access_token || '';\n  if (!accessToken) throw new Error('No access_token');\n} catch (err) {\n  return items.map(i => ({ json: { fileName: i.json.fileName || '', folderId: i.json.folderId || '', octaStatus: 'auth_failed', octaError: err.message } }));\n}\nfor (const item of items) {\n  const fileName = item.json.fileName || 'unknown.pdf';\n  const folderId = item.json.folderId || '';\n  const binaryData = item.binary?.data;\n  if (!binaryData) {\n    results.push({ json: { fileName, folderId, octaStatus: 'skipped' } });\n    continue;\n  }\n  try {\n    const params = new URLSearchParams({ client_id: CLIENT_ID, license_code: '', company_name: COMPANY, document_type: DOC_TYPE, document_name: fileName });\n    const presignResp = await fetch(API_BASE + '/documentstorage/upload?' + params, { headers: { 'Authorization': 'Bearer ' + accessToken, 'Accept': 'application/json' } });\n    const presignData = await presignResp.json();\n    const presignedUrl = presignData.attributes;\n    if (!presignedUrl) throw new Error('No presigned URL');\n    const pdfBuffer = Buffer.from(binaryData.data, binaryData.encoding || 'base64');\n    const blob = new Blob([pdfBuffer], { type: 'application/pdf' });\n    const uploadResp = await fetch(presignedUrl, { method: 'PUT', body: blob, headers: { 'Content-Type': 'application/pdf' } });\n    results.push({ json: { fileName, folderId, octaStatus: uploadResp.ok ? 'uploaded' : 'failed', octaCode: uploadResp.status } });\n  } catch (err) {\n    results.push({ json: { fileName, folderId, octaStatus: 'error', octaError: err.message } });\n  }\n}\nreturn results;\n"
+        },
+        "id": "d282f744-797d-485d-ad8d-00500a01d26a",
+        "name": "Upload Octa Manager",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1808,
+          496
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst stats = { renamed: 0, original: 0, error: 0, notFiscal: 0, partial: 0, gdriveOk: 0, octaUploaded: 0, octaFailed: 0 };\nfor (const item of items) {\n  const s = item.json.renameStatus || 'unknown';\n  if (stats[s] !== undefined) stats[s]++;\n  if (item.json.gdriveStatus === 'uploaded') stats.gdriveOk++;\n  if (item.json.octaStatus === 'uploaded') stats.octaUploaded++;\n  if (item.json.octaStatus === 'failed') stats.octaFailed++;\n}\nconst details = items.map(i => i.json.fileName + ' (' + (i.json.renameStatus || '?') + ')').join('\\n');\nconst msg = 'Invoice Rename & Upload\\n' +\n  'Renamed: ' + stats.renamed + ' | Original: ' + stats.original + ' | Errors: ' + stats.error + ' | Not fiscal: ' + stats.notFiscal + '\\n' +\n  'Google Drive: ' + stats.gdriveOk + '\\n' +\n  'Octa Manager: ' + stats.octaUploaded + ' uploaded, ' + stats.octaFailed + ' failed\\n\\n' + details;\nreturn [{ json: { message: msg, stats, webhook_secret: 'n8n-webhook-secret-2024', webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete' } }];\n"
+        },
+        "id": "6a7bdf12-5e4a-405d-837d-fa43f172e22e",
+        "name": "Aggregate Results",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2032,
+          496
+        ]
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "D1X5OyGlkuo7UwdR"
+          },
+          "workflowInputs": "{{ JSON.stringify({ message: \"Notificar o chefe que as faturas foram renomeadas e enviadas.\", webhook_secret: \"n8n-webhook-secret-2024\", webhook_url: \"http://192.168.50.11:8644/webhooks/n8n-complete\" }) }}",
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "id": "a7dfcd8b-e2a1-4231-a2e5-44eb90242f4e",
+        "name": "Notify Hermes",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          2256,
+          496
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const TOOLBOX_URL = 'http://toolbox.apps.svc.cluster.local:8000/api/v1/extract/base64';\nconst FIELD_NAME = 'data';\n\nconst allItems = $input.all();\nconst results = [];\n\nfor (let i = 0; i < allItems.length; i++) {\n  try {\n    const item = allItems[i];\n    await this.helpers.assertBinaryData(i, FIELD_NAME);\n    const buffer = await this.helpers.getBinaryDataBuffer(i, FIELD_NAME);\n\n    const binary = item.binary?.[FIELD_NAME];\n    const fileName = binary?.fileName || 'invoice.pdf';\n    const mimeType = binary?.mimeType || 'application/pdf';\n\n    const response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: TOOLBOX_URL,\n      headers: { 'Content-Type': 'application/json' },\n      body: {\n        fileName,\n        mimeType,\n        data: buffer.toString('base64'),\n      },\n      returnFullResponse: true,\n      ignoreHttpStatusErrors: true,\n      timeout: 60000,\n    });\n\n    const status = response?.statusCode ?? 0;\n    const payload = response?.body ?? null;\n    if (status < 200 || status >= 300) {\n      throw new Error(\n        'Toolbox /extract/base64 returned ' + status + ': ' + (typeof payload === 'string' ? payload : JSON.stringify(payload))\n      );\n    }\n\n    const jsonOut = typeof payload === 'object' && payload !== null\n      ? { fileName, mimeType, ...payload }\n      : { fileName, mimeType, _raw: payload };\n\n    results.push({ json: jsonOut, binary: item.binary });\n  } catch (err) {\n    results.push({\n      json: { fileName: (allItems[i].binary?.[FIELD_NAME]?.fileName || '?'), extractError: err.message },\n      pairedItem: { item: i },\n    });\n  }\n}\n\nreturn results;\n"
+        },
+        "id": "extract-pdf-text",
+        "name": "Extract PDF Text",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          16,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ \n  {\n      \"model\": \"MiniMax-M2.5\",\n      \"messages\": [\n          {\n              \"role\": \"user\",\n              \"content\": $json.prompt\n          }\n      ],\n      \"temperature\": 0.1,\n      \"max_tokens\": 10000\n  }\n }}",
+          "options": {
+            "timeout": 60000
+          }
+        },
+        "id": "6a5acfef-a60b-4398-8967-53651336e107",
+        "name": "Analyze Invoice (LLM)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          688,
+          400
+        ],
+        "retryOnFail": true,
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "wXO4qmCuKINk321e",
+            "name": "LiteLLM KEY"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "simple": false,
+          "filters": {
+            "q": "=has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:noreply@grupoyour.com OR from:noreply@weoinvoice.com OR from:noreply@factura.grenke.pt OR from:payments-noreply@google.com OR from:noreply@documentos.meoempresas.pt OR from:geral@alcocheteup.pt OR from:no_reply@mun-montijo.pt OR from:extractoelectronico@extracto.viaverde.pt OR \nfrom:faturacao.clientes@prio.pt OR \nfrom:no-reply@bbvacf.pt)"
+          },
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "id": "767cfb27-4631-4835-9ee8-2d4f79b72622",
+        "name": "Emails com Faturas Empresa",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.2,
+        "position": [
+          -880,
+          400
+        ],
+        "webhookId": "a6ff4521-30b9-4daa-a1b4-718a13b994f0",
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "c1WKHJm3FAubKV8P",
+            "name": "Gmail Empresas"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "simple": false,
+          "filters": {
+            "q": "=has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:loja@egitana.pt OR from:alertas.empresas@millenniumbcp.pt)"
+          },
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "id": "1848b707-145e-4e99-8a85-ddf0d3ca468a",
+        "name": "Emails com Fatura Pessoal",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.2,
+        "position": [
+          -880,
+          592
+        ],
+        "webhookId": "96a17860-9052-47c5-a5c2-29d9272cd4fb",
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "IZ5cS1EUXpPOEEPu",
+            "name": "Gmail Pessoal"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.personalDoc }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "ff607a03-3417-44d5-960a-15e26600946e",
+        "name": "Is Personal Doc?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -208,
+          496
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nreturn items.map(item => {\n  const fileName = item.json.fileName || '';\n\n  // Extract monthYear from NL filenames: NL YYYYMMDDHHMMSS.pdf\n  let monthYear = '';\n  const nlMatch = fileName.match(/^NL\\s+(\\d{4})(\\d{2})\\d+\\.pdf$/i);\n  if (nlMatch) {\n    monthYear = nlMatch[2] + '-' + nlMatch[1]; // MM-YYYY\n  } else {\n    // EXTRATO COMBINADO or other — use previous month (statements are for prior month)\n    const d = new Date();\n    d.setMonth(d.getMonth() - 1);\n    const mm = String(d.getMonth() + 1).padStart(2, '0');\n    const yyyy = String(d.getFullYear());\n    monthYear = mm + '-' + yyyy;\n  }\n\n  return {\n    json: {\n      originalName: fileName,\n      fileName,\n      renameStatus: 'original',\n      monthYear,\n      invoiceData: {},\n    },\n    binary: item.binary,\n  };\n});"
+        },
+        "id": "5bcc987c-1218-4784-9ff8-979a7950f454",
+        "name": "Prepare Personal Upload",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          912,
+          592
+        ]
+      },
+      {
+        "parameters": {},
+        "id": "42136574-4da2-4ff2-ae68-97b8539d6382",
+        "name": "Join Upload Paths",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          1136,
+          496
+        ]
+      },
+      {
+        "parameters": {
+          "resource": "folder",
+          "name": "={{ String(new Date().getMonth() + 1).padStart(2, '0') + '-' + new Date().getFullYear() }}\n",
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30",
+            "mode": "id"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1280,
+          624
+        ],
+        "id": "6662e696-9ae5-430f-a233-a8bdfcad2ac2",
+        "name": "Create folder",
+        "executeOnce": true,
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lOUQgEfyXT0EShei",
+            "name": "Google Drive Empresa"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Schedule Trigger": {
+        "main": [
+          [
+            {
+              "node": "Emails com Faturas Empresa",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Emails com Fatura Pessoal",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Merge": {
+        "main": [
+          [
+            {
+              "node": "Filter PDFs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Extract": {
+        "main": [
+          [
+            {
+              "node": "Build LLM Prompt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upload Google Drive": {
+        "main": [
+          [
+            {
+              "node": "Pass Binary Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Pass Binary Data": {
+        "main": [
+          [
+            {
+              "node": "Upload Octa Manager",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upload Octa Manager": {
+        "main": [
+          [
+            {
+              "node": "Aggregate Results",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aggregate Results": {
+        "main": [
+          [
+            {
+              "node": "Notify Hermes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract PDF Text": {
+        "main": [
+          [
+            {
+              "node": "Format Extract",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build LLM Prompt": {
+        "main": [
+          [
+            {
+              "node": "Analyze Invoice (LLM)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Analyze Invoice (LLM)": {
+        "main": [
+          [
+            {
+              "node": "Parse & Rename",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Emails com Faturas Empresa": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Emails com Fatura Pessoal": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Filter PDFs": {
+        "main": [
+          [
+            {
+              "node": "Is Personal Doc?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Is Personal Doc?": {
+        "main": [
+          [
+            {
+              "node": "Prepare Personal Upload",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Extract PDF Text",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse & Rename": {
+        "main": [
+          [
+            {
+              "node": "Join Upload Paths",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Personal Upload": {
+        "main": [
+          [
+            {
+              "node": "Join Upload Paths",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Join Upload Paths": {
+        "main": [
+          [
+            {
+              "node": "Create folder",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create folder": {
+        "main": [
+          [
+            {
+              "node": "Upload Google Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Ramon ramon@pereirariosoftware.com",
+    "name": "Version b770c12b",
+    "description": "",
+    "autosaved": true
+  },
+  "activeVersionId": "b770c12b-0a33-45fc-977a-14b8a582b5a3",
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Emails com Fatura Pessoal",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Filter PDFs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Extract": {
+      "main": [
+        [
+          {
+            "node": "Build LLM Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Pass Binary Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pass Binary Data": {
+      "main": [
+        [
+          {
+            "node": "Upload Octa Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Octa Manager": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Notify Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "Format Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build LLM Prompt": {
+      "main": [
+        [
+          {
+            "node": "Analyze Invoice (LLM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Invoice (LLM)": {
+      "main": [
+        [
+          {
+            "node": "Parse & Rename",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Emails com Faturas Empresa": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Emails com Fatura Pessoal": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Filter PDFs": {
+      "main": [
+        [
+          {
+            "node": "Is Personal Doc?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Personal Doc?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Personal Upload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Rename": {
+      "main": [
+        [
+          {
+            "node": "Join Upload Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Personal Upload": {
+      "main": [
+        [
+          {
+            "node": "Join Upload Paths",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Join Upload Paths": {
+      "main": [
+        [
+          {
+            "node": "Upload Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create folder": {
+      "main": [
+        [
+          {
+            "node": "Emails com Faturas Empresa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-06-04T23:16:33.012Z",
+  "id": "VfdNxA8c7CgGr5q7",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "templateCredsSetupCompleted": true
+  },
+  "name": "Invoice Rename & Upload v3",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtDayOfMonth": 10,
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "id": "9a18265c-4801-4014-b734-5b5ec0f2e4ba",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1232,
+        496
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "890e6cdd-536c-458e-8c21-382908e408a7",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -656,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const EXCLUDE_PREFIXES = [/^Detalhe_/i, /^News_/i];\nconst items = $input.all();\nconst results = [];\nconst seen = new Set();\n\nfor (const item of items) {\n  const binaryKeys = item.binary ? Object.keys(item.binary) : [];\n  let actualData = null;\n  let mimeType = '';\n  let fileName = '';\n\n  for (const key of binaryKeys) {\n    const wrapper = item.binary[key];\n    if (wrapper?.data) {\n      actualData = wrapper;\n      mimeType = wrapper.mimeType || '';\n      fileName = wrapper.fileName || item.json.fileName || '';\n      break;\n    }\n  }\n\n  if (!actualData) continue;\n\n  fileName = fileName.trim();\n  const isPdf = mimeType.toLowerCase().includes('pdf') || fileName.toLowerCase().endsWith('.pdf');\n  if (!isPdf) continue;\n  if (EXCLUDE_PREFIXES.some(re => re.test(fileName))) continue;\n\n  const msgId = item.json.id || item.json.messageId || fileName;\n  if (seen.has(msgId)) continue;\n  seen.add(msgId);\n\n  // Detect personal banking docs (NL / EXTRATO COMBINADO) — skip LLM rename\n  const isPersonal = /^NL\\s+\\d/i.test(fileName) || /^EXTRATO\\s/i.test(fileName);\n\n  results.push({ json: { fileName, personalDoc: isPersonal }, binary: { data: actualData } });\n}\nreturn results;"
+      },
+      "id": "b9c77005-8c0b-4b8c-a129-d2c84ba9a5ca",
+      "name": "Filter PDFs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const markdown = item.json.markdown || item.json.text || '';\n  const fileName = item.json.fileName || '';\n\n  if (!markdown || markdown.length < 20) {\n    results.push({ json: { fileName, text: '', extractError: 'No text extracted' }, binary: item.binary });\n    continue;\n  }\n\n  let text = markdown.replace(/!\\[.*?\\]\\(data:image\\/[^)]+\\)/gi, '');\n  text = text.replace(/<img[^>]*>/gi, '');\n  text = text.replace(/\\n{3,}/g, '\\n\\n').replace(/[ \\t]{2,}/g, ' ').trim();\n  if (text.length > 5000) text = text.substring(0, 5000);\n\n  results.push({ json: { fileName, text }, binary: item.binary });\n}\nreturn results;"
+      },
+      "id": "3100037c-8c65-40f0-8cab-81fce7431297",
+      "name": "Format Extract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const text = item.json.text || item.json.markdown || '';\n  const fileName = item.json.fileName || '';\n\n  const isNL = /^NL[_-]?/i.test(fileName);\n  const isEX = /^EX[_-]?/i.test(fileName) || /extrato/i.test(fileName);\n\n  let prompt;\n  if (isNL) {\n    prompt = 'Extrai dados da Nota de Lançamento. Retorna APENAS JSON sem explicacao.\\n\\n' +\n      'Campos:\\n' +\n      '- emitente: nome do banco ou entidade em MAIUSCULAS, sem particulas. Max 20 caracteres.\\n' +\n      '- nif: NIF da entidade, so digitos, sem espacos (pode ser null se nao aparecer)\\n' +\n      '- data_emissao: data no formato YYYY-MM\\n' +\n      '- tipo: \"NL\" sempre\\n' +\n      '- numero: numero da nota de lancamento\\n' +\n      '- valor: valor total (string com 2 casas decimais)\\n' +\n      '- descricao: pequena descricao da transacao (max 100 chars)\\n\\n' +\n      'Se nao for Nota de Lancamento: {\"erro\":\"nao_e_nl\"}\\n\\n' +\n      'Texto:\\n' + text.substring(0, 4000);\n  } else if (isEX) {\n    prompt = 'Extrai dados do Extrato Bancario. Retorna APENAS JSON sem explicacao.\\n\\n' +\n      'Campos:\\n' +\n      '- emitente: nome do banco em MAIUSCULAS, sem particulas. Max 20 caracteres.\\n' +\n      '- nif: NIF do banco, so digitos (pode ser null)\\n' +\n      '- data_emissao: data do extrato no formato YYYY-MM\\n' +\n      '- tipo: \"EX\" sempre\\n' +\n      '- numero: numero do extrato ou referencia\\n' +\n      '- saldo_inicial: saldo inicial (string com 2 casas decimais)\\n' +\n      '- saldo_final: saldo final (string com 2 casas decimais)\\n' +\n      '- total_creditos: total de creditos (string com 2 casas decimais)\\n' +\n      '- total_debitos: total de debitos (string com 2 casas decimais)\\n\\n' +\n      'Se nao for Extrato Bancario: {\"erro\":\"nao_e_extrato\"}\\n\\n' +\n      'Texto:\\n' + text.substring(0, 4000);\n  } else {\n    prompt = 'Extrai dados do documento fiscal. Retorna APENAS JSON sem explicacao.\\n\\n' +\n      'Campos:\\n' +\n      '- emitente: nome da empresa que emitiu, em MAIUSCULAS, sem particulas como \"S.A.\", \"Lda.\", \"Unipessoal\", \"Comunicacoes\", \"Servicos\", \"Sociedade\". Apenas a marca principal. Exemplos: \"MEO\", \"NOS\", \"VODAFONE\", \"GRENKE\", \"MILLENNIUMBCP\", \"VIAVERDE\", \"PRIO\", \"ALCOCHETEUP\", \"EGITANA\". Max 20 caracteres.\\n' +\n      '- nif: NIF do emitente, so digitos, sem espacos\\n' +\n      '- data_emissao: data de emissao no formato YYYY-MM\\n' +\n      '- tipo: \"FT\" fatura, \"ND\" nota debito, \"NC\" nota credito, \"FS\" fatura simplificada, \"EX\" extrato bancario, \"NL\" nota liquidacao, \"REC\" recibo, \"OUTRO\" outros\\n' +\n      '- numero: numero do documento\\n\\n' +\n      'Se nao for documento fiscal: {\"erro\":\"nao_e_fiscal\"}\\n' +\n      'Se nao conseguir um campo: null\\n\\n' +\n      'Texto:\\n' + text.substring(0, 4000);\n  }\n\n  results.push({ json: { fileName, prompt }, binary: item.binary });\n}\nreturn results;"
+      },
+      "id": "3de26dd4-dfeb-421f-bb71-87add8adadc8",
+      "name": "Build LLM Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\nconst seen = new Map();\n// HTTP Request drops binary — recover it from before the LLM call\nconst sourceItems = $('Build LLM Prompt').all();\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const fileName = item.json.fileName || 'unknown.pdf';\n  const binary = item.binary?.data || sourceItems[i]?.binary?.data;\n  const llmResponse = item.json.llmResponse || item.json.choices?.[0]?.message?.content || '';\n  let invoiceData = {};\n  let renameStatus = 'error';\n  let newName = fileName;\n  let monthYear = '';\n\n  try {\n    let jsonStr = llmResponse;\n    const codeBlockMatch = llmResponse.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (codeBlockMatch) jsonStr = codeBlockMatch[1];\n    const jsonMatch = jsonStr.match(/\\{[\\s\\S]*\\}/);\n    if (jsonMatch) invoiceData = JSON.parse(jsonMatch[0]);\n  } catch (e) {\n    invoiceData = { erro: 'JSON parse failed: ' + e.message };\n  }\n\n  if (invoiceData.erro) {\n    renameStatus = 'not_fiscal';\n  } else if (invoiceData.emitente && invoiceData.data_emissao) {\n    const parts = invoiceData.data_emissao.split('-');\n    const year = parts[0];\n    const month = parts[1];\n    monthYear = month + '-' + year;\n\n    const tipo = (invoiceData.tipo || 'FT').toUpperCase();\n    let emitente = invoiceData.emitente.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30);\n\n    const dedupKey = ((invoiceData.nif || emitente).toLowerCase()) + '-' + invoiceData.data_emissao;\n    const count = (seen.get(dedupKey) || 0) + 1;\n    seen.set(dedupKey, count);\n\n    const suffix = count > 1 ? '_' + count : '';\n    newName = month + '_' + year + '_' + tipo + '_' + emitente + suffix + '.pdf';\n    renameStatus = 'renamed';\n  } else {\n    renameStatus = 'partial';\n  }\n\n  results.push({\n    json: { originalName: fileName, fileName: newName, renameStatus, monthYear, invoiceData, folderId: $('Create folder').first().json.id },\n    binary: binary ? { data: binary } : undefined\n  });\n}\nreturn results;"
+      },
+      "id": "7c414e8c-f5a3-4e5d-81b7-6a1cb7db7701",
+      "name": "Parse & Rename",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ $json.fileName }}",
+        "driveId": {
+          "__rl": true,
+          "value": "=My Drive",
+          "mode": "id"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $json.folderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "1fe740ef-088f-435d-8e8c-b8978be3d3f9",
+      "name": "Upload Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1536,
+        640
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const binary = item.binary?.data;\n  const fileName = item.json.fileName || '';\n  const folderId = item.json.folderId || '';\n  \n  if (!binary) {\n    results.push({ json: { fileName, folderId, gdriveStatus: 'skipped' } });\n    continue;\n  }\n  results.push({ json: { fileName, folderId, gdriveStatus: 'uploaded' }, binary: { data: binary } });\n}\nreturn results;\n"
+      },
+      "id": "84f47e63-630d-44e1-8994-8e136552d2b4",
+      "name": "Pass Binary Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const API_BASE = 'https://api.octacode.pt';\nconst COMPANY = 'RAMONCARLOS';\nconst DOC_TYPE = 'geraldocs';\nconst CLIENT_ID = '336';\nconst EMAIL = 'ramonp.rios@gmail.com';\nconst PASSWORD='***';\nconst items = $input.all();\nconst results = [];\nlet accessToken = '';\ntry {\n  const loginResp = await fetch(API_BASE + '/login', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },\n    body: JSON.stringify({ identifier: EMAIL, password: PASSWORD })\n  });\n  const loginData = await loginResp.json();\n  accessToken = loginData.access_token || '';\n  if (!accessToken) throw new Error('No access_token');\n} catch (err) {\n  return items.map(i => ({ json: { fileName: i.json.fileName || '', folderId: i.json.folderId || '', octaStatus: 'auth_failed', octaError: err.message } }));\n}\nfor (const item of items) {\n  const fileName = item.json.fileName || 'unknown.pdf';\n  const folderId = item.json.folderId || '';\n  const binaryData = item.binary?.data;\n  if (!binaryData) {\n    results.push({ json: { fileName, folderId, octaStatus: 'skipped' } });\n    continue;\n  }\n  try {\n    const params = new URLSearchParams({ client_id: CLIENT_ID, license_code: '', company_name: COMPANY, document_type: DOC_TYPE, document_name: fileName });\n    const presignResp = await fetch(API_BASE + '/documentstorage/upload?' + params, { headers: { 'Authorization': 'Bearer ' + accessToken, 'Accept': 'application/json' } });\n    const presignData = await presignResp.json();\n    const presignedUrl = presignData.attributes;\n    if (!presignedUrl) throw new Error('No presigned URL');\n    const pdfBuffer = Buffer.from(binaryData.data, binaryData.encoding || 'base64');\n    const blob = new Blob([pdfBuffer], { type: 'application/pdf' });\n    const uploadResp = await fetch(presignedUrl, { method: 'PUT', body: blob, headers: { 'Content-Type': 'application/pdf' } });\n    results.push({ json: { fileName, folderId, octaStatus: uploadResp.ok ? 'uploaded' : 'failed', octaCode: uploadResp.status } });\n  } catch (err) {\n    results.push({ json: { fileName, folderId, octaStatus: 'error', octaError: err.message } });\n  }\n}\nreturn results;\n"
+      },
+      "id": "d282f744-797d-485d-ad8d-00500a01d26a",
+      "name": "Upload Octa Manager",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst stats = { renamed: 0, original: 0, error: 0, notFiscal: 0, partial: 0, gdriveOk: 0, octaUploaded: 0, octaFailed: 0 };\nfor (const item of items) {\n  const s = item.json.renameStatus || 'unknown';\n  if (stats[s] !== undefined) stats[s]++;\n  if (item.json.gdriveStatus === 'uploaded') stats.gdriveOk++;\n  if (item.json.octaStatus === 'uploaded') stats.octaUploaded++;\n  if (item.json.octaStatus === 'failed') stats.octaFailed++;\n}\nconst details = items.map(i => i.json.fileName + ' (' + (i.json.renameStatus || '?') + ')').join('\\n');\nconst msg = 'Invoice Rename & Upload\\n' +\n  'Renamed: ' + stats.renamed + ' | Original: ' + stats.original + ' | Errors: ' + stats.error + ' | Not fiscal: ' + stats.notFiscal + '\\n' +\n  'Google Drive: ' + stats.gdriveOk + '\\n' +\n  'Octa Manager: ' + stats.octaUploaded + ' uploaded, ' + stats.octaFailed + ' failed\\n\\n' + details;\nreturn [{ json: { message: msg, stats, webhook_secret: 'n8n-webhook-secret-2024', webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete' } }];\n"
+      },
+      "id": "6a7bdf12-5e4a-405d-837d-fa43f172e22e",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "D1X5OyGlkuo7UwdR"
+        },
+        "workflowInputs": "{{ JSON.stringify({ message: \"Notificar o chefe que as faturas foram renomeadas e enviadas.\", webhook_secret: \"n8n-webhook-secret-2024\", webhook_url: \"http://192.168.50.11:8644/webhooks/n8n-complete\" }) }}",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "a7dfcd8b-e2a1-4231-a2e5-44eb90242f4e",
+      "name": "Notify Hermes",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2256,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const TOOLBOX_URL = 'http://toolbox.apps.svc.cluster.local:8000/api/v1/extract/base64';\nconst FIELD_NAME = 'data';\n\nconst allItems = $input.all();\nconst results = [];\n\nfor (let i = 0; i < allItems.length; i++) {\n  try {\n    const item = allItems[i];\n    await this.helpers.assertBinaryData(i, FIELD_NAME);\n    const buffer = await this.helpers.getBinaryDataBuffer(i, FIELD_NAME);\n\n    const binary = item.binary?.[FIELD_NAME];\n    const fileName = binary?.fileName || 'invoice.pdf';\n    const mimeType = binary?.mimeType || 'application/pdf';\n\n    const response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: TOOLBOX_URL,\n      headers: { 'Content-Type': 'application/json' },\n      body: {\n        fileName,\n        mimeType,\n        data: buffer.toString('base64'),\n      },\n      returnFullResponse: true,\n      ignoreHttpStatusErrors: true,\n      timeout: 60000,\n    });\n\n    const status = response?.statusCode ?? 0;\n    const payload = response?.body ?? null;\n    if (status < 200 || status >= 300) {\n      throw new Error(\n        'Toolbox /extract/base64 returned ' + status + ': ' + (typeof payload === 'string' ? payload : JSON.stringify(payload))\n      );\n    }\n\n    const jsonOut = typeof payload === 'object' && payload !== null\n      ? { fileName, mimeType, ...payload }\n      : { fileName, mimeType, _raw: payload };\n\n    results.push({ json: jsonOut, binary: item.binary });\n  } catch (err) {\n    results.push({\n      json: { fileName: (allItems[i].binary?.[FIELD_NAME]?.fileName || '?'), extractError: err.message },\n      pairedItem: { item: i },\n    });\n  }\n}\n\nreturn results;\n"
+      },
+      "id": "extract-pdf-text",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ \n  {\n      \"model\": \"MiniMax-M2.5\",\n      \"messages\": [\n          {\n              \"role\": \"user\",\n              \"content\": $json.prompt\n          }\n      ],\n      \"temperature\": 0.1,\n      \"max_tokens\": 10000\n  }\n }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "6a5acfef-a60b-4398-8967-53651336e107",
+      "name": "Analyze Invoice (LLM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        688,
+        400
+      ],
+      "retryOnFail": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "wXO4qmCuKINk321e",
+          "name": "LiteLLM KEY"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "simple": false,
+        "filters": {
+          "q": "=has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:noreply@grupoyour.com OR from:noreply@weoinvoice.com OR from:noreply@factura.grenke.pt OR from:payments-noreply@google.com OR from:noreply@documentos.meoempresas.pt OR from:geral@alcocheteup.pt OR from:no_reply@mun-montijo.pt OR from:extractoelectronico@extracto.viaverde.pt OR \nfrom:faturacao.clientes@prio.pt OR \nfrom:no-reply@bbvacf.pt)"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "767cfb27-4631-4835-9ee8-2d4f79b72622",
+      "name": "Emails com Faturas Empresa",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -880,
+        400
+      ],
+      "webhookId": "a6ff4521-30b9-4daa-a1b4-718a13b994f0",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "c1WKHJm3FAubKV8P",
+          "name": "Gmail Empresas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "simple": false,
+        "filters": {
+          "q": "=has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:loja@egitana.pt OR from:alertas.empresas@millenniumbcp.pt)"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "1848b707-145e-4e99-8a85-ddf0d3ca468a",
+      "name": "Emails com Fatura Pessoal",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -880,
+        592
+      ],
+      "webhookId": "96a17860-9052-47c5-a5c2-29d9272cd4fb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.personalDoc }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ff607a03-3417-44d5-960a-15e26600946e",
+      "name": "Is Personal Doc?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nreturn items.map(item => {\n  const fileName = item.json.fileName || '';\n\n  // Extract monthYear from NL filenames: NL YYYYMMDDHHMMSS.pdf\n  let monthYear = '';\n  const nlMatch = fileName.match(/^NL\\s+(\\d{4})(\\d{2})\\d+\\.pdf$/i);\n  if (nlMatch) {\n    monthYear = nlMatch[2] + '-' + nlMatch[1]; // MM-YYYY\n  } else {\n    // EXTRATO COMBINADO or other — use previous month (statements are for prior month)\n    const d = new Date();\n    d.setMonth(d.getMonth() - 1);\n    const mm = String(d.getMonth() + 1).padStart(2, '0');\n    const yyyy = String(d.getFullYear());\n    monthYear = mm + '-' + yyyy;\n  }\n\n  return {\n    json: {\n      folderId: $('Create folder').first().json.id,\n      originalName: fileName,\n      fileName,\n      renameStatus: 'original',\n      monthYear,\n      invoiceData: {},\n    },\n    binary: item.binary,\n  };\n});"
+      },
+      "id": "5bcc987c-1218-4784-9ff8-979a7950f454",
+      "name": "Prepare Personal Upload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        592
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "42136574-4da2-4ff2-ae68-97b8539d6382",
+      "name": "Join Upload Paths",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1136,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ String(new Date().getMonth() + 1).padStart(2, '0') + '-' + new Date().getFullYear() }}\n",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -992,
+        48
+      ],
+      "id": "4195ce41-a721-470d-b10b-bf0b189ae280",
+      "name": "Create folder",
+      "executeOnce": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-06-04T23:16:33.012Z",
+      "createdAt": "2026-06-04T23:16:33.012Z",
+      "role": "workflow:owner",
+      "workflowId": "VfdNxA8c7CgGr5q7",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-06-05T21:56:52.838Z",
+  "versionId": "b82f63b0-3b91-4b51-b532-b0d912925f39"
+}
