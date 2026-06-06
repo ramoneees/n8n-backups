@@ -90,6 +90,17 @@
           }
         ]
       ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "createdAt": "2026-03-28T19:12:04.411Z",
@@ -341,6 +352,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-05-11T14:06:23.411Z",
-  "versionId": "6360bf9b-bad0-44a6-bf62-b750cf723ea6"
+  "updatedAt": "2026-06-04T21:41:20.823Z",
+  "versionId": "a4e695ca-08cc-4385-9900-dfefc69a9a17"
 }
