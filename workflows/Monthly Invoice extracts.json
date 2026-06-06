@@ -1,324 +1,11 @@
 {
-  "active": true,
-  "activeVersion": {
-    "updatedAt": "2026-04-20T21:37:47.555Z",
-    "createdAt": "2026-04-20T21:37:12.907Z",
-    "versionId": "21ea8336-3fe0-4ea5-9473-b928bf06e6ce",
-    "workflowId": "SisPeH2PERe7NLjv",
-    "nodes": [
-      {
-        "parameters": {
-          "rule": {
-            "interval": [
-              {
-                "field": "months",
-                "triggerAtDayOfMonth": 10,
-                "triggerAtHour": 10
-              }
-            ]
-          }
-        },
-        "id": "3203ecc2-3df4-4c72-9c0c-2cc10558af0a",
-        "name": "Schedule Trigger",
-        "type": "n8n-nodes-base.scheduleTrigger",
-        "typeVersion": 1.3,
-        "position": [
-          -656,
-          16
-        ]
-      },
-      {
-        "parameters": {
-          "jsCode": "const rawDate = $json.internalDate || $json.date || $json.headers?.date || null; let date; if (rawDate && !isNaN(rawDate)) { date = new Date(Number(rawDate)); } else if (rawDate) { date = new Date(rawDate); } else { date = new Date(); } if (isNaN(date.getTime())) date = new Date(); const mes = String(date.getMonth() + 1).padStart(2, \"0\"); const ano = date.getFullYear(); const mesAno = mes + \"-\" + ano; return [{ json: { ...$json, mesAno }, binary: $binary }];"
-        },
-        "id": "f8f51d99-3fc2-43cb-9853-d49562bfaee9",
-        "name": "Extract Month-Year",
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [
-          -208,
-          96
-        ]
-      },
-      {
-        "parameters": {
-          "resource": "folder",
-          "name": "={{ $json.mesAno }}",
-          "driveId": {
-            "__rl": true,
-            "mode": "list",
-            "value": "My Drive"
-          },
-          "folderId": {
-            "__rl": true,
-            "value": "1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30",
-            "mode": "list"
-          },
-          "options": {}
-        },
-        "id": "71518105-ce5b-4a91-a83f-81c1b7fe67fb",
-        "name": "Create folder1",
-        "type": "n8n-nodes-base.googleDrive",
-        "typeVersion": 3,
-        "position": [
-          0,
-          0
-        ],
-        "credentials": {
-          "googleDriveOAuth2Api": {
-            "id": "lOUQgEfyXT0EShei",
-            "name": "Google Drive Empresa"
-          }
-        }
-      },
-      {
-        "parameters": {
-          "numberInputs": 3
-        },
-        "id": "8f9e326b-b320-49b6-be16-75013dab8a30",
-        "name": "Merge",
-        "type": "n8n-nodes-base.merge",
-        "typeVersion": 3.2,
-        "position": [
-          32,
-          256
-        ]
-      },
-      {
-        "parameters": {
-          "operation": "getAll",
-          "simple": false,
-          "filters": {
-            "q": "has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:noreply@grupoyour.com OR from:noreply@weoinvoice.com OR from:noreply@factura.grenke.pt OR from:payments-noreply@google.com OR from:noreply@documentos.meoempresas.pt OR from:geral@alcocheteup.pt OR from:no_reply@mun-montijo.pt OR from:extractoelectronico@extracto.viaverde.pt OR from:apoiocliente@prio.pt OR from:no-reply@bbvacf.pt)"
-          },
-          "options": {
-            "downloadAttachments": true
-          }
-        },
-        "id": "5910c064-d2e4-4a78-8eac-e14c4da2264d",
-        "name": "Get many messages",
-        "type": "n8n-nodes-base.gmail",
-        "typeVersion": 2.2,
-        "position": [
-          -336,
-          432
-        ],
-        "webhookId": "db811c2f-8c10-4dc9-9db6-b2110e5398f9",
-        "credentials": {
-          "gmailOAuth2": {
-            "id": "c1WKHJm3FAubKV8P",
-            "name": "Gmail Empresas"
-          }
-        }
-      },
-      {
-        "parameters": {
-          "operation": "getAll",
-          "simple": false,
-          "filters": {
-            "q": "has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:loja@egitana.pt OR from:alertas.empresas@millenniumbcp.pt)"
-          },
-          "options": {
-            "downloadAttachments": true
-          }
-        },
-        "id": "55167f4e-0e7e-44af-a9c3-e30701765f04",
-        "name": "Get many messages1",
-        "type": "n8n-nodes-base.gmail",
-        "typeVersion": 2.2,
-        "position": [
-          -304,
-          256
-        ],
-        "webhookId": "ec6b89c0-3b7c-4c51-b9b7-51f965743036",
-        "credentials": {
-          "gmailOAuth2": {
-            "id": "IZ5cS1EUXpPOEEPu",
-            "name": "Gmail Pessoal"
-          }
-        }
-      },
-      {
-        "parameters": {
-          "jsCode": "let items = $input.all(); let results = []; const EXCLUDE_PREFIXES = [/^Detalhe_/i, /^News_/i]; const seenFiles = new Set(); for (const item of items) { const rawDate = item.json.internalDate || item.json.date || item.json.headers?.date || null; let date; if (rawDate && !isNaN(rawDate)) date = new Date(Number(rawDate)); else if (rawDate) date = new Date(rawDate); else date = new Date(); if (isNaN(date.getTime())) date = new Date(); const month = String(date.getMonth() + 1).padStart(2, \"0\"); const year = date.getFullYear(); const monthYear = month + \"-\" + year; for (const key of Object.keys(item.binary || {})) { const bin = item.binary[key]; const fileName = (bin.fileName || \"\").trim(); const fileNameLc = fileName.toLowerCase(); const isPdf = (bin.mimeType && bin.mimeType.toLowerCase().includes(\"pdf\")) || fileNameLc.endsWith(\".pdf\"); if (!isPdf) continue; if (EXCLUDE_PREFIXES.some((re) => re.test(fileName))) continue; const uniqueKey = monthYear + \"-\" + fileName; if (seenFiles.has(uniqueKey)) continue; seenFiles.add(uniqueKey); results.push({ json: { monthYear, fileName: bin.fileName, folderId: $input.first().json.id }, binary: { data: bin } }); } } return results;"
-        },
-        "id": "0e8606ef-0aef-40f9-b8fc-ba93b49138ee",
-        "name": "Filter and Check Duplicates",
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [
-          368,
-          208
-        ]
-      },
-      {
-        "parameters": {
-          "name": "={{ $json.fileName }}",
-          "driveId": {
-            "__rl": true,
-            "value": "My Drive",
-            "mode": "list"
-          },
-          "folderId": {
-            "__rl": true,
-            "value": "={{ $json.folderId }}",
-            "mode": "id"
-          },
-          "options": {}
-        },
-        "id": "e6f0a8c9-520d-46e2-98c8-c12e1076f299",
-        "name": "Upload files to google drive",
-        "type": "n8n-nodes-base.googleDrive",
-        "typeVersion": 3,
-        "position": [
-          736,
-          192
-        ],
-        "credentials": {
-          "googleDriveOAuth2Api": {
-            "id": "lOUQgEfyXT0EShei",
-            "name": "Google Drive Empresa"
-          }
-        }
-      },
-      {
-        "parameters": {
-          "chatId": "8257687396",
-          "text": "=?Faturas processadas! {{.length || 0}} arquivo(s) enviado(s) para o GDrive.",
-          "additionalFields": {}
-        },
-        "id": "8015857c-6659-49f7-b940-14abf26c178d",
-        "name": "Notify Success",
-        "type": "n8n-nodes-base.telegram",
-        "typeVersion": 1.2,
-        "position": [
-          960,
-          192
-        ],
-        "webhookId": "c12ce0da-8c43-476c-963a-96d4caa99b0f",
-        "credentials": {
-          "telegramApi": {
-            "id": "Gw7ZSKH1QvpRHnAD",
-            "name": "Telegram account"
-          }
-        }
-      }
-    ],
-    "connections": {
-      "Schedule Trigger": {
-        "main": [
-          [
-            {
-              "node": "Extract Month-Year",
-              "type": "main",
-              "index": 0
-            },
-            {
-              "node": "Get many messages",
-              "type": "main",
-              "index": 0
-            },
-            {
-              "node": "Get many messages1",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Extract Month-Year": {
-        "main": [
-          [
-            {
-              "node": "Create folder1",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Create folder1": {
-        "main": [
-          [
-            {
-              "node": "Merge",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Merge": {
-        "main": [
-          [
-            {
-              "node": "Filter and Check Duplicates",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Get many messages": {
-        "main": [
-          [
-            {
-              "node": "Merge",
-              "type": "main",
-              "index": 1
-            }
-          ]
-        ]
-      },
-      "Get many messages1": {
-        "main": [
-          [
-            {
-              "node": "Merge",
-              "type": "main",
-              "index": 2
-            }
-          ]
-        ]
-      },
-      "Filter and Check Duplicates": {
-        "main": [
-          [
-            {
-              "node": "Upload files to google drive",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Upload files to google drive": {
-        "main": [
-          [
-            {
-              "node": "Notify Success",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      }
-    },
-    "authors": "Ramon ramon@pereirariosoftware.com",
-    "name": "Version 21ea8336",
-    "description": "",
-    "autosaved": true
-  },
-  "activeVersionId": "21ea8336-3fe0-4ea5-9473-b928bf06e6ce",
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
   "connections": {
     "Schedule Trigger": {
       "main": [
         [
-          {
-            "node": "Extract Month-Year",
-            "type": "main",
-            "index": 0
-          },
           {
             "node": "Get many messages",
             "type": "main",
@@ -332,33 +19,16 @@
         ]
       ]
     },
-    "Extract Month-Year": {
-      "main": [
-        [
-          {
-            "node": "Create folder1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create folder1": {
-      "main": [
-        [
-          {
-            "node": "Merge",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Merge": {
       "main": [
         [
           {
             "node": "Filter and Check Duplicates",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Extract MonthYears",
             "type": "main",
             "index": 0
           }
@@ -400,7 +70,46 @@
     },
     "Upload files to google drive": {
       "main": [
-        []
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Notify Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract MonthYears": {
+      "main": [
+        [
+          {
+            "node": "Create Month Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Month Folder": {
+      "main": [
+        [
+          {
+            "node": "Filter and Check Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -409,7 +118,8 @@
   "isArchived": false,
   "meta": {
     "aiBuilderAssisted": true,
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": true,
+    "builderVariant": "mcp"
   },
   "name": "Monthly Invoice extracts",
   "nodes": [
@@ -430,53 +140,9 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.3,
       "position": [
-        -656,
-        16
+        -896,
+        208
       ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const rawDate = $json.internalDate || $json.date || $json.headers?.date || null; let date; if (rawDate && !isNaN(rawDate)) { date = new Date(Number(rawDate)); } else if (rawDate) { date = new Date(rawDate); } else { date = new Date(); } if (isNaN(date.getTime())) date = new Date(); const mes = String(date.getMonth() + 1).padStart(2, \"0\"); const ano = date.getFullYear(); const mesAno = mes + \"-\" + ano; return [{ json: { ...$json, mesAno }, binary: $binary }];"
-      },
-      "id": "f8f51d99-3fc2-43cb-9853-d49562bfaee9",
-      "name": "Extract Month-Year",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -208,
-        96
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "folder",
-        "name": "={{ $json.mesAno }}",
-        "driveId": {
-          "__rl": true,
-          "mode": "list",
-          "value": "My Drive"
-        },
-        "folderId": {
-          "__rl": true,
-          "value": "1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30",
-          "mode": "list"
-        },
-        "options": {}
-      },
-      "id": "71518105-ce5b-4a91-a83f-81c1b7fe67fb",
-      "name": "Create folder1",
-      "type": "n8n-nodes-base.googleDrive",
-      "typeVersion": 3,
-      "position": [
-        0,
-        0
-      ],
-      "credentials": {
-        "googleDriveOAuth2Api": {
-          "id": "lOUQgEfyXT0EShei",
-          "name": "Google Drive Empresa"
-        }
-      }
     },
     {
       "parameters": {
@@ -487,8 +153,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        32,
-        256
+        -496,
+        400
       ]
     },
     {
@@ -507,8 +173,8 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        -336,
-        432
+        -704,
+        512
       ],
       "webhookId": "db811c2f-8c10-4dc9-9db6-b2110e5398f9",
       "credentials": {
@@ -534,8 +200,8 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        -304,
-        256
+        -704,
+        704
       ],
       "webhookId": "ec6b89c0-3b7c-4c51-b9b7-51f965743036",
       "credentials": {
@@ -547,30 +213,26 @@
     },
     {
       "parameters": {
-        "jsCode": "let items = $input.all(); let results = []; const EXCLUDE_PREFIXES = [/^Detalhe_/i, /^News_/i]; const seenFiles = new Set(); for (const item of items) { const rawDate = item.json.internalDate || item.json.date || item.json.headers?.date || null; let date; if (rawDate && !isNaN(rawDate)) date = new Date(Number(rawDate)); else if (rawDate) date = new Date(rawDate); else date = new Date(); if (isNaN(date.getTime())) date = new Date(); const month = String(date.getMonth() + 1).padStart(2, \"0\"); const year = date.getFullYear(); const monthYear = month + \"-\" + year; for (const key of Object.keys(item.binary || {})) { const bin = item.binary[key]; const fileName = (bin.fileName || \"\").trim(); const fileNameLc = fileName.toLowerCase(); const isPdf = (bin.mimeType && bin.mimeType.toLowerCase().includes(\"pdf\")) || fileNameLc.endsWith(\".pdf\"); if (!isPdf) continue; if (EXCLUDE_PREFIXES.some((re) => re.test(fileName))) continue; const uniqueKey = monthYear + \"-\" + fileName; if (seenFiles.has(uniqueKey)) continue; seenFiles.add(uniqueKey); results.push({ json: { monthYear, fileName: bin.fileName, folderId: $input.first().json.id }, binary: { data: bin } }); } } return results;"
+        "jsCode": "let items = $input.all(); let results = [];\nconst EXCLUDE_PREFIXES = [/^Detalhe_/i, /^News_/i];\nconst seenMessages = new Set();\nconst BASE_FOLDER_ID = '1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30';\n\n// Build folder ID mapping from Create Month Folder output\n// Items from Create Month Folder have monthYear and id (the created folder's ID)\n// Items from Merge have email data with binary attachments\nconst folderIds = {};\nconst emailItems = [];\n\nfor (const item of items) {\n  if (item.json.monthYear && item.json.id && !item.json.internalDate) {\n    // This is a folder creation response\n    folderIds[item.json.monthYear] = item.json.id;\n  } else if (item.json.internalDate || item.json.id) {\n    // This is email data\n    emailItems.push(item);\n  }\n}\n\n// Process email items\nseenMessages.clear();\nfor (const item of emailItems) {\n  const rawDate = item.json.internalDate || item.json.date || item.json.headers?.date || null;\n  if (!rawDate && !item.json.id) continue;\n  \n  let date;\n  if (rawDate && !isNaN(rawDate)) date = new Date(Number(rawDate));\n  else if (rawDate) date = new Date(rawDate);\n  else date = new Date();\n  if (isNaN(date.getTime())) date = new Date();\n  \n  const month = String(date.getMonth() + 1).padStart(2, '0');\n  const year = date.getFullYear();\n  const monthYear = month + '-' + year;\n  \n  const msgId = item.json.id || item.json.messageId || JSON.stringify(item.json);\n  if (seenMessages.has(msgId)) continue;\n  seenMessages.add(msgId);\n  \n  if (item.binary) {\n    for (const key of Object.keys(item.binary)) {\n      const bin = item.binary[key];\n      const fileName = (bin.fileName || '').trim();\n      const fileNameLc = fileName.toLowerCase();\n      const isPdf = (bin.mimeType && bin.mimeType.toLowerCase().includes('pdf')) || fileNameLc.endsWith('.pdf');\n      if (!isPdf) continue;\n      if (EXCLUDE_PREFIXES.some((re) => re.test(fileName))) continue;\n      \n      const folderId = folderIds[monthYear] || BASE_FOLDER_ID;\n      results.push({ json: { monthYear, fileName, folderId }, binary: { data: bin } });\n    }\n  }\n}\nreturn results;"
       },
       "id": "0e8606ef-0aef-40f9-b8fc-ba93b49138ee",
       "name": "Filter and Check Duplicates",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        368,
-        208
+        -300,
+        300
       ]
     },
     {
       "parameters": {
-        "name": "={{ $json.fileName }}",
-        "driveId": {
-          "__rl": true,
-          "value": "My Drive",
-          "mode": "list"
-        },
         "folderId": {
           "__rl": true,
-          "value": "={{ $json.folderId }}",
-          "mode": "id"
+          "mode": "id",
+          "value": "={{ $json.folderId }}"
         },
+        "name": "={{ $json.fileName }}",
+        "operation": "upload",
         "options": {}
       },
       "id": "e6f0a8c9-520d-46e2-98c8-c12e1076f299",
@@ -578,9 +240,86 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        736,
-        192
+        0,
+        300
       ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputData": {
+          "message": "Notificar o chefe que as faturas mensais foram processadas com sucesso e estão prontas para upload.",
+          "webhook_secret": "n8n-webhook-secret-2024",
+          "webhook_url": "http://192.168.50.11:8644/webhooks/n8n-complete"
+        },
+        "options": {},
+        "runInline": true,
+        "workflowId": "D1X5OyGlkuo7UwdR"
+      },
+      "id": "d53d2b5e-b005-4e4a-ac1e-59e3fb3d5ee4",
+      "name": "Notify Hermes",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate results for notification\nconst items = $input.all();\nconst folderCounts = {};\nlet totalFiles = 0;\n\nfor (const item of items) {\n  const folder = item.json.folderId || 'unknown';\n  if (!folderCounts[folder]) folderCounts[folder] = 0;\n  folderCounts[folder]++;\n  totalFiles++;\n}\n\nconst folders = Object.keys(folderCounts).join(', ');\nconst msg = `Monthly Invoice extracts completed. Total files: ${totalFiles}. Folders: ${folders}`;\n\nreturn [{ json: { \n  message: msg, \n  totalFiles, \n  folders: Object.keys(folderCounts).join(', '),\n  webhook_secret: 'n8n-webhook-secret-2024',\n  webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete'\n} }];"
+      },
+      "id": "f3ebbe60-0508-49f8-97b9-abdf5f484825",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        300
+      ]
+    },
+    {
+      "id": "7f5bf1e7-05f4-4643-9780-548beb88c5d1",
+      "name": "Extract MonthYears",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Extract unique month-years for folder creation\nconst emails = $input.all();\nconst monthYears = new Set();\n\nfor (const email of emails) {\n  const rawDate = email.json.internalDate || email.json.date || email.json.headers?.date || null;\n  let date;\n  if (rawDate && !isNaN(rawDate)) date = new Date(Number(rawDate));\n  else if (rawDate) date = new Date(rawDate);\n  else date = new Date();\n  if (isNaN(date.getTime())) date = new Date();\n  const month = String(date.getMonth() + 1).padStart(2, '0');\n  const year = date.getFullYear();\n  monthYears.add(month + '-' + year);\n}\n\n// Output items for folder creation\nreturn Array.from(monthYears).map(my => ({ json: { monthYear: my } }));"
+      }
+    },
+    {
+      "id": "e2a3bd3e-bbcc-4f87-8391-584845e04762",
+      "name": "Create Month Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -100,
+        100
+      ],
+      "parameters": {
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30"
+        },
+        "name": "={{ $json.monthYear }}",
+        "options": {},
+        "resource": "folder"
+      },
       "credentials": {
         "googleDriveOAuth2Api": {
           "id": "lOUQgEfyXT0EShei",
@@ -614,6 +353,6 @@
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-05-11T08:46:34.935Z",
-  "versionId": "cc378203-1e82-4215-987b-2ae99456e35e"
+  "updatedAt": "2026-06-04T19:34:52.468Z",
+  "versionId": "b95f2d4e-efb7-4af5-8677-d53e9b1db0a5"
 }
