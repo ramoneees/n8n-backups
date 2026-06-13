@@ -1,7 +1,110 @@
 {
-  "active": false,
-  "activeVersion": null,
-  "activeVersionId": null,
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-06-06T21:12:46.744Z",
+    "createdAt": "2026-06-06T21:11:26.120Z",
+    "versionId": "cb59121f-b58e-48da-ad22-4c97b49b53a2",
+    "workflowId": "cVoocnpEx3sBjYRC",
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "989a17e9-1e98-47e3-af27-67d7e7b1a174",
+        "name": "When Called",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.octacode.pt/login",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Accept",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Request-Client",
+                "value": "octamanager"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "email",
+                "value": "ramonp.rios@gmail.com"
+              },
+              {
+                "name": "password",
+                "value": "sadruk-vasriz-jUtfy4"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "5dfdf599-2ea5-431b-9509-4fbb76c43460",
+        "name": "Login",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          256,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const data = $input.first().json; const token = data.access_token || ''; const clientId = String(data.data?.id || '336'); return [{ json: { access_token: token, client_id: clientId } }];"
+        },
+        "id": "9dd360b6-0bb4-42a5-87ec-978e5bd73b6f",
+        "name": "Extract Token",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          512,
+          0
+        ]
+      }
+    ],
+    "connections": {
+      "When Called": {
+        "main": [
+          [
+            {
+              "node": "Login",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Login": {
+        "main": [
+          [
+            {
+              "node": "Extract Token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Ramon ramon@pereirariosoftware.com",
+    "name": "Version cb59121f",
+    "description": "",
+    "autosaved": true
+  },
+  "activeVersionId": "cb59121f-b58e-48da-ad22-4c97b49b53a2",
   "connections": {
     "When Called": {
       "main": [
@@ -36,6 +139,7 @@
   "name": "Octa Manager Auth",
   "nodes": [
     {
+      "parameters": {},
       "id": "989a17e9-1e98-47e3-af27-67d7e7b1a174",
       "name": "When Called",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
@@ -43,60 +147,70 @@
       "position": [
         0,
         0
-      ],
-      "parameters": {
-        "inputSource": "passthrough"
-      }
+      ]
     },
     {
-      "id": "5dfdf599-2ea5-431b-9509-4fbb76c43460",
-      "name": "Login",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        250,
-        0
-      ],
       "parameters": {
         "method": "POST",
         "url": "https://api.octacode.pt/login",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Request-Client",
+              "value": "octamanager"
+            }
+          ]
+        },
         "sendBody": true,
-        "contentType": "json",
         "bodyParameters": {
           "parameters": [
             {
-              "name": "identifier",
-              "value": "={{ $json.email }}"
+              "name": "email",
+              "value": "ramonp.rios@gmail.com"
             },
             {
               "name": "password",
-              "value": "={{ $json.password }}"
+              "value": "sadruk-vasriz-jUtfy4"
             }
           ]
         },
         "options": {
           "timeout": 30000
         }
-      }
+      },
+      "id": "5dfdf599-2ea5-431b-9509-4fbb76c43460",
+      "name": "Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        256,
+        0
+      ]
     },
     {
+      "parameters": {
+        "jsCode": "const data = $input.first().json; const token = data.access_token || ''; const clientId = String(data.data?.id || '336'); return [{ json: { access_token: token, client_id: clientId } }];"
+      },
       "id": "9dd360b6-0bb4-42a5-87ec-978e5bd73b6f",
       "name": "Extract Token",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        500,
+        512,
         0
-      ],
-      "parameters": {
-        "jsCode": "const data = $input.first().json; const token = data.access_token || ''; const clientId = String(data.data?.id || '336'); return [{ json: { access_token: token, client_id: clientId } }];"
-      }
+      ]
     }
   ],
-  "pinData": null,
+  "pinData": {},
   "settings": {
     "executionOrder": "v1",
-    "availableInMCP": true
+    "availableInMCP": true,
+    "binaryMode": "separate"
   },
   "shared": [
     {
@@ -110,6 +224,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-06-04T21:30:55.589Z",
-  "versionId": "6a8bbc82-14b3-44ee-94da-ead7345c4ac7"
+  "updatedAt": "2026-06-06T21:11:26.119Z",
+  "versionId": "cb59121f-b58e-48da-ad22-4c97b49b53a2"
 }
