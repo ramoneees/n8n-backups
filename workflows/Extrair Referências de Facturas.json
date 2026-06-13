@@ -124,7 +124,7 @@
         },
         "simple": false,
         "filters": {
-          "q": "has:attachment filename:pdf newer_than:30d",
+          "q": " newer_than:60d",
           "sender": "geral@alcocheteup.pt"
         },
         "options": {
@@ -294,7 +294,7 @@
     {
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "={{ { \"message\": \"Workflow concluído! Entidade: \" + ($json.invoice.entidade || \"?\") + \" | Referência: \" + ($json.invoice.referencia || \"?\") + \" | Montante: \" + ($json.invoice.montante || \"?\") } }}",
+        "jsonOutput": "={{ { \"message\": \"Workflow concluído! Avise ao chefe que ele tem esta conta para pagar Entidade: \" + ($json.invoice.entidade || \"?\") + \" | Referência: \" + ($json.invoice.referencia || \"?\") + \" | Montante: \" + ($json.invoice.montante || \"?\") } }}",
         "options": {}
       },
       "id": "8c3c2b17-b0ea-4a16-bbab-1fc114e3cbb0",
@@ -352,6 +352,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-06-04T21:41:20.823Z",
-  "versionId": "a4e695ca-08cc-4385-9900-dfefc69a9a17"
+  "updatedAt": "2026-06-06T11:49:23.786Z",
+  "versionId": "c24a108a-b915-4564-8717-4da7cfe4fee6"
 }
