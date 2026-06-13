@@ -19,17 +19,6 @@
         ]
       ]
     },
-    "Get many messages": {
-      "main": [
-        [
-          {
-            "node": "Merge",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
     "Merge": {
       "main": [
         [
@@ -46,6 +35,28 @@
         ]
       ]
     },
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get many messages1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
     "Filter and Check Duplicates": {
       "main": [
         [
@@ -58,17 +69,6 @@
       ]
     },
     "Upload files to google drive": {
-      "main": [
-        [
-          {
-            "node": "Upload to Octa Manager",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Upload to Octa Manager": {
       "main": [
         [
           {
@@ -111,37 +111,19 @@
           }
         ]
       ]
-    },
-    "Get many messages1": {
-      "main": [
-        [
-          {
-            "node": "Merge",
-            "type": "main",
-            "index": 2
-          }
-        ]
-      ]
     }
   },
-  "createdAt": "2026-06-04T21:44:31.495Z",
-  "id": "GNKbBMBMcxXS5aH0",
+  "createdAt": "2026-03-25T16:33:27.336Z",
+  "id": "SisPeH2PERe7NLjv",
   "isArchived": false,
   "meta": {
     "aiBuilderAssisted": true,
+    "templateCredsSetupCompleted": true,
     "builderVariant": "mcp"
   },
   "name": "Monthly Invoice extracts",
   "nodes": [
     {
-      "id": "3203ecc2-3df4-4c72-9c0c-2cc10558af0a",
-      "name": "Schedule Trigger",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.3,
-      "position": [
-        -896,
-        208
-      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -152,17 +134,30 @@
             }
           ]
         }
-      }
+      },
+      "id": "3203ecc2-3df4-4c72-9c0c-2cc10558af0a",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -896,
+        208
+      ]
     },
     {
-      "id": "5910c064-d2e4-4a78-8eac-e14c4da2264d",
-      "name": "Get many messages",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
+      "parameters": {
+        "numberInputs": 3
+      },
+      "id": "8f9e326b-b320-49b6-be16-75013dab8a30",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
       "position": [
-        -704,
-        512
-      ],
+        -496,
+        400
+      ]
+    },
+    {
       "parameters": {
         "operation": "getAll",
         "simple": false,
@@ -173,7 +168,15 @@
           "downloadAttachments": true
         }
       },
-      "webhookId": "dc34232e-d19b-4014-bcb1-3be3688afbd6",
+      "id": "5910c064-d2e4-4a78-8eac-e14c4da2264d",
+      "name": "Get many messages",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -704,
+        512
+      ],
+      "webhookId": "db811c2f-8c10-4dc9-9db6-b2110e5398f9",
       "credentials": {
         "gmailOAuth2": {
           "id": "c1WKHJm3FAubKV8P",
@@ -182,19 +185,36 @@
       }
     },
     {
-      "id": "8f9e326b-b320-49b6-be16-75013dab8a30",
-      "name": "Merge",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        -496,
-        400
-      ],
       "parameters": {
-        "numberInputs": 3
+        "operation": "getAll",
+        "simple": false,
+        "filters": {
+          "q": "has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:loja@egitana.pt OR from:alertas.empresas@millenniumbcp.pt)"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "55167f4e-0e7e-44af-a9c3-e30701765f04",
+      "name": "Get many messages1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -704,
+        704
+      ],
+      "webhookId": "ec6b89c0-3b7c-4c51-b9b7-51f965743036",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
       }
     },
     {
+      "parameters": {
+        "jsCode": "let items = $input.all(); let results = [];\nconst EXCLUDE_PREFIXES = [/^Detalhe_/i, /^News_/i];\nconst seenMessages = new Set();\nconst BASE_FOLDER_ID = '1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30';\n\n// Build folder ID mapping from Create Month Folder output\n// Items from Create Month Folder have monthYear and id (the created folder's ID)\n// Items from Merge have email data with binary attachments\nconst folderIds = {};\nconst emailItems = [];\n\nfor (const item of items) {\n  if (item.json.monthYear && item.json.id && !item.json.internalDate) {\n    // This is a folder creation response\n    folderIds[item.json.monthYear] = item.json.id;\n  } else if (item.json.internalDate || item.json.id) {\n    // This is email data\n    emailItems.push(item);\n  }\n}\n\n// Process email items\nseenMessages.clear();\nfor (const item of emailItems) {\n  const rawDate = item.json.internalDate || item.json.date || item.json.headers?.date || null;\n  if (!rawDate && !item.json.id) continue;\n  \n  let date;\n  if (rawDate && !isNaN(rawDate)) date = new Date(Number(rawDate));\n  else if (rawDate) date = new Date(rawDate);\n  else date = new Date();\n  if (isNaN(date.getTime())) date = new Date();\n  \n  const month = String(date.getMonth() + 1).padStart(2, '0');\n  const year = date.getFullYear();\n  const monthYear = month + '-' + year;\n  \n  const msgId = item.json.id || item.json.messageId || JSON.stringify(item.json);\n  if (seenMessages.has(msgId)) continue;\n  seenMessages.add(msgId);\n  \n  if (item.binary) {\n    for (const key of Object.keys(item.binary)) {\n      const bin = item.binary[key];\n      const fileName = (bin.fileName || '').trim();\n      const fileNameLc = fileName.toLowerCase();\n      const isPdf = (bin.mimeType && bin.mimeType.toLowerCase().includes('pdf')) || fileNameLc.endsWith('.pdf');\n      if (!isPdf) continue;\n      if (EXCLUDE_PREFIXES.some((re) => re.test(fileName))) continue;\n      \n      const folderId = folderIds[monthYear] || BASE_FOLDER_ID;\n      results.push({ json: { monthYear, fileName, folderId }, binary: { data: bin } });\n    }\n  }\n}\nreturn results;"
+      },
       "id": "0e8606ef-0aef-40f9-b8fc-ba93b49138ee",
       "name": "Filter and Check Duplicates",
       "type": "n8n-nodes-base.code",
@@ -202,20 +222,9 @@
       "position": [
         -300,
         300
-      ],
-      "parameters": {
-        "jsCode": "let items = $input.all(); let results = []; const EXCLUDE_PREFIXES = [/^Detalhe_/i, /^News_/i]; const seenMessages = new Set(); const BASE_FOLDER_ID = '1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30'; const folderIds = {}; const emailItems = []; for (const item of items) { if (item.json.monthYear && item.json.id && !item.json.internalDate) { folderIds[item.json.monthYear] = item.json.id; } else if (item.json.internalDate || item.json.id) { emailItems.push(item); } } seenMessages.clear(); for (const item of emailItems) { const rawDate = item.json.internalDate || item.json.date || item.json.headers?.date || null; if (!rawDate && !item.json.id) continue; let date; if (rawDate && !isNaN(rawDate)) date = new Date(Number(rawDate)); else if (rawDate) date = new Date(rawDate); else date = new Date(); if (isNaN(date.getTime())) date = new Date(); const month = String(date.getMonth() + 1).padStart(2, '0'); const year = date.getFullYear(); const monthYear = month + '-' + year; const msgId = item.json.id || item.json.messageId || JSON.stringify(item.json); if (seenMessages.has(msgId)) continue; seenMessages.add(msgId); if (item.binary) { for (const key of Object.keys(item.binary)) { const bin = item.binary[key]; const fileName = (bin.fileName || '').trim(); const isPdf = (bin.mimeType && bin.mimeType.toLowerCase().includes('pdf')) || fileNameLc.endsWith('.pdf'); if (!isPdf) continue; if (EXCLUDE_PREFIXES.some((re) => re.test(fileName))) continue; const folderId = folderIds[monthYear] || BASE_FOLDER_ID; results.push({ json: { monthYear, fileName, folderId }, binary: { data: bin } }); } } } return results;"
-      }
+      ]
     },
     {
-      "id": "e6f0a8c9-520d-46e2-98c8-c12e1076f299",
-      "name": "Upload files to google drive",
-      "type": "n8n-nodes-base.googleDrive",
-      "typeVersion": 3,
-      "position": [
-        0,
-        300
-      ],
       "parameters": {
         "folderId": {
           "__rl": true,
@@ -226,6 +235,14 @@
         "operation": "upload",
         "options": {}
       },
+      "id": "e6f0a8c9-520d-46e2-98c8-c12e1076f299",
+      "name": "Upload files to google drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        0,
+        300
+      ],
       "credentials": {
         "googleDriveOAuth2Api": {
           "id": "lOUQgEfyXT0EShei",
@@ -234,55 +251,40 @@
       }
     },
     {
-      "id": "37e5afbe-004f-41e3-bf0c-b9775bfdc46a",
-      "name": "Upload to Octa Manager",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        250,
-        300
-      ],
       "parameters": {
-        "jsCode": "const API_BASE = 'https://api.octacode.pt';\nconst COMPANY = 'RAMONCARLOS';\nconst DOC_TYPE = 'geraldocs';\nconst CLIENT_ID = '336';\nconst EMAIL = 'ramonp.rios@gmail.com';\nconst PASSWORD = 'CHANGE_ME_IN_N8N';\n\nconst items = $input.all();\nconst results = [];\nlet accessToken = '';\n\ntry {\n  const loginResp = await fetch(API_BASE + '/login', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },\n    body: JSON.stringify({ identifier: EMAIL, password: PASSWORD })\n  });\n  const loginData = await loginResp.json();\n  accessToken = loginData.access_token || '';\n  if (!accessToken) throw new Error('No access_token in login response');\n} catch (err) {\n  return items.map(i => ({ json: { fileName: i.json.fileName || '', folderId: i.json.folderId || '', octaStatus: 'auth_failed', octaError: err.message } }));\n}\n\nfor (const item of items) {\n  const fileName = item.json.fileName || 'unknown.pdf';\n  const folderId = item.json.folderId || '';\n  const binaryData = item.binary?.data;\n\n  if (!binaryData) {\n    results.push({ json: { fileName, folderId, octaStatus: 'skipped', octaError: 'no binary data' } });\n    continue;\n  }\n\n  try {\n    const params = new URLSearchParams({ client_id: CLIENT_ID, license_code: '', company_name: COMPANY, document_type: DOC_TYPE, document_name: fileName });\n    const presignResp = await fetch(API_BASE + '/documentstorage/upload?' + params, { headers: { 'Authorization': 'Bearer ' + accessToken, 'Accept': 'application/json' } });\n    const presignData = await presignResp.json();\n    const presignedUrl = presignData.attributes;\n    if (!presignedUrl) throw new Error('No presigned URL returned');\n    const pdfBuffer = Buffer.from(binaryData.data, binaryData.encoding || 'base64');\n    const blob = new Blob([pdfBuffer], { type: 'application/pdf' });\n    const uploadResp = await fetch(presignedUrl, { method: 'PUT', body: blob, headers: { 'Content-Type': 'application/pdf' } });\n    results.push({ json: { fileName, folderId, octaStatus: uploadResp.ok ? 'uploaded' : 'failed', octaCode: uploadResp.status } });\n  } catch (err) {\n    results.push({ json: { fileName, folderId, octaStatus: 'error', octaError: err.message } });\n  }\n}\n\nreturn results;"
-      }
+        "inputData": {
+          "message": "Notificar o chefe que as faturas mensais foram processadas com sucesso e estão prontas para upload.",
+          "webhook_secret": "n8n-webhook-secret-2024",
+          "webhook_url": "http://192.168.50.11:8644/webhooks/n8n-complete"
+        },
+        "options": {},
+        "runInline": true,
+        "workflowId": "D1X5OyGlkuo7UwdR"
+      },
+      "id": "d53d2b5e-b005-4e4a-ac1e-59e3fb3d5ee4",
+      "name": "Notify Hermes",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ]
     },
     {
-      "id": "c5cd6c6d-399f-409b-add1-cfbe037c7f82",
+      "parameters": {
+        "jsCode": "// Aggregate results for notification\nconst items = $input.all();\nconst folderCounts = {};\nlet totalFiles = 0;\n\nfor (const item of items) {\n  const folder = item.json.folderId || 'unknown';\n  if (!folderCounts[folder]) folderCounts[folder] = 0;\n  folderCounts[folder]++;\n  totalFiles++;\n}\n\nconst folders = Object.keys(folderCounts).join(', ');\nconst msg = `Monthly Invoice extracts completed. Total files: ${totalFiles}. Folders: ${folders}`;\n\nreturn [{ json: { \n  message: msg, \n  totalFiles, \n  folders: Object.keys(folderCounts).join(', '),\n  webhook_secret: 'n8n-webhook-secret-2024',\n  webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete'\n} }];"
+      },
+      "id": "f3ebbe60-0508-49f8-97b9-abdf5f484825",
       "name": "Aggregate Results",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        500,
+        300,
         300
-      ],
-      "parameters": {
-        "jsCode": "const items = $input.all(); const folderCounts = {}; let totalFiles = 0; const octaCounts = { uploaded: 0, failed: 0, error: 0, skipped: 0 }; for (const item of items) { const folder = item.json.folderId || \"unknown\"; if (!folderCounts[folder]) folderCounts[folder] = 0; folderCounts[folder]++; totalFiles++; const s = item.json.octaStatus || \"unknown\"; if (octaCounts[s] !== undefined) octaCounts[s]++; } const msg = \"Monthly Invoice extracts completed. Total: \" + totalFiles + \" files. Google Drive: \" + Object.keys(folderCounts).join(\", \") + \". Octa Manager: \" + octaCounts.uploaded + \" uploaded, \" + octaCounts.failed + \" failed.\"; return [{ json: { message: msg, totalFiles, octaUploaded: octaCounts.uploaded, webhook_secret: \"n8n-webhook-secret-2024\", webhook_url: \"http://192.168.50.11:8644/webhooks/n8n-complete\" } }];"
-      }
+      ]
     },
     {
-      "id": "a17f5221-9b85-45ff-aafa-75c4bc792b13",
-      "name": "Notify Hermes",
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.3,
-      "position": [
-        750,
-        300
-      ],
-      "parameters": {
-        "source": "database",
-        "workflowId": {
-          "__rl": true,
-          "mode": "id",
-          "value": "D1X5OyGlkuo7UwdR"
-        },
-        "workflowInputs": "={{ JSON.stringify({ message: \"Notificar o chefe que as faturas mensais foram processadas com sucesso.\", webhook_secret: \"n8n-webhook-secret-2024\", webhook_url: \"http://192.168.50.11:8644/webhooks/n8n-complete\" }) }}",
-        "options": {
-          "waitForSubWorkflow": true
-        }
-      }
-    },
-    {
-      "id": "9d690b25-85d3-4c98-942a-71393aac6383",
+      "id": "7f5bf1e7-05f4-4643-9780-548beb88c5d1",
       "name": "Extract MonthYears",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -291,11 +293,11 @@
         100
       ],
       "parameters": {
-        "jsCode": "const emails = $input.all(); const monthYears = new Set(); for (const email of emails) { const rawDate = email.json.internalDate || email.json.date || email.json.headers?.date || null; let date; if (rawDate && !isNaN(rawDate)) date = new Date(Number(rawDate)); else if (rawDate) date = new Date(rawDate); else date = new Date(); if (isNaN(date.getTime())) date = new Date(); const month = String(date.getMonth() + 1).padStart(2, '0'); const year = date.getFullYear(); monthYears.add(month + '-' + year); } return Array.from(monthYears).map(my => ({ json: { monthYear: my } }));"
+        "jsCode": "// Extract unique month-years for folder creation\nconst emails = $input.all();\nconst monthYears = new Set();\n\nfor (const email of emails) {\n  const rawDate = email.json.internalDate || email.json.date || email.json.headers?.date || null;\n  let date;\n  if (rawDate && !isNaN(rawDate)) date = new Date(Number(rawDate));\n  else if (rawDate) date = new Date(rawDate);\n  else date = new Date();\n  if (isNaN(date.getTime())) date = new Date();\n  const month = String(date.getMonth() + 1).padStart(2, '0');\n  const year = date.getFullYear();\n  monthYears.add(month + '-' + year);\n}\n\n// Output items for folder creation\nreturn Array.from(monthYears).map(my => ({ json: { monthYear: my } }));"
       }
     },
     {
-      "id": "547017e0-312e-407b-8272-2dacd37b56ec",
+      "id": "e2a3bd3e-bbcc-4f87-8391-584845e04762",
       "name": "Create Month Folder",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
@@ -315,8 +317,8 @@
           "value": "1e6LXLUDgJHVplJlh9MTSYs-GL62Ahv30"
         },
         "name": "={{ $json.monthYear }}",
-        "resource": "folder",
-        "options": {}
+        "options": {},
+        "resource": "folder"
       },
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -324,46 +326,23 @@
           "name": "Google Drive Empresa"
         }
       }
-    },
-    {
-      "id": "55167f4e-0e7e-44af-a9c3-e30701765f04",
-      "name": "Get many messages1",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [
-        -704,
-        704
-      ],
-      "parameters": {
-        "operation": "getAll",
-        "simple": false,
-        "filters": {
-          "q": "has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:loja@egitana.pt OR from:alertas.empresas@millenniumbcp.pt)"
-        },
-        "options": {
-          "downloadAttachments": true
-        }
-      },
-      "webhookId": "3339b7f3-fd9a-496d-aea2-397c8df762ee",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "c1WKHJm3FAubKV8P",
-          "name": "Gmail Empresas"
-        }
-      }
     }
   ],
-  "pinData": null,
+  "pinData": {},
   "settings": {
     "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Lisbon",
+    "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": true
   },
   "shared": [
     {
-      "updatedAt": "2026-06-04T21:44:31.495Z",
-      "createdAt": "2026-06-04T21:44:31.495Z",
+      "updatedAt": "2026-03-25T16:33:27.336Z",
+      "createdAt": "2026-03-25T16:33:27.336Z",
       "role": "workflow:owner",
-      "workflowId": "GNKbBMBMcxXS5aH0",
+      "workflowId": "SisPeH2PERe7NLjv",
       "projectId": "NIWdtECswkBCcQBM"
     }
   ],
@@ -374,6 +353,6 @@
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-06-04T21:53:24.704Z",
-  "versionId": "f0934b5b-2350-4c0c-b645-d7406640a352"
+  "updatedAt": "2026-06-04T19:34:52.468Z",
+  "versionId": "b95f2d4e-efb7-4af5-8677-d53e9b1db0a5"
 }
