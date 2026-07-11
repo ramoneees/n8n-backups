@@ -1,9 +1,9 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-06-10T09:53:16.485Z",
-    "createdAt": "2026-06-10T09:53:16.485Z",
-    "versionId": "1c54f7d2-ea68-490c-86f6-98802a3945eb",
+    "updatedAt": "2026-07-10T14:35:02.655Z",
+    "createdAt": "2026-07-10T14:35:02.655Z",
+    "versionId": "7ec4ca88-01de-4a33-b38a-0ece209fabde",
     "workflowId": "VfdNxA8c7CgGr5q7",
     "nodes": [
       {
@@ -135,7 +135,7 @@
       },
       {
         "parameters": {
-          "jsCode": "const API_BASE = 'https://api.octacode.pt';\nconst COMPANY = 'RAMONCARLOS';\nconst DOC_TYPE = 'geraldocs';\n\nconst authData = $('Octa Auth').first().json;\nconst accessToken = authData.access_token || '';\nconst CLIENT_ID = String(authData.client_id || '336');\n\nif (!accessToken) {\n  return $input.all().map(i => ({ json: { fileName: i.json.fileName || '', folderId: i.json.folderId || '', octaStatus: 'auth_failed', octaError: 'No access_token from sub-workflow' } }));\n}\n\nconst items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const fileName = item.json.fileName || 'unknown.pdf';\n  const folderId = item.json.folderId || '';\n\n  if (!item.binary?.data) {\n    results.push({ json: { fileName, folderId, octaStatus: 'skipped' } });\n    continue;\n  }\n  try {\n    const qs = 'client_id=' + encodeURIComponent(CLIENT_ID) +\n      '&license_code=' +\n      '&company_name=' + encodeURIComponent(COMPANY) +\n      '&document_type=' + encodeURIComponent(DOC_TYPE) +\n      '&document_name=' + encodeURIComponent(fileName);\n\n    const presignResp = await this.helpers.httpRequest({\n      method: 'GET',\n      url: API_BASE + '/documentstorage/upload?' + qs,\n      headers: { 'Authorization': 'Bearer ' + accessToken, 'Accept': 'application/json' },\n      returnFullResponse: true,\n      ignoreHttpStatusErrors: true,\n    });\n    const presignedUrl = presignResp.body?.attributes;\n    if (!presignedUrl) throw new Error('No presigned URL: ' + JSON.stringify(presignResp.body));\n\n    const pdfBuffer = await this.helpers.getBinaryDataBuffer(i, 'data');\n    const uploadResp = await this.helpers.httpRequest({\n      method: 'PUT',\n      url: presignedUrl,\n      body: pdfBuffer,\n      headers: { 'Content-Type': 'application/pdf' },\n      returnFullResponse: true,\n      ignoreHttpStatusErrors: true,\n    });\n    results.push({ json: { fileName, folderId, octaStatus: uploadResp.statusCode < 300 ? 'uploaded' : 'failed', octaCode: uploadResp.statusCode } });\n  } catch (err) {\n    results.push({ json: { fileName, folderId, octaStatus: 'error', octaError: err.message } });\n  }\n}\nreturn results;\n"
+          "jsCode": "const API_BASE = 'https://api.octacode.pt';\nconst COMPANY = 'RAMONCARLOS';\nconst DOC_TYPE = 'geraldocs';\n\nconst authData = $('Octa Auth').first().json;\nconst accessToken = authData.access_token || '';\nconst CLIENT_ID = String(authData.client_id || '336');\n\nif (!accessToken) {\n  return $input.all().map(i => ({ json: { fileName: i.json.fileName || '', folderId: i.json.folderId || '', octaStatus: 'auth_failed', octaError: 'No access_token from sub-workflow' } }));\n}\n\nconst items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const fileName = item.json.fileName || 'unknown.pdf';\n  const folderId = item.json.folderId || '';\n\n  if (!item.binary?.data) {\n    results.push({ json: { fileName, folderId, octaStatus: 'skipped' } });\n    continue;\n  }\n  try {\n    const qs = 'client_id=' + encodeURIComponent(CLIENT_ID) +\n      '&license_code=' +\n      '&company_name=' + encodeURIComponent(COMPANY) +\n      '&document_type=' + encodeURIComponent(DOC_TYPE) +\n      '&document_name=' + encodeURIComponent(fileName);\n\n    const presignResp = await this.helpers.httpRequest({\n      method: 'GET',\n      url: API_BASE + '/documentstorage/upload?' + qs,\n      headers: { 'Authorization': 'Bearer ' + accessToken, 'Accept': 'application/json' },\n      returnFullResponse: true,\n      ignoreHttpStatusErrors: true,\n    });\n    const presignedUrl = presignResp.body?.attributes;\n    if (!presignedUrl) throw new Error('No presigned URL: ' + JSON.stringify(presignResp.body));\n\n    results.push({\n      json: { fileName, folderId, presignedUrl, octaStatus: 'presigned' },\n      binary: { data: item.binary.data },\n    });\n  } catch (err) {\n    results.push({ json: { fileName, folderId, octaStatus: 'error', octaError: err.message } });\n  }\n}\nreturn results;\n"
         },
         "id": "d282f744-797d-485d-ad8d-00500a01d26a",
         "name": "Upload Octa Manager",
@@ -704,6 +704,45 @@
         "parameters": {
           "jsCode": "const uploadItems = $input.all();\n\nlet existingItems = [];\ntry {\n  existingItems = $('List files in folder').all();\n} catch (e) {\n  existingItems = [];\n}\n\nconst existingNames = new Set(\n  existingItems.map(item => (item.json.name || '').toLowerCase())\n);\n\nconst newItems = [];\nlet skippedCount = 0;\n\nfor (const item of uploadItems) {\n  const fileName = (item.json.fileName || '').toLowerCase();\n  if (existingNames.has(fileName)) {\n    skippedCount++;\n  } else {\n    newItems.push(item);\n  }\n}\n\nif (newItems.length > 0) {\n  newItems[0].json._dedupSkippedCount = skippedCount;\n}\n\nreturn newItems;"
         }
+      },
+      {
+        "id": "733ad440-af55-460e-9994-a05eeb42c981",
+        "name": "PUT to Octa S3",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1808,
+          620
+        ],
+        "parameters": {
+          "contentType": "binaryData",
+          "inputDataFieldName": "data",
+          "method": "PUT",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "text"
+              }
+            }
+          },
+          "sendBody": true,
+          "url": "={{ $json.presignedUrl || 'http://127.0.0.1:1/skip-octa' }}"
+        }
+      },
+      {
+        "id": "8996965c-b6e4-4d55-abbd-14e97c810393",
+        "name": "Mark Octa Upload",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2008,
+          620
+        ],
+        "parameters": {
+          "jsCode": "// Input = PUT to Octa S3 responses (full response, neverError=true so failures pass through).\n// Upload Octa Manager aligns 1:1 by index with HTTP node output (If node was removed).\n// Items without presignedUrl upstream surface here as HTTP errors (empty/invalid URL) -> 'failed'.\nconst src = $('Upload Octa Manager').all();\nconst out = [];\nconst inputs = $input.all();\nfor (let i = 0; i < inputs.length; i++) {\n  const resp = inputs[i].json;\n  const up = src[i]?.json || {};\n  // Preserve upstream skip/error/auth_failed status if present\n  let status;\n  if (up.octaStatus === 'skipped' || up.octaStatus === 'auth_failed') {\n    status = up.octaStatus;\n  } else {\n    const code = resp?.statusCode;\n    status = (code && code >= 200 && code < 300) ? 'uploaded' : 'failed';\n  }\n  out.push({\n    json: {\n      fileName: up.fileName || 'unknown',\n      folderId: up.folderId || '',\n      octaStatus: status,\n      octaCode: resp?.statusCode,\n      octaError: status === 'failed' ? String(resp?.body || resp?.message || '').slice(0, 200) : undefined\n    }\n  });\n}\nreturn out;"
+        }
       }
     ],
     "connections": {
@@ -766,17 +805,6 @@
           [
             {
               "node": "Upload Octa Manager",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Upload Octa Manager": {
-        "main": [
-          [
-            {
-              "node": "Aggregate Results",
               "type": "main",
               "index": 0
             }
@@ -954,6 +982,39 @@
             }
           ]
         ]
+      },
+      "PUT to Octa S3": {
+        "main": [
+          [
+            {
+              "node": "Mark Octa Upload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Mark Octa Upload": {
+        "main": [
+          [
+            {
+              "node": "Aggregate Results",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upload Octa Manager": {
+        "main": [
+          [
+            {
+              "node": "PUT to Octa S3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "nodeGroups": [],
@@ -962,7 +1023,7 @@
     "description": null,
     "autosaved": false
   },
-  "activeVersionId": "1c54f7d2-ea68-490c-86f6-98802a3945eb",
+  "activeVersionId": "7ec4ca88-01de-4a33-b38a-0ece209fabde",
   "connections": {
     "Schedule Trigger": {
       "main": [
@@ -1023,17 +1084,6 @@
         [
           {
             "node": "Upload Octa Manager",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Upload Octa Manager": {
-      "main": [
-        [
-          {
-            "node": "Aggregate Results",
             "type": "main",
             "index": 0
           }
@@ -1211,6 +1261,39 @@
           }
         ]
       ]
+    },
+    "PUT to Octa S3": {
+      "main": [
+        [
+          {
+            "node": "Mark Octa Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Octa Upload": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Octa Manager": {
+      "main": [
+        [
+          {
+            "node": "PUT to Octa S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "createdAt": "2026-06-04T23:16:33.012Z",
@@ -1352,7 +1435,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const API_BASE = 'https://api.octacode.pt';\nconst COMPANY = 'RAMONCARLOS';\nconst DOC_TYPE = 'geraldocs';\n\nconst authData = $('Octa Auth').first().json;\nconst accessToken = authData.access_token || '';\nconst CLIENT_ID = String(authData.client_id || '336');\n\nif (!accessToken) {\n  return $input.all().map(i => ({ json: { fileName: i.json.fileName || '', folderId: i.json.folderId || '', octaStatus: 'auth_failed', octaError: 'No access_token from sub-workflow' } }));\n}\n\nconst items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const fileName = item.json.fileName || 'unknown.pdf';\n  const folderId = item.json.folderId || '';\n\n  if (!item.binary?.data) {\n    results.push({ json: { fileName, folderId, octaStatus: 'skipped' } });\n    continue;\n  }\n  try {\n    const qs = 'client_id=' + encodeURIComponent(CLIENT_ID) +\n      '&license_code=' +\n      '&company_name=' + encodeURIComponent(COMPANY) +\n      '&document_type=' + encodeURIComponent(DOC_TYPE) +\n      '&document_name=' + encodeURIComponent(fileName);\n\n    const presignResp = await this.helpers.httpRequest({\n      method: 'GET',\n      url: API_BASE + '/documentstorage/upload?' + qs,\n      headers: { 'Authorization': 'Bearer ' + accessToken, 'Accept': 'application/json' },\n      returnFullResponse: true,\n      ignoreHttpStatusErrors: true,\n    });\n    const presignedUrl = presignResp.body?.attributes;\n    if (!presignedUrl) throw new Error('No presigned URL: ' + JSON.stringify(presignResp.body));\n\n    const pdfBuffer = await this.helpers.getBinaryDataBuffer(i, 'data');\n    const uploadResp = await this.helpers.httpRequest({\n      method: 'PUT',\n      url: presignedUrl,\n      body: pdfBuffer,\n      headers: { 'Content-Type': 'application/pdf' },\n      returnFullResponse: true,\n      ignoreHttpStatusErrors: true,\n    });\n    results.push({ json: { fileName, folderId, octaStatus: uploadResp.statusCode < 300 ? 'uploaded' : 'failed', octaCode: uploadResp.statusCode } });\n  } catch (err) {\n    results.push({ json: { fileName, folderId, octaStatus: 'error', octaError: err.message } });\n  }\n}\nreturn results;\n"
+        "jsCode": "const API_BASE = 'https://api.octacode.pt';\nconst COMPANY = 'RAMONCARLOS';\nconst DOC_TYPE = 'geraldocs';\n\nconst authData = $('Octa Auth').first().json;\nconst accessToken = authData.access_token || '';\nconst CLIENT_ID = String(authData.client_id || '336');\n\nif (!accessToken) {\n  return $input.all().map(i => ({ json: { fileName: i.json.fileName || '', folderId: i.json.folderId || '', octaStatus: 'auth_failed', octaError: 'No access_token from sub-workflow' } }));\n}\n\nconst items = $input.all();\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const fileName = item.json.fileName || 'unknown.pdf';\n  const folderId = item.json.folderId || '';\n\n  if (!item.binary?.data) {\n    results.push({ json: { fileName, folderId, octaStatus: 'skipped' } });\n    continue;\n  }\n  try {\n    const qs = 'client_id=' + encodeURIComponent(CLIENT_ID) +\n      '&license_code=' +\n      '&company_name=' + encodeURIComponent(COMPANY) +\n      '&document_type=' + encodeURIComponent(DOC_TYPE) +\n      '&document_name=' + encodeURIComponent(fileName);\n\n    const presignResp = await this.helpers.httpRequest({\n      method: 'GET',\n      url: API_BASE + '/documentstorage/upload?' + qs,\n      headers: { 'Authorization': 'Bearer ' + accessToken, 'Accept': 'application/json' },\n      returnFullResponse: true,\n      ignoreHttpStatusErrors: true,\n    });\n    const presignedUrl = presignResp.body?.attributes;\n    if (!presignedUrl) throw new Error('No presigned URL: ' + JSON.stringify(presignResp.body));\n\n    results.push({\n      json: { fileName, folderId, presignedUrl, octaStatus: 'presigned' },\n      binary: { data: item.binary.data },\n    });\n  } catch (err) {\n    results.push({ json: { fileName, folderId, octaStatus: 'error', octaError: err.message } });\n  }\n}\nreturn results;\n"
       },
       "id": "d282f744-797d-485d-ad8d-00500a01d26a",
       "name": "Upload Octa Manager",
@@ -1921,6 +2004,45 @@
       "parameters": {
         "jsCode": "const uploadItems = $input.all();\n\nlet existingItems = [];\ntry {\n  existingItems = $('List files in folder').all();\n} catch (e) {\n  existingItems = [];\n}\n\nconst existingNames = new Set(\n  existingItems.map(item => (item.json.name || '').toLowerCase())\n);\n\nconst newItems = [];\nlet skippedCount = 0;\n\nfor (const item of uploadItems) {\n  const fileName = (item.json.fileName || '').toLowerCase();\n  if (existingNames.has(fileName)) {\n    skippedCount++;\n  } else {\n    newItems.push(item);\n  }\n}\n\nif (newItems.length > 0) {\n  newItems[0].json._dedupSkippedCount = skippedCount;\n}\n\nreturn newItems;"
       }
+    },
+    {
+      "id": "733ad440-af55-460e-9994-a05eeb42c981",
+      "name": "PUT to Octa S3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1808,
+        620
+      ],
+      "parameters": {
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "method": "PUT",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        },
+        "sendBody": true,
+        "url": "={{ $json.presignedUrl || 'http://127.0.0.1:1/skip-octa' }}"
+      }
+    },
+    {
+      "id": "8996965c-b6e4-4d55-abbd-14e97c810393",
+      "name": "Mark Octa Upload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2008,
+        620
+      ],
+      "parameters": {
+        "jsCode": "// Input = PUT to Octa S3 responses (full response, neverError=true so failures pass through).\n// Upload Octa Manager aligns 1:1 by index with HTTP node output (If node was removed).\n// Items without presignedUrl upstream surface here as HTTP errors (empty/invalid URL) -> 'failed'.\nconst src = $('Upload Octa Manager').all();\nconst out = [];\nconst inputs = $input.all();\nfor (let i = 0; i < inputs.length; i++) {\n  const resp = inputs[i].json;\n  const up = src[i]?.json || {};\n  // Preserve upstream skip/error/auth_failed status if present\n  let status;\n  if (up.octaStatus === 'skipped' || up.octaStatus === 'auth_failed') {\n    status = up.octaStatus;\n  } else {\n    const code = resp?.statusCode;\n    status = (code && code >= 200 && code < 300) ? 'uploaded' : 'failed';\n  }\n  out.push({\n    json: {\n      fileName: up.fileName || 'unknown',\n      folderId: up.folderId || '',\n      octaStatus: status,\n      octaCode: resp?.statusCode,\n      octaError: status === 'failed' ? String(resp?.body || resp?.message || '').slice(0, 200) : undefined\n    }\n  });\n}\nreturn out;"
+      }
     }
   ],
   "pinData": {},
@@ -1945,6 +2067,6 @@
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-06-10T09:53:16.483Z",
-  "versionId": "1c54f7d2-ea68-490c-86f6-98802a3945eb"
+  "updatedAt": "2026-07-10T14:35:02.653Z",
+  "versionId": "7ec4ca88-01de-4a33-b38a-0ece209fabde"
 }
