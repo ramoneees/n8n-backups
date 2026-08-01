@@ -1305,6 +1305,7 @@
     "templateCredsSetupCompleted": true
   },
   "name": "Invoice Rename & Upload",
+  "nodeGroups": [],
   "nodes": [
     {
       "parameters": {
@@ -2062,7 +2063,12 @@
   ],
   "staticData": {
     "node:Schedule Trigger": {
-      "recurrenceRules": []
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
     }
   },
   "tags": [],
