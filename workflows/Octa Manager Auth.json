@@ -137,6 +137,7 @@
     "builderVariant": "mcp"
   },
   "name": "Octa Manager Auth",
+  "nodeGroups": [],
   "nodes": [
     {
       "parameters": {},
