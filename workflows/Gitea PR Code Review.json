@@ -327,6 +327,7 @@
     "templateCredsSetupCompleted": true
   },
   "name": "Gitea PR Code Review",
+  "nodeGroups": [],
   "nodes": [
     {
       "parameters": {
