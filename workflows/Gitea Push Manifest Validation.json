@@ -360,6 +360,7 @@
     "builderVariant": "mcp"
   },
   "name": "Gitea Push Manifest Validation",
+  "nodeGroups": [],
   "nodes": [
     {
       "id": "666a96b9-28cc-4c53-bc85-ad2a5f3b1937",
