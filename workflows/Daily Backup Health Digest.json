@@ -78,6 +78,7 @@
     "builderVariant": "mcp"
   },
   "name": "Daily Backup Health Digest",
+  "nodeGroups": [],
   "nodes": [
     {
       "id": "0a4589d5-ae35-4d09-9c23-16279c8e3cbe",
