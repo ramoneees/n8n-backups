@@ -111,6 +111,7 @@
     "builderVariant": "mcp"
   },
   "name": "Extrair Referências de Facturas",
+  "nodeGroups": [],
   "nodes": [
     {
       "parameters": {
