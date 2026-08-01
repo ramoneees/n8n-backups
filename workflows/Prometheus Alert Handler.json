@@ -67,6 +67,7 @@
     "builderVariant": "mcp"
   },
   "name": "Prometheus Alert Handler",
+  "nodeGroups": [],
   "nodes": [
     {
       "id": "3a6ec016-b1af-462f-9391-67be49d6c5d0",
