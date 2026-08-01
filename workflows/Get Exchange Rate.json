@@ -1,65 +1,271 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-04-05T21:09:14.765Z",
-    "createdAt": "2026-04-05T21:09:06.909Z",
-    "versionId": "b26aa317-3208-4bee-b0cb-1f00da02a677",
+    "updatedAt": "2026-07-30T11:49:35.383Z",
+    "createdAt": "2026-07-30T11:47:51.582Z",
+    "versionId": "a599cfab-6429-444e-a1ac-32cdf37497bc",
     "workflowId": "GHoOCyO1zSw4D2be",
     "nodes": [
       {
-        "parameters": {
-          "path": "get-exchange-rate"
-        },
-        "id": "7bc288c2-5c2e-495c-b84e-13dbbf7bc950",
-        "name": "MCP Server Trigger",
-        "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
-        "position": [
-          1392,
-          -368
-        ],
+        "parameters": {},
+        "id": "8876d781-59d1-4837-a5cd-a6a210d8bce6",
+        "name": "Manual Trigger",
+        "type": "n8n-nodes-base.manualTrigger",
         "typeVersion": 1,
-        "webhookId": "72c835d4-c9ae-407c-a912-fe5973bb001f"
+        "position": [
+          240,
+          400
+        ]
       },
       {
         "parameters": {
-          "url": "=https://api.frankfurter.app/latest?from={{ $fromAI('from_currency') }}&to={{ $fromAI('to_currency') }}&amount={{ $fromAI('amount', '1') }}",
-          "placeholderDefinitions": {
-            "values": [
+          "rule": {
+            "interval": [
               {
-                "name": "from_currency",
-                "description": "The source currency code (BRL, EUR, or GBP)",
-                "type": "string"
-              },
-              {
-                "name": "to_currency",
-                "description": "The target currency code (BRL, EUR, or GBP)",
-                "type": "string"
-              },
-              {
-                "name": "amount",
-                "description": "The amount to convert. Defaults to 1.",
-                "type": "number"
+                "field": "cronExpression",
+                "expression": "0 18 * * *"
               }
             ]
           }
         },
-        "id": "45d4a73f-a109-4dc9-82ac-db417393a001",
-        "name": "Get Exchange Rate",
-        "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+        "id": "21e918ea-f2ac-4fb9-b34f-b746049e446a",
+        "name": "Daily 18:00 Lisbon",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.3,
         "position": [
-          1600,
-          -176
+          240,
+          608
+        ]
+      },
+      {
+        "parameters": {
+          "url": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=BRL,GBP",
+          "options": {}
+        },
+        "id": "35edcb03-d5df-46d4-844d-517b8d2c9ddc",
+        "name": "Get EUR Rates",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          544,
+          608
         ],
-        "typeVersion": 1.1
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000
+      },
+      {
+        "parameters": {
+          "jsCode": "const data = $input.first().json;\nconst date = data.date;\nconst rates = data.rates;\nconst pairs = [];\nfor (const code of Object.keys(rates)) {\n  const rate = rates[code];\n  pairs.push({ json: { date, from: 'EUR', to: code, rate } });\n  pairs.push({ json: { date, from: code, to: 'EUR', rate: 1 / rate } });\n}\nreturn pairs;"
+        },
+        "id": "7491031f-8ead-4349-9bb5-31df0a4c3515",
+        "name": "Build Rate Pairs",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          848,
+          608
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://firefly-iii.apps.svc.cluster.local:8080/api/v1/exchange-rates",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "date",
+                "value": "={{ $json.date }}"
+              },
+              {
+                "name": "rate",
+                "value": "={{ $json.rate }}"
+              },
+              {
+                "name": "from",
+                "value": "={{ $json.from }}"
+              },
+              {
+                "name": "to",
+                "value": "={{ $json.to }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "9a2f76f2-109d-4b3b-a386-8e1696203361",
+        "name": "Post to Firefly",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1152,
+          608
+        ],
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "5V8UjxddkOjhSSGo",
+            "name": "Firefly III Token"
+          }
+        }
+      },
+      {
+        "id": "e397b3db-0345-4405-9b0a-52161e345b03",
+        "name": "Get BTC Price",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          540,
+          900
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur",
+          "authentication": "none",
+          "options": {}
+        }
+      },
+      {
+        "id": "b0b755ca-8848-454c-bde9-562c726a80bf",
+        "name": "Build BTC Rate Pairs",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          840,
+          900
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const data = $input.first().json;\nconst price = data.bitcoin.eur;\nconst date = $today.toISODate();\nreturn [\n  { json: { date, from: 'BTC', to: 'EUR', rate: price } },\n  { json: { date, from: 'EUR', to: 'BTC', rate: 1 / price } }\n];"
+        }
+      },
+      {
+        "id": "b5d72c35-b227-4128-8516-56309c0fe374",
+        "name": "Merge Rates",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          1000,
+          750
+        ],
+        "parameters": {
+          "mode": "append",
+          "numberInputs": 2
+        }
+      },
+      {
+        "id": "f764d012-e434-4a5f-b910-e5ea1978057e",
+        "name": "Every 2 Hours BTC",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          240,
+          900
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "0 */2 * * *"
+              }
+            ]
+          }
+        }
       }
     ],
     "connections": {
-      "Get Exchange Rate": {
-        "ai_tool": [
+      "Get EUR Rates": {
+        "main": [
           [
             {
-              "node": "MCP Server Trigger",
-              "type": "ai_tool",
+              "node": "Build Rate Pairs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Daily 18:00 Lisbon": {
+        "main": [
+          [
+            {
+              "node": "Get EUR Rates",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get BTC Price": {
+        "main": [
+          [
+            {
+              "node": "Build BTC Rate Pairs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Rate Pairs": {
+        "main": [
+          [
+            {
+              "node": "Merge Rates",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build BTC Rate Pairs": {
+        "main": [
+          [
+            {
+              "node": "Merge Rates",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Merge Rates": {
+        "main": [
+          [
+            {
+              "node": "Post to Firefly",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Manual Trigger": {
+        "main": [
+          [
+            {
+              "node": "Get EUR Rates",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Get BTC Price",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Every 2 Hours BTC": {
+        "main": [
+          [
+            {
+              "node": "Get BTC Price",
+              "type": "main",
               "index": 0
             }
           ]
@@ -67,18 +273,73 @@
       }
     },
     "nodeGroups": [],
-    "authors": "Ramon ramon@pereirariosoftware.com",
-    "name": "Version b26aa317",
-    "description": "",
-    "autosaved": true
+    "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
+    "name": "Split BTC onto its own 2-hourly schedule; remove unused wallet-balance branch",
+    "description": "Removed the temp delete node and the now-unused wallet-balance branch (Set Wallet Balance, BTC Wallet Address, Get Wallet Balance, Compute BTC Balance, Update Firefly Balance) since the account it targeted no longer exists. Split scheduling: fiat rates (EUR->BRL,GBP) stay on the 18:00 Lisbon trigger (after ECB publishes); BTC/EUR now runs on its own new trigger every 2 hours, independent of the fiat branch. Note: Firefly only stores one rate per calendar day per pair, so intraday BTC runs overwrite the same day's row rather than building intraday history -- confirmed via two same-day posts landing on the same row IDs with updated_at bumped.",
+    "autosaved": false
   },
-  "activeVersionId": "b26aa317-3208-4bee-b0cb-1f00da02a677",
+  "activeVersionId": "a599cfab-6429-444e-a1ac-32cdf37497bc",
   "connections": {
-    "Webhook Trigger": {
+    "Get EUR Rates": {
       "main": [
         [
           {
-            "node": "Get Exchange Rate",
+            "node": "Build Rate Pairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 18:00 Lisbon": {
+      "main": [
+        [
+          {
+            "node": "Get EUR Rates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get BTC Price": {
+      "main": [
+        [
+          {
+            "node": "Build BTC Rate Pairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Rate Pairs": {
+      "main": [
+        [
+          {
+            "node": "Merge Rates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build BTC Rate Pairs": {
+      "main": [
+        [
+          {
+            "node": "Merge Rates",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Rates": {
+      "main": [
+        [
+          {
+            "node": "Post to Firefly",
             "type": "main",
             "index": 0
           }
@@ -89,7 +350,23 @@
       "main": [
         [
           {
-            "node": "Get Exchange Rate",
+            "node": "Get EUR Rates",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get BTC Price",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 2 Hours BTC": {
+      "main": [
+        [
+          {
+            "node": "Get BTC Price",
             "type": "main",
             "index": 0
           }
@@ -101,36 +378,14 @@
   "id": "GHoOCyO1zSw4D2be",
   "isArchived": false,
   "meta": {
-    "aiBuilderAssisted": true
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
   },
   "name": "Get Exchange Rate",
+  "nodeGroups": [],
   "nodes": [
     {
-      "id": "b12807bb-8708-421d-b528-48286a7aae5b",
-      "name": "Webhook Trigger",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2.1,
-      "position": [
-        240,
-        200
-      ],
-      "webhookId": "56b5bdbd-6021-4fda-a22c-433c25528450"
-    },
-    {
-      "id": "dbf3800d-d1f1-478e-8366-d04f8e21e595",
-      "name": "Get Exchange Rate",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.3,
-      "position": [
-        540,
-        300
-      ],
-      "parameters": {
-        "method": "GET",
-        "url": "=https://api.frankfurter.app/latest?from={{ $json.from || $json.query.from }}&to={{ $json.to || $json.query.to }}&amount={{ $json.amount || $json.query.amount || 1 }}"
-      }
-    },
-    {
+      "parameters": {},
       "id": "8876d781-59d1-4837-a5cd-a6a210d8bce6",
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
@@ -139,13 +394,173 @@
         240,
         400
       ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * *"
+            }
+          ]
+        }
+      },
+      "id": "21e918ea-f2ac-4fb9-b34f-b746049e446a",
+      "name": "Daily 18:00 Lisbon",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=BRL,GBP",
+        "options": {}
+      },
+      "id": "35edcb03-d5df-46d4-844d-517b8d2c9ddc",
+      "name": "Get EUR Rates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        544,
+        608
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst date = data.date;\nconst rates = data.rates;\nconst pairs = [];\nfor (const code of Object.keys(rates)) {\n  const rate = rates[code];\n  pairs.push({ json: { date, from: 'EUR', to: code, rate } });\n  pairs.push({ json: { date, from: code, to: 'EUR', rate: 1 / rate } });\n}\nreturn pairs;"
+      },
+      "id": "7491031f-8ead-4349-9bb5-31df0a4c3515",
+      "name": "Build Rate Pairs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://firefly-iii.apps.svc.cluster.local:8080/api/v1/exchange-rates",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "date",
+              "value": "={{ $json.date }}"
+            },
+            {
+              "name": "rate",
+              "value": "={{ $json.rate }}"
+            },
+            {
+              "name": "from",
+              "value": "={{ $json.from }}"
+            },
+            {
+              "name": "to",
+              "value": "={{ $json.to }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9a2f76f2-109d-4b3b-a386-8e1696203361",
+      "name": "Post to Firefly",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1152,
+        608
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "5V8UjxddkOjhSSGo",
+          "name": "Firefly III Token"
+        }
+      }
+    },
+    {
+      "id": "e397b3db-0345-4405-9b0a-52161e345b03",
+      "name": "Get BTC Price",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        540,
+        900
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur",
+        "authentication": "none",
+        "options": {}
+      }
+    },
+    {
+      "id": "b0b755ca-8848-454c-bde9-562c726a80bf",
+      "name": "Build BTC Rate Pairs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        900
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const data = $input.first().json;\nconst price = data.bitcoin.eur;\nconst date = $today.toISODate();\nreturn [\n  { json: { date, from: 'BTC', to: 'EUR', rate: price } },\n  { json: { date, from: 'EUR', to: 'BTC', rate: 1 / price } }\n];"
+      }
+    },
+    {
+      "id": "b5d72c35-b227-4128-8516-56309c0fe374",
+      "name": "Merge Rates",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1000,
+        750
+      ],
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 2
+      }
+    },
+    {
+      "id": "f764d012-e434-4a5f-b910-e5ea1978057e",
+      "name": "Every 2 Hours BTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        900
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */2 * * *"
+            }
+          ]
+        }
+      }
     }
   ],
   "pinData": {},
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
-    "availableInMCP": true
+    "availableInMCP": true,
+    "timezone": "Europe/Lisbon"
   },
   "shared": [
     {
@@ -156,9 +571,34 @@
       "projectId": "NIWdtECswkBCcQBM"
     }
   ],
-  "staticData": null,
+  "staticData": {
+    "node:Daily 02:00 Lisbon": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    },
+    "node:Daily 18:00 Lisbon": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    },
+    "node:Every 2 Hours BTC": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
   "tags": [],
-  "triggerCount": 1,
-  "updatedAt": "2026-04-21T22:12:49.955Z",
-  "versionId": "1db563fc-675d-4463-aa0c-9488d999c9c0"
+  "triggerCount": 2,
+  "updatedAt": "2026-07-30T11:47:51.581Z",
+  "versionId": "a599cfab-6429-444e-a1ac-32cdf37497bc"
 }
