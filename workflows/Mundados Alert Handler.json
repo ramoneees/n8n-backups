@@ -45,6 +45,7 @@
     "builderVariant": "mcp"
   },
   "name": "Mundados Alert Handler",
+  "nodeGroups": [],
   "nodes": [
     {
       "parameters": {
