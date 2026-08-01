@@ -232,6 +232,7 @@
     "builderVariant": "mcp"
   },
   "name": "Notify Hermes",
+  "nodeGroups": [],
   "nodes": [
     {
       "id": "1f0a9337-af7b-49aa-a7b7-8eb7175ad5b0",
