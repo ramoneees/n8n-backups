@@ -765,6 +765,7 @@
     "templateCredsSetupCompleted": true
   },
   "name": "n8n-backup",
+  "nodeGroups": [],
   "nodes": [
     {
       "parameters": {},
