@@ -1,0 +1,1060 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "On Shopping List Message": {
+      "main": [
+        [
+          {
+            "node": "Drop Bot Commands",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drop Bot Commands": {
+      "main": [
+        [
+          {
+            "node": "Set Correlation Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Correlation Fields": {
+      "main": [
+        [
+          {
+            "node": "Classify List Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify List Format": {
+      "main": [
+        [
+          {
+            "node": "Is Structured Format?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Structured Format?": {
+      "main": [
+        [
+          {
+            "node": "Shape List File Content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Interpret Free-Text List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape List File Content": {
+      "main": [
+        [
+          {
+            "node": "List JSON To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Interpret Free-Text List": {
+      "main": [
+        [
+          {
+            "node": "Merge LLM Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Interpreter Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Interpret Free-Text List",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Items Schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Interpret Free-Text List",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge LLM Items": {
+      "main": [
+        [
+          {
+            "node": "Shape List File Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List JSON To File": {
+      "main": [
+        [
+          {
+            "node": "Write List To Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write List To Disk": {
+      "main": [
+        [
+          {
+            "node": "Match Products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Products": {
+      "main": [
+        [
+          {
+            "node": "Split Resolved And Ambiguous",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Match Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Resolved And Ambiguous": {
+      "main": [
+        [
+          {
+            "node": "Has Ambiguous Matches?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Match Failure": {
+      "main": [
+        [
+          {
+            "node": "Split Resolved And Ambiguous",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Ambiguous Matches?": {
+      "main": [
+        [
+          {
+            "node": "Resolve Ambiguous Matches",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Shape Matches File Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Ambiguous Matches": {
+      "main": [
+        [
+          {
+            "node": "Merge Ambiguity Decisions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambiguity Resolver Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Resolve Ambiguous Matches",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambiguity Decisions Schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Resolve Ambiguous Matches",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Ambiguity Decisions": {
+      "main": [
+        [
+          {
+            "node": "Persist Match Decisions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Match Decisions": {
+      "main": [
+        [
+          {
+            "node": "Shape Matches File Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape Matches File Content": {
+      "main": [
+        [
+          {
+            "node": "Matches JSON To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Matches JSON To File": {
+      "main": [
+        [
+          {
+            "node": "Write Matches To Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Matches To Disk": {
+      "main": [
+        [
+          {
+            "node": "Optimize Basket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimize Basket": {
+      "main": [
+        [
+          {
+            "node": "Shape Basket File Content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback Basket On Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape Basket File Content": {
+      "main": [
+        [
+          {
+            "node": "Basket JSON To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback Basket On Failure": {
+      "main": [
+        [
+          {
+            "node": "Shape Basket File Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basket JSON To File": {
+      "main": [
+        [
+          {
+            "node": "Write Basket To Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Basket To Disk": {
+      "main": [
+        [
+          {
+            "node": "Render Telegram Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Telegram Report": {
+      "main": [
+        [
+          {
+            "node": "Build Report Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Report Text": {
+      "main": [
+        [
+          {
+            "node": "Send Basket Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Basket Report": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Temp Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-08-01T18:54:02.193Z",
+  "id": "QVCKCggR8H0Nklfs",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "compare-shopping-list",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "ec9cd96c-f6b4-4297-a27a-06c977cdb6a6",
+      "name": "On Shopping List Message",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {
+          "chatIds": "={{ $env.TELEGRAM_CHAT_ID }}"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "Gw7ZSKH1QvpRHnAD",
+          "name": "Telegram account"
+        }
+      },
+      "webhookId": "85d29777-08b7-45e3-93cc-69f5f5c84021"
+    },
+    {
+      "id": "2214f7cb-6151-4720-ab23-d06efcd1c71a",
+      "name": "Drop Bot Commands",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        260,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.message.text ?? \"\" }}",
+              "operator": {
+                "type": "string",
+                "operation": "notStartsWith"
+              },
+              "rightValue": "/"
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "notes": "Pure commands like /cancel are dropped here; the workflow then ends silently for that update."
+    },
+    {
+      "id": "33dfa323-4205-4f36-903c-203495ac3276",
+      "name": "Set Correlation Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        520,
+        300
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "correlation-id",
+              "name": "correlation_id",
+              "value": "={{ Date.now().toString(36) }}{{ Math.random().toString(36).slice(2, 8) }}",
+              "type": "string"
+            },
+            {
+              "id": "raw-text",
+              "name": "raw_text",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            },
+            {
+              "id": "chat-id",
+              "name": "chat_id",
+              "value": "={{ $json.message.chat.id }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2581194a-d892-478b-a424-aa2a53d8666d",
+      "name": "Classify List Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const ctx = $input.first().json;\nconst lines = (ctx.raw_text || '').split('\\n').map(l => l.trim()).filter(Boolean);\nconst structuredLine = /^(\\d+)\\s*[xX]?\\s*([\\w./-]+)$/;\nconst parsedLines = lines.map(l => l.match(structuredLine));\nconst isStructured = lines.length > 0 && parsedLines.every(m => m !== null);\nlet items = [];\nif (isStructured) {\n  items = parsedLines.map(m => {\n    const token = m[2];\n    const isEan = /^\\d{8,13}$/.test(token);\n    return { query: token, quantity: parseInt(m[1], 10) || 1, unit: 'un', brand_hint: null, ean: isEan ? token : null };\n  });\n}\nreturn [{ json: { correlation_id: ctx.correlation_id, chat_id: ctx.chat_id, raw_text: ctx.raw_text, is_structured: isStructured, items } }];"
+      },
+      "notes": "Structured lines (QTY x EAN / QTY description, single token after quantity) skip the LLM entirely. Anything else is treated as free text."
+    },
+    {
+      "id": "d60a43e4-7bc3-4b96-b87f-94adff87443d",
+      "name": "Is Structured Format?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1040,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.is_structured }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "rightValue": true
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "6f303393-1cec-4a25-a4b7-58c504ec4934",
+      "name": "Shape List File Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1820,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const src = $input.first().json;\nreturn [{ json: { items: src.items || [] } }];"
+      },
+      "notes": "Fan-in point: reached from either the structured path or the LLM path."
+    },
+    {
+      "id": "47b05531-4afc-43ef-b002-899b3e5234bc",
+      "name": "Interpret Free-Text List",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1300,
+        300
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.raw_text }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You convert a free-text Portuguese grocery shopping list into structured items. Each line may name a product, a quantity, a brand, or an EAN barcode. Return only the requested JSON, one entry per distinct product the user wants to buy."
+        }
+      }
+    },
+    {
+      "id": "db270ea6-9bec-42a4-8ae3-600a73615fc6",
+      "name": "List Interpreter Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1300,
+        500
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "<__PLACEHOLDER_VALUE__LiteLLM model alias configured on the proxy, e.g. gpt-4o-mini. The LiteLLM credential currently returns 401 (invalid proxy token) - rotate it before activating this workflow.__>"
+        },
+        "options": {
+          "temperature": 0,
+          "maxTokens": 800
+        }
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "0YQdZPvwhFHBdt3S",
+          "name": "LiteLLM"
+        }
+      }
+    },
+    {
+      "id": "99f4ef25-2184-4261-9b7d-13658f90f2c5",
+      "name": "List Items Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1560,
+        500
+      ],
+      "parameters": {
+        "schemaType": "fromJson",
+        "jsonSchemaExample": "{\"items\":[{\"query\":\"leite meio gordo\",\"quantity\":1,\"unit\":\"un\",\"brand_hint\":null,\"ean\":null}]}"
+      }
+    },
+    {
+      "id": "16d02fde-082f-4b66-bd39-066b79254495",
+      "name": "Merge LLM Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const ctx = $('Classify List Format').item.json;\nconst agentOut = $input.first().json;\nconst items = (agentOut.output && agentOut.output.items) || [];\nreturn [{ json: { correlation_id: ctx.correlation_id, chat_id: ctx.chat_id, items } }];"
+      }
+    },
+    {
+      "id": "c103d8ac-3d97-4487-88db-3ae26db15fe6",
+      "name": "List JSON To File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2080,
+        300
+      ],
+      "parameters": {
+        "operation": "toJson",
+        "mode": "once",
+        "binaryPropertyName": "data"
+      }
+    },
+    {
+      "id": "51350bf8-8a7e-45f1-8f3b-e652485e67dd",
+      "name": "Write List To Disk",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        2340,
+        300
+      ],
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $env.GROCERY_PROJECT_DIR }}/tmp/list_{{ $('Classify List Format').item.json.correlation_id }}.json",
+        "dataPropertyName": "data"
+      }
+    },
+    {
+      "id": "ac5b6869-acd8-48b7-a76f-63a57b0d5d2e",
+      "name": "Match Products",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        300
+      ],
+      "parameters": {
+        "command": "=cd {{ $env.GROCERY_PROJECT_DIR }} && timeout 60 python3 scripts/match_products.py \"tmp/list_{{ $('Classify List Format').item.json.correlation_id }}.json\" hybrid"
+      },
+      "notes": "exitCode 0=success 1=script error 2=timeout",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "4d7ae24d-eae4-44a2-992e-617cb9beec70",
+      "name": "Split Resolved And Ambiguous",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2860,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const result = $input.first().json;\nlet matches = result.matches || [];\nif (result.match_script_failed) {\n  matches = [];\n}\nif (!result.match_script_failed && result.exitCode !== undefined && result.exitCode !== 0) {\n  matches = [];\n}\nif (!result.matches && result.stdout) {\n  try { matches = JSON.parse(result.stdout).matches || []; } catch (e) { matches = []; }\n}\nconst resolved = matches.filter(m => (m.confidence || 0) >= 0.85 && !m.needs_llm);\nconst ambiguous = matches.filter(m => m.needs_llm || (m.confidence || 0) < 0.85);\nreturn [{ json: { resolved, ambiguous, hasAmbiguous: ambiguous.length > 0 } }];"
+      },
+      "notes": "A single unmatched item never aborts the run - it just gets carried through as pending."
+    },
+    {
+      "id": "0d7a09bd-0d2c-44a5-804f-702c81b12ba0",
+      "name": "Log Match Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2600,
+        480
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "console.log('match_products.py failed: ' + ($json.stderr || 'unknown error'));\nreturn [{ json: { matches: [], match_script_failed: true } }];"
+      }
+    },
+    {
+      "id": "93a2ec04-2df9-446f-88c5-60d8b46897c7",
+      "name": "Has Ambiguous Matches?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3120,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.hasAmbiguous }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "rightValue": true
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "26eb2ce4-0637-4a70-bcd3-3574896845bc",
+      "name": "Resolve Ambiguous Matches",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        3380,
+        300
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json.ambiguous) }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "For each ambiguous grocery item you receive as a JSON array of {query, candidates}, pick the single best matching candidate product_id. Return only a JSON object mapping each query string to the chosen candidate product_id."
+        }
+      }
+    },
+    {
+      "id": "cd0840d0-2c98-4283-8936-5e518ac62587",
+      "name": "Ambiguity Resolver Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        3380,
+        500
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "<__PLACEHOLDER_VALUE__LiteLLM model alias configured on the proxy, e.g. gpt-4o-mini. Rotate the LiteLLM credential token before activating.__>"
+        },
+        "options": {
+          "temperature": 0,
+          "maxTokens": 600
+        }
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "0YQdZPvwhFHBdt3S",
+          "name": "LiteLLM"
+        }
+      }
+    },
+    {
+      "id": "ea91dadc-6879-4984-93f8-c81a2cd93e51",
+      "name": "Ambiguity Decisions Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        3640,
+        500
+      ],
+      "parameters": {
+        "schemaType": "fromJson",
+        "jsonSchemaExample": "{\"pao de forma\":\"p10\"}"
+      }
+    },
+    {
+      "id": "951b8d57-8109-48d2-a746-d17379026b0d",
+      "name": "Merge Ambiguity Decisions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3640,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const split = $('Split Resolved And Ambiguous').item.json;\nconst decisions = $input.first().json.output || {};\nconst decided = split.ambiguous.map(m => {\n  const chosenId = decisions[m.query];\n  const chosen = (m.candidates || []).find(c => c.product_id === chosenId) || null;\n  return Object.assign({}, m, { chosen, resolved_by: chosen ? 'llm' : 'unresolved' });\n});\nconst allMatches = split.resolved.concat(decided);\nreturn [{ json: { matches: allMatches } }];"
+      }
+    },
+    {
+      "id": "cc7898a9-def7-41eb-948d-7613f79a4a82",
+      "name": "Persist Match Decisions",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3900,
+        300
+      ],
+      "parameters": {
+        "command": "=cd {{ $env.GROCERY_PROJECT_DIR }} && sqlite3 \"$GROCERY_DB\" \"INSERT INTO match_decisions (query, chosen_product_id, resolved_by, decided_at) SELECT json_extract(value,'$.query'), json_extract(value,'$.chosen.product_id'), 'llm', datetime('now') FROM json_each('{{ JSON.stringify($json.matches.filter(m => m.resolved_by === \\'llm\\')) }}');\""
+      },
+      "notes": "Best-effort learning log; does not block the run if it fails. exitCode 0=success 1=sqlite error.",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "2774c7e4-d43e-4d0f-aff7-a85ce1a347a9",
+      "name": "Shape Matches File Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4160,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const src = $input.first().json;\nreturn [{ json: { matches: src.matches || [] } }];"
+      },
+      "notes": "Fan-in point: reached whether or not there were ambiguous matches to resolve."
+    },
+    {
+      "id": "13a62e8d-84ce-40d2-a900-8cf8bd68824f",
+      "name": "Matches JSON To File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        4420,
+        300
+      ],
+      "parameters": {
+        "operation": "toJson",
+        "mode": "once",
+        "binaryPropertyName": "data"
+      }
+    },
+    {
+      "id": "816dd733-9e28-48ea-89c6-c8f1d6815879",
+      "name": "Write Matches To Disk",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        4680,
+        300
+      ],
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $env.GROCERY_PROJECT_DIR }}/tmp/matches_{{ $('Classify List Format').item.json.correlation_id }}.json",
+        "dataPropertyName": "data"
+      }
+    },
+    {
+      "id": "c68334cc-76ae-4c51-9970-7655a10570d2",
+      "name": "Optimize Basket",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        4940,
+        300
+      ],
+      "parameters": {
+        "command": "=cd {{ $env.GROCERY_PROJECT_DIR }} && timeout 60 python3 scripts/optimize_basket.py \"tmp/matches_{{ $('Classify List Format').item.json.correlation_id }}.json\" --postal-code \"{{ $env.GROCERY_POSTAL_CODE }}\" --max-stores 2 --loyalty-cards \"{{ $env.GROCERY_LOYALTY_CARDS }}\""
+      },
+      "notes": "exitCode 0=success 1=script error 2=timeout. Postal code and loyalty cards come from env vars since Telegram messages only carry the shopping list.",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "8a0f2e45-8531-477e-b474-6e963c06cbbf",
+      "name": "Shape Basket File Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5200,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const result = $input.first().json;\nlet basket = { pending: [], error: null };\nif (result.basket_optimize_failed) {\n  basket = { pending: [], error: result.error };\n} else if (result.stdout) {\n  try { basket = JSON.parse(result.stdout); } catch (e) { basket = { pending: [], error: 'invalid optimize_basket.py output' }; }\n}\nreturn [{ json: basket }];"
+      }
+    },
+    {
+      "id": "3cb3693e-67a2-4400-b64f-e240c3b25f28",
+      "name": "Fallback Basket On Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4940,
+        480
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "console.log('optimize_basket.py failed: ' + ($json.stderr || 'unknown error'));\nreturn [{ json: { basket_optimize_failed: true, error: $json.stderr || 'unknown error' } }];"
+      },
+      "notes": "Even if optimize_basket.py fails, the user still gets a report instead of silence."
+    },
+    {
+      "id": "81184d2e-f885-4a4c-839c-258ff4272fa5",
+      "name": "Basket JSON To File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        5460,
+        300
+      ],
+      "parameters": {
+        "operation": "toJson",
+        "mode": "once",
+        "binaryPropertyName": "data"
+      }
+    },
+    {
+      "id": "5147e37f-8503-4412-8760-24dbdea8fb2a",
+      "name": "Write Basket To Disk",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        5720,
+        300
+      ],
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $env.GROCERY_PROJECT_DIR }}/tmp/basket_{{ $('Classify List Format').item.json.correlation_id }}.json",
+        "dataPropertyName": "data"
+      }
+    },
+    {
+      "id": "95288860-9894-4713-b12a-09fd18a39233",
+      "name": "Render Telegram Report",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        5980,
+        300
+      ],
+      "parameters": {
+        "command": "=cd {{ $env.GROCERY_PROJECT_DIR }} && timeout 30 python3 scripts/render_report.py \"tmp/basket_{{ $('Classify List Format').item.json.correlation_id }}.json\" telegram"
+      },
+      "notes": "exitCode 0=success 1=script error 2=timeout",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "79be096e-aeb0-4f77-8079-13ec6e971b23",
+      "name": "Build Report Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6240,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const result = $input.first().json;\nconst text = (result.exitCode === 0 && result.stdout)\n  ? result.stdout\n  : 'Could not build your basket comparison right now. Please try again in a few minutes.';\nreturn [{ json: { text } }];"
+      }
+    },
+    {
+      "id": "2219c390-6b59-4b53-94bd-48bd799df281",
+      "name": "Send Basket Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        6500,
+        300
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Set Correlation Fields').item.json.chat_id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "Gw7ZSKH1QvpRHnAD",
+          "name": "Telegram account"
+        }
+      },
+      "webhookId": "73fdba99-bbb6-48a5-8f8f-31e76a317f12"
+    },
+    {
+      "id": "69bcdbcf-dd1c-4330-a746-f854e035f53a",
+      "name": "Cleanup Temp Files",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        6760,
+        300
+      ],
+      "parameters": {
+        "command": "=cd {{ $env.GROCERY_PROJECT_DIR }} && rm -f \"tmp/list_{{ $('Classify List Format').item.json.correlation_id }}.json\" \"tmp/matches_{{ $('Classify List Format').item.json.correlation_id }}.json\" \"tmp/basket_{{ $('Classify List Format').item.json.correlation_id }}.json\""
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "61abc5e5-982c-4934-893b-14d9bcd42d14",
+      "name": "Sticky Note 5b5670bc",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        250
+      ],
+      "parameters": {
+        "content": "## Compare Shopping List\nStructured lines (QTY x EAN / QTY item) skip the LLM. Free text costs at most 2 small LLM calls (list interpretation + ambiguity resolution), both temperature 0.\nA single unmatched product never aborts the run - render_report.py always gets a basket file, even a partial/failed one, so the user always gets a reply.\nGROCERY_POSTAL_CODE and GROCERY_LOYALTY_CARDS are read from env vars, not from the Telegram message.",
+        "color": 5,
+        "width": 820,
+        "height": 200
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "timezone": "Europe/Lisbon",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-08-01T18:54:02.193Z",
+      "createdAt": "2026-08-01T18:54:02.193Z",
+      "role": "workflow:owner",
+      "workflowId": "QVCKCggR8H0Nklfs",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-08-01T18:54:13.381Z",
+  "versionId": "f8a0fb3d-f823-4af8-a45b-fa0a720e0f08"
+}
