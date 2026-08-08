@@ -1,0 +1,262 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Daily 08:00": {
+      "main": [
+        [
+          {
+            "node": "Query Active Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Active Alerts": {
+      "main": [
+        [
+          {
+            "node": "Group And Prioritize Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Query Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group And Prioritize Alerts": {
+      "main": [
+        [
+          {
+            "node": "Has Real News?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Query Failure": {
+      "main": [
+        [
+          {
+            "node": "Group And Prioritize Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Real News?": {
+      "main": [
+        [
+          {
+            "node": "Build Digest Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Digest Text": {
+      "main": [
+        [
+          {
+            "node": "Send Morning Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-08-01T18:55:28.089Z",
+  "id": "p2ynw4vWTWWSPJOH",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "price-alerts",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "d20223a0-f61a-4b75-b9bf-559d24783a9d",
+      "name": "Daily 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=sqlite3 -json \"{{ $env.GROCERY_DB }}\" \"SELECT * FROM v_active_alerts;\""
+      },
+      "id": "b3f0de1c-3acb-4a0e-8a8f-6d4ac4fa1631",
+      "name": "Query Active Alerts",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        272,
+        304
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "exitCode 0=success 1=sqlite error. Reads the v_active_alerts view - see README TODO for the expected schema, this workflow does not create it."
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nlet rows = result.alerts !== undefined ? result.alerts : [];\nif (result.exitCode === 0 && result.stdout) {\n  try { rows = JSON.parse(result.stdout) || []; } catch (e) { rows = []; }\n}\nconst priority = { price_drop: 0, leaflet_ending: 1, new_leaflet: 2 };\nconst sorted = rows\n  .filter(r => r && r.alert_type in priority)\n  .sort((a, b) => (priority[a.alert_type] ?? 9) - (priority[b.alert_type] ?? 9))\n  .slice(0, 20);\nreturn [{ json: { alerts: sorted, count: sorted.length } }];"
+      },
+      "id": "1e31f2e8-47ca-41ff-8a88-6a4e8e1b6521",
+      "name": "Group And Prioritize Alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        304
+      ],
+      "notes": "Priority order: price drop > leaflet ending > new leaflet. Expects each row from v_active_alerts to carry alert_type, retailer, product_name, detail."
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log('v_active_alerts query failed: ' + ($json.stderr || 'unknown error'));\nreturn [{ json: { alerts: [], count: 0 } }];"
+      },
+      "id": "4ae50999-718d-423e-ba8f-f84b9b478a67",
+      "name": "Log Query Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.count }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "rightValue": 0
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "218e5a5d-ef8b-4209-b548-0703b6421494",
+      "name": "Has Real News?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        784,
+        304
+      ],
+      "notes": "Zero alerts -> 0 items downstream -> workflow ends silently, no message sent."
+    },
+    {
+      "parameters": {
+        "jsCode": "const icons = { price_drop: '\\u{1F4B0}', leaflet_ending: '\\u23F3', new_leaflet: '\\u{1F4C4}' };\nconst lines = $json.alerts.map(a => (icons[a.alert_type] || '-') + ' ' + a.retailer + ' - ' + a.product_name + ': ' + a.detail);\nconst text = 'Grocery digest (' + lines.length + ')\\n' + lines.join('\\n');\nreturn [{ json: { text } }];"
+      },
+      "id": "860414c3-9975-44f4-9b41-ef28bc993ef3",
+      "name": "Build Digest Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "ffe8328a-f306-4f6d-8565-8544fb5f93e8",
+      "name": "Send Morning Digest",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1312,
+        304
+      ],
+      "webhookId": "d6f43613-89da-4dfe-9740-932222325e35",
+      "credentials": {
+        "telegramApi": {
+          "id": "Gw7ZSKH1QvpRHnAD",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Price Alerts\nDaily 08:00 Europe/Lisbon. No LLM calls.\nSends only when v_active_alerts has rows; priority price_drop > leaflet_ending > new_leaflet, max 20 lines.\nv_active_alerts is a TODO for the user bootstrap script (see README), not created by this workflow.",
+        "height": 200,
+        "width": 560,
+        "color": 6
+      },
+      "id": "b70748e8-bd7a-44ac-883e-dc338c8068a7",
+      "name": "Sticky Note 282b0869",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        80
+      ]
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "timezone": "Europe/Lisbon",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "binaryMode": "separate"
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-08-01T18:55:28.089Z",
+      "createdAt": "2026-08-01T18:55:28.089Z",
+      "role": "workflow:owner",
+      "workflowId": "p2ynw4vWTWWSPJOH",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-08-01T19:06:41.665Z",
+  "versionId": "c58dd72c-928f-4abf-8a20-32fac1dca9d9"
+}
