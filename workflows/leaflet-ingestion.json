@@ -1,0 +1,640 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Twice Daily 07:00 18:00": {
+      "main": [
+        [
+          {
+            "node": "Discover Leaflets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discover Leaflets": {
+      "main": [
+        [
+          {
+            "node": "Parse Discovered Leaflets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Discovered Leaflets": {
+      "main": [
+        [
+          {
+            "node": "Query Known Leaflet Hashes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Known Leaflet Hashes": {
+      "main": [
+        [
+          {
+            "node": "Diff New Leaflets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Diff New Leaflets": {
+      "main": [
+        [
+          {
+            "node": "Loop New Leaflets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Error Rate": {
+      "main": [
+        [
+          {
+            "node": "Error Rate Above 30%?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Rate Above 30%?": {
+      "main": [
+        [
+          {
+            "node": "Send Ingestion Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Leaflet": {
+      "main": [
+        [
+          {
+            "node": "Split Leaflet Pages",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Leaflet Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Leaflet Pages": {
+      "main": [
+        [
+          {
+            "node": "Loop Leaflet Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Offers": {
+      "main": [
+        [
+          {
+            "node": "Build Leaflet+Offers SQL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Leaflet Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Leaflet+Offers SQL": {
+      "main": [
+        [
+          {
+            "node": "Write Leaflet And Offers To SQLite",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Leaflet And Offers To SQLite": {
+      "main": [
+        [
+          {
+            "node": "Record Leaflet Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Leaflet Success": {
+      "main": [
+        [
+          {
+            "node": "Loop New Leaflets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop New Leaflets": {
+      "main": [
+        [
+          {
+            "node": "Check Error Rate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download Leaflet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Leaflet Error": {
+      "main": [
+        [
+          {
+            "node": "Loop New Leaflets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run OCR On Page": {
+      "main": [
+        [
+          {
+            "node": "Log OCR Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log OCR Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log OCR Result": {
+      "main": [
+        [
+          {
+            "node": "Loop Leaflet Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Leaflet Pages": {
+      "main": [
+        [
+          {
+            "node": "Parse Offers",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run OCR On Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log OCR Error": {
+      "main": [
+        [
+          {
+            "node": "Loop Leaflet Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-08-01T18:44:20.091Z",
+  "id": "jKYJ4VqCj0fTu1YK",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "leaflet-ingestion",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "7272d90c-0338-4f39-aa12-78c434bcc2c0",
+      "name": "Twice Daily 07:00 18:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7,18 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "1def573d-442b-4a17-b999-d84fee2715db",
+      "name": "Discover Leaflets",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ],
+      "parameters": {
+        "command": "=cd {{ $env.GROCERY_PROJECT_DIR }} && timeout 30 python3 scripts/discover_leaflets.py"
+      },
+      "notes": "exitCode 0=success 1=script error 2=timeout. cwd baked into command since this node has no cwd field."
+    },
+    {
+      "id": "51d07306-8d26-4f05-a164-06c1748c182e",
+      "name": "Parse Discovered Leaflets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const item = $input.first().json;\nif (item.exitCode !== 0) {\n  throw new Error('discover_leaflets.py failed: ' + (item.stderr || 'unknown error'));\n}\nlet parsed;\ntry {\n  parsed = JSON.parse(item.stdout);\n} catch (e) {\n  throw new Error('discover_leaflets.py returned invalid JSON: ' + e.message);\n}\nconst leaflets = parsed.leaflets || [];\nreturn leaflets.map(l => ({ json: l }));"
+      }
+    },
+    {
+      "id": "e31292d3-deb9-4fe6-b7f2-f2f1089d9fd7",
+      "name": "Query Known Leaflet Hashes",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        780,
+        300
+      ],
+      "parameters": {
+        "command": "=sqlite3 -json \"{{ $env.GROCERY_DB }}\" \"SELECT content_hash FROM leaflets;\""
+      },
+      "notes": "exitCode 0=success 1=sqlite error. Runs once regardless of how many leaflets were discovered.",
+      "executeOnce": true
+    },
+    {
+      "id": "4bb758bf-17e8-455a-89e7-d14559eec78d",
+      "name": "Diff New Leaflets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const hashCheck = $input.first().json;\nlet existingHashes = new Set();\nif (hashCheck.exitCode === 0) {\n  try {\n    const rows = hashCheck.stdout ? JSON.parse(hashCheck.stdout) : [];\n    existingHashes = new Set(rows.map(r => r.content_hash));\n  } catch (e) {\n    throw new Error('Could not parse existing leaflet hashes: ' + e.message);\n  }\n} else {\n  throw new Error('Failed to query leaflets table: ' + (hashCheck.stderr || 'unknown error'));\n}\nconst discovered = $('Parse Discovered Leaflets').all().map(i => i.json);\nconst fresh = discovered.filter(l => l.content_hash && !existingHashes.has(l.content_hash));\nreturn fresh.map(l => ({ json: l }));"
+      },
+      "notes": "Idempotency gate: only leaflets whose content_hash is not already in the leaflets table are processed."
+    },
+    {
+      "id": "7ff1f459-d5cd-4df8-b54f-2290fea47a99",
+      "name": "Check Error Rate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3900,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst success = staticData.successCount || 0;\nconst errors = staticData.errorCount || 0;\nconst total = success + errors;\nconst errorRate = total > 0 ? errors / total : 0;\nstaticData.successCount = 0;\nstaticData.errorCount = 0;\nreturn [{ json: { success, errors, total, errorRate, alert: errorRate > 0.3 } }];"
+      }
+    },
+    {
+      "id": "b5485878-7be7-4247-b75b-6aa587560b5d",
+      "name": "Error Rate Above 30%?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        4160,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.alert }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "rightValue": true
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "3660ea17-8fef-494c-b576-642da0d980df",
+      "name": "Send Ingestion Error Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4420,
+        300
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=Leaflet ingestion had a high error rate.\nSuccess: {{ $json.success }} / Errors: {{ $json.errors }} (total {{ $json.total }})\nCheck n8n execution logs for details.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "Gw7ZSKH1QvpRHnAD",
+          "name": "Telegram account"
+        }
+      },
+      "webhookId": "da21c88b-e8f1-45eb-b4e8-a4328c6f2705"
+    },
+    {
+      "id": "7128c5ba-5fbf-43a2-96a8-b2ae4c349b88",
+      "name": "Download Leaflet",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        200
+      ],
+      "parameters": {
+        "command": "=cd {{ $env.GROCERY_PROJECT_DIR }} && timeout 60 python3 scripts/download_leaflet.py \"{{ $json.leaflet_id }}\""
+      },
+      "notes": "exitCode 0=success 1=download error 2=timeout. onError continues to Log Leaflet Error so one bad leaflet does not block the batch.",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "a5e356a9-f951-445b-8ed1-b36c2694d8e7",
+      "name": "Split Leaflet Pages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1820,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const item = $input.first().json;\nconst leafletId = $('Loop New Leaflets').item.json.leaflet_id;\nif (item.exitCode !== 0) {\n  throw new Error('download_leaflet.py failed for ' + leafletId + ': ' + (item.stderr || 'unknown error'));\n}\nlet parsed;\ntry {\n  parsed = JSON.parse(item.stdout);\n} catch (e) {\n  throw new Error('download_leaflet.py returned invalid JSON for ' + leafletId + ': ' + e.message);\n}\nconst pages = parsed.pages || [];\nreturn pages.map(p => ({ json: { leaflet_id: leafletId, page_path: p } }));"
+      }
+    },
+    {
+      "id": "65dc92ee-418d-476e-a743-bb16673b8961",
+      "name": "Parse Offers",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2860,
+        200
+      ],
+      "parameters": {
+        "command": "=cd {{ $env.GROCERY_PROJECT_DIR }} && timeout 60 python3 scripts/parse_offers.py \"{{ $('Loop New Leaflets').item.json.leaflet_id }}\""
+      },
+      "notes": "exitCode 0=success 1=parse error 2=timeout. Reads OCR output already produced for this leaflet.",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "964b268b-5e8a-4f28-ac57-8ea55df2bb35",
+      "name": "Build Leaflet+Offers SQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const leafletId = $('Loop New Leaflets').item.json.leaflet_id;\nconst leaflet = $('Loop New Leaflets').item.json;\nconst parseResult = $input.first().json;\nif (parseResult.exitCode !== 0) {\n  throw new Error('parse_offers.py failed for ' + leafletId + ': ' + (parseResult.stderr || 'unknown error'));\n}\nlet offers = [];\ntry {\n  offers = (JSON.parse(parseResult.stdout).offers) || [];\n} catch (e) {\n  throw new Error('parse_offers.py returned invalid JSON for ' + leafletId + ': ' + e.message);\n}\nconst offersJson = JSON.stringify(offers);\nconst leafletJson = JSON.stringify({\n  leaflet_id: leafletId,\n  retailer: leaflet.retailer,\n  content_hash: leaflet.content_hash,\n  source_url: leaflet.source_url,\n  processed_at: new Date().toISOString(),\n  offer_count: offers.length\n});\nconst tmpFile = '/tmp/grocery_offers_' + leafletId.replace(/[^a-zA-Z0-9_-]/g, '_') + '.json';\nconst shell =\n  'cat > ' + tmpFile + \" << 'OFFERSEOF'\\n\" +\n  offersJson + '\\n' +\n  \"OFFERSEOF\\n\" +\n  'sqlite3 \"$GROCERY_DB\" << \\'SQLEOF\\'\\n' +\n  'BEGIN;\\n' +\n  \"INSERT OR REPLACE INTO leaflets (leaflet_id, retailer, content_hash, source_url, processed_at, offer_count) VALUES (\" +\n  \"'\" + leafletId.replace(/'/g, \"''\") + \"', \" +\n  \"'\" + String(leaflet.retailer || '').replace(/'/g, \"''\") + \"', \" +\n  \"'\" + String(leaflet.content_hash || '').replace(/'/g, \"''\") + \"', \" +\n  \"'\" + String(leaflet.source_url || '').replace(/'/g, \"''\") + \"', \" +\n  \"'\" + new Date().toISOString() + \"', \" +\n  offers.length + ');\\n' +\n  \"INSERT OR IGNORE INTO offers (leaflet_id, retailer, product_name, brand, capacity, price, unit_price, valid_from, valid_to, requires_card, purchase_limit, page, confidence, raw_text)\\n\" +\n  \"SELECT '\" + leafletId.replace(/'/g, \"''\") + \"', value->>'retailer', value->>'product_name', value->>'brand', value->>'capacity', value->>'price', value->>'unit_price', value->>'valid_from', value->>'valid_to', value->>'requires_card', value->>'purchase_limit', value->>'page', value->>'confidence', value->>'raw_text'\\n\" +\n  \"FROM json_each(readfile('\" + tmpFile + \"'));\\n\" +\n  'COMMIT;\\n' +\n  \"SQLEOF\\n\" +\n  'rm -f ' + tmpFile + ';\\n';\nreturn [{ json: { leaflet_id: leafletId, offer_count: offers.length, shell_cmd: shell } }];"
+      },
+      "notes": "Builds a single shell command that writes the leaflet row and all parsed offers to SQLite in one transaction. Offer JSON is embedded in a quoted heredoc so shell metacharacters in OCR text (quotes, $, backticks) cannot be interpreted. No native n8n SQLite node exists on this instance, so the sqlite3 CLI is invoked via Execute Command."
+    },
+    {
+      "id": "7040b3af-5c5c-4743-8078-b60cda724a8c",
+      "name": "Write Leaflet And Offers To SQLite",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3380,
+        200
+      ],
+      "parameters": {
+        "command": "={{ $json.shell_cmd }}"
+      },
+      "notes": "exitCode 0=success 1=sqlite error. Requires the sqlite3 CLI to support readfile()/json_each() (SQLite fileio + JSON1 extensions).",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "6f9de21e-cabb-4c34-beac-85983996c9dd",
+      "name": "Record Leaflet Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3640,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.successCount = (staticData.successCount || 0) + 1;\nconst dbResult = $input.first().json;\nconst meta = $('Build Leaflet+Offers SQL').first().json;\nif (dbResult.exitCode !== 0) {\n  staticData.errorCount = (staticData.errorCount || 0) + 1;\n  staticData.successCount -= 1;\n  console.log('SQLite write failed for ' + meta.leaflet_id + ': ' + (dbResult.stderr || 'unknown error'));\n} else {\n  console.log('Processed leaflet ' + meta.leaflet_id + ' with ' + meta.offer_count + ' offers.');\n}\nreturn [{ json: { leaflet_id: meta.leaflet_id, offer_count: meta.offer_count, processed_at: new Date().toISOString() } }];"
+      }
+    },
+    {
+      "id": "fde2fc1d-66d8-430d-bd1c-1d1eb0a21f64",
+      "name": "Loop New Leaflets",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1300,
+        300
+      ],
+      "parameters": {
+        "batchSize": 1
+      }
+    },
+    {
+      "id": "9f66a7db-3d35-4dab-a661-f0e20cbd4ec4",
+      "name": "Log Leaflet Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        420
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.errorCount = (staticData.errorCount || 0) + 1;\nconst leafletId = $('Loop New Leaflets').item.json.leaflet_id;\nconsole.log('Leaflet ' + leafletId + ' failed: ' + ($json.stderr || 'unknown error'));\nreturn [{ json: { leaflet_id: leafletId, ok: false } }];"
+      }
+    },
+    {
+      "id": "5b14e47e-427d-4849-9b8b-244924b993b4",
+      "name": "Run OCR On Page",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2340,
+        100
+      ],
+      "parameters": {
+        "command": "=cd {{ $env.GROCERY_PROJECT_DIR }} && timeout 30 python3 scripts/run_ocr.py \"{{ $json.page_path }}\""
+      },
+      "notes": "exitCode 0=success 1=OCR error 2=timeout. onError logs and continues to the next page.",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "0a78b862-18ef-4032-8513-63661e48de8c",
+      "name": "Log OCR Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2600,
+        60
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const result = $input.first().json;\nconst ok = result.exitCode === 0;\nlet confidence = null;\nif (ok) {\n  try { confidence = JSON.parse(result.stdout).confidence ?? null; } catch (e) { /* leave null */ }\n}\nreturn [{ json: { ok, confidence } }];"
+      }
+    },
+    {
+      "id": "3aaf24c1-f0a0-48e7-a79c-1f896e356a12",
+      "name": "Loop Leaflet Pages",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2080,
+        200
+      ],
+      "parameters": {
+        "batchSize": 1
+      }
+    },
+    {
+      "id": "6edfbe5e-0b34-478b-b7f5-283ddabf6cc3",
+      "name": "Log OCR Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2600,
+        160
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "console.log('OCR failed for a page: ' + ($json.stderr || 'unknown error'));\nreturn [{ json: { ok: false } }];"
+      }
+    },
+    {
+      "id": "1677dc34-6d2c-4701-8a07-c821b92875ae",
+      "name": "Sticky Note 6ed5944c",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        250
+      ],
+      "parameters": {
+        "content": "## Leaflet Ingestion\nRuns 07:00 and 18:00 Europe/Lisbon.\nIdempotent via leaflets.content_hash.\nPer-leaflet failures are isolated (onError continueErrorOutput) and do not block the batch.\nNo native SQLite node on this instance: DB writes go through Execute Command + sqlite3 CLI, JSON payloads are embedded via quoted heredocs to avoid shell injection.",
+        "color": 4,
+        "width": 560,
+        "height": 200
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "timezone": "Europe/Lisbon",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-08-01T18:44:20.091Z",
+      "createdAt": "2026-08-01T18:44:20.091Z",
+      "role": "workflow:owner",
+      "workflowId": "jKYJ4VqCj0fTu1YK",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-08-01T18:44:24.272Z",
+  "versionId": "6c179ba7-632c-4edd-a7de-0639cfdb9401"
+}
