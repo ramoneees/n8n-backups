@@ -1,9 +1,9 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-05-18T13:49:12.414Z",
-    "createdAt": "2026-05-18T13:48:29.333Z",
-    "versionId": "7a1e5400-a7df-4b33-9a8b-9189d75bb2bc",
+    "updatedAt": "2026-08-21T14:17:14.064Z",
+    "createdAt": "2026-08-21T14:17:14.064Z",
+    "versionId": "c0bfe2cf-58c2-4436-bb62-e287ca379f89",
     "workflowId": "4eHLRJ0k4i3O4HeO",
     "nodes": [
       {
@@ -160,9 +160,12 @@
             "mode": "id",
             "value": "D1X5OyGlkuo7UwdR"
           },
-          "workflowInputs": "{{ JSON.stringify({ message: $json.message, webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete' }) }}",
+          "workflowInputs": "={{ JSON.stringify({ message: $json.message, webhook_url: 'http://hermes.ramoneees.com:8644/webhooks/n8n-complete' }) }}",
           "options": {
             "waitForSubWorkflow": false
+          },
+          "parameters": {
+            "workflowInputs": "={{ JSON.stringify({ message: $json.message, webhook_url: 'http://hermes.ramoneees.com:8644/webhooks/n8n-complete' }) }}"
           }
         },
         "id": "fe86a7e0-2cb4-484b-818c-32134556e00b",
@@ -244,12 +247,12 @@
       }
     },
     "nodeGroups": [],
-    "authors": "Ramon ramon@pereirariosoftware.com",
-    "name": "Version 7a1e5400",
-    "description": "",
-    "autosaved": true
+    "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
+    "name": "Updated Notify Hermes",
+    "description": "Updated nodes: Notify Hermes",
+    "autosaved": false
   },
-  "activeVersionId": "7a1e5400-a7df-4b33-9a8b-9189d75bb2bc",
+  "activeVersionId": "c0bfe2cf-58c2-4436-bb62-e287ca379f89",
   "connections": {
     "Gitea PR Webhook": {
       "main": [
@@ -483,9 +486,12 @@
           "mode": "id",
           "value": "D1X5OyGlkuo7UwdR"
         },
-        "workflowInputs": "{{ JSON.stringify({ message: $json.message, webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete' }) }}",
+        "workflowInputs": "={{ JSON.stringify({ message: $json.message, webhook_url: 'http://hermes.ramoneees.com:8644/webhooks/n8n-complete' }) }}",
         "options": {
           "waitForSubWorkflow": false
+        },
+        "parameters": {
+          "workflowInputs": "={{ JSON.stringify({ message: $json.message, webhook_url: 'http://hermes.ramoneees.com:8644/webhooks/n8n-complete' }) }}"
         }
       },
       "id": "fe86a7e0-2cb4-484b-818c-32134556e00b",
@@ -516,6 +522,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-05-18T13:48:29.332Z",
-  "versionId": "7a1e5400-a7df-4b33-9a8b-9189d75bb2bc"
+  "updatedAt": "2026-08-21T14:17:14.063Z",
+  "versionId": "c0bfe2cf-58c2-4436-bb62-e287ca379f89"
 }
