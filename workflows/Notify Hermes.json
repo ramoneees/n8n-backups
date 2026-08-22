@@ -1,9 +1,9 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-08-10T14:54:04.829Z",
-    "createdAt": "2026-08-10T14:53:58.714Z",
-    "versionId": "c10eb700-335a-4a6f-81db-a2638f3270ae",
+    "updatedAt": "2026-08-21T14:17:13.783Z",
+    "createdAt": "2026-08-21T14:17:13.783Z",
+    "versionId": "b188d0ee-6e52-4521-9bab-1027fb84cc33",
     "workflowId": "D1X5OyGlkuo7UwdR",
     "nodes": [
       {
@@ -96,7 +96,7 @@
       {
         "parameters": {
           "method": "POST",
-          "url": "={{ $json.webhook_url || \"http://192.168.50.161:8644/webhooks/n8n-complete\" }}",
+          "url": "={{ $json.webhook_url || \"http://hermes.ramoneees.com:8644/webhooks/n8n-complete\" }}",
           "sendHeaders": true,
           "headerParameters": {
             "parameters": [
@@ -110,7 +110,10 @@
           "contentType": "raw",
           "rawContentType": "application/json",
           "body": "={{ $json.body }}",
-          "options": {}
+          "options": {},
+          "parameters": {
+            "url": "={{ $json.webhook_url || \"http://hermes.ramoneees.com:8644/webhooks/n8n-complete\" }}"
+          }
         },
         "id": "067434a8-a5ec-4c14-9c65-d8e3cdc1dac7",
         "name": "Send to Hermes",
@@ -169,12 +172,12 @@
       }
     },
     "nodeGroups": [],
-    "authors": "Ramon ramon@pereirariosoftware.com",
-    "name": "Version c10eb700",
-    "description": "",
-    "autosaved": true
+    "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
+    "name": "Updated Send to Hermes",
+    "description": "Updated nodes: Send to Hermes",
+    "autosaved": false
   },
-  "activeVersionId": "c10eb700-335a-4a6f-81db-a2638f3270ae",
+  "activeVersionId": "b188d0ee-6e52-4521-9bab-1027fb84cc33",
   "connections": {
     "When Called by Another Workflow": {
       "main": [
@@ -321,7 +324,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json.webhook_url || \"http://192.168.50.161:8644/webhooks/n8n-complete\" }}",
+        "url": "={{ $json.webhook_url || \"http://hermes.ramoneees.com:8644/webhooks/n8n-complete\" }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -335,7 +338,10 @@
         "contentType": "raw",
         "rawContentType": "application/json",
         "body": "={{ $json.body }}",
-        "options": {}
+        "options": {},
+        "parameters": {
+          "url": "={{ $json.webhook_url || \"http://hermes.ramoneees.com:8644/webhooks/n8n-complete\" }}"
+        }
       },
       "id": "067434a8-a5ec-4c14-9c65-d8e3cdc1dac7",
       "name": "Send to Hermes",
@@ -365,6 +371,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-08-10T14:53:58.712Z",
-  "versionId": "c10eb700-335a-4a6f-81db-a2638f3270ae"
+  "updatedAt": "2026-08-21T14:17:13.782Z",
+  "versionId": "b188d0ee-6e52-4521-9bab-1027fb84cc33"
 }
