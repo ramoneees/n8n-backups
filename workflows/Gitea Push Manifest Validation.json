@@ -1,9 +1,9 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-05-18T13:38:39.216Z",
-    "createdAt": "2026-05-18T13:38:39.216Z",
-    "versionId": "9d70f08a-dbf2-413d-a984-d214700dae47",
+    "updatedAt": "2026-08-21T14:17:14.430Z",
+    "createdAt": "2026-08-21T14:17:14.430Z",
+    "versionId": "a03611b0-b494-46f5-a764-62ac6d019649",
     "workflowId": "0N6TcGdlox95JzJq",
     "nodes": [
       {
@@ -120,7 +120,7 @@
         },
         "credentials": {
           "httpHeaderAuth": {
-            "id": "gitea-api-token",
+            "id": "zPLpGufpzzOF9CLq",
             "name": "Gitea API Token"
           }
         }
@@ -171,7 +171,7 @@
         },
         "credentials": {
           "httpHeaderAuth": {
-            "id": "gitea-api-token",
+            "id": "zPLpGufpzzOF9CLq",
             "name": "Gitea API Token"
           }
         }
@@ -192,9 +192,12 @@
             "mode": "id",
             "value": "D1X5OyGlkuo7UwdR"
           },
-          "workflowInputs": "={{ JSON.stringify({ message: '✅ Pre-sync validation — commit ' + $('Set YAML File List').item.json.sha.substring(0,7), webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete' }) }}",
+          "workflowInputs": "={{ JSON.stringify({ message: '\\u2705 Pre-sync validation \\u2014 commit ' + $('Set YAML File List').item.json.sha.substring(0,7), webhook_url: 'http://hermes.ramoneees.com:8644/webhooks/n8n-complete' }) }}",
           "options": {
             "waitForSubWorkflow": false
+          },
+          "parameters": {
+            "workflowInputs": "={{ JSON.stringify({ message: '\\u2705 Pre-sync validation \\u2014 commit ' + $('Set YAML File List').item.json.sha.substring(0,7), webhook_url: 'http://hermes.ramoneees.com:8644/webhooks/n8n-complete' }) }}"
           }
         }
       }
@@ -273,12 +276,12 @@
       }
     },
     "nodeGroups": [],
-    "authors": "Ramon ramon@pereirariosoftware.com",
-    "name": null,
-    "description": null,
+    "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
+    "name": "Updated Notify Hermes",
+    "description": "Updated nodes: Notify Hermes",
     "autosaved": false
   },
-  "activeVersionId": "9d70f08a-dbf2-413d-a984-d214700dae47",
+  "activeVersionId": "a03611b0-b494-46f5-a764-62ac6d019649",
   "connections": {
     "Push Webhook": {
       "main": [
@@ -476,7 +479,7 @@
       },
       "credentials": {
         "httpHeaderAuth": {
-          "id": "gitea-api-token",
+          "id": "zPLpGufpzzOF9CLq",
           "name": "Gitea API Token"
         }
       }
@@ -527,7 +530,7 @@
       },
       "credentials": {
         "httpHeaderAuth": {
-          "id": "gitea-api-token",
+          "id": "zPLpGufpzzOF9CLq",
           "name": "Gitea API Token"
         }
       }
@@ -548,9 +551,12 @@
           "mode": "id",
           "value": "D1X5OyGlkuo7UwdR"
         },
-        "workflowInputs": "={{ JSON.stringify({ message: '✅ Pre-sync validation — commit ' + $('Set YAML File List').item.json.sha.substring(0,7), webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete' }) }}",
+        "workflowInputs": "={{ JSON.stringify({ message: '\\u2705 Pre-sync validation \\u2014 commit ' + $('Set YAML File List').item.json.sha.substring(0,7), webhook_url: 'http://hermes.ramoneees.com:8644/webhooks/n8n-complete' }) }}",
         "options": {
           "waitForSubWorkflow": false
+        },
+        "parameters": {
+          "workflowInputs": "={{ JSON.stringify({ message: '\\u2705 Pre-sync validation \\u2014 commit ' + $('Set YAML File List').item.json.sha.substring(0,7), webhook_url: 'http://hermes.ramoneees.com:8644/webhooks/n8n-complete' }) }}"
         }
       }
     }
@@ -572,6 +578,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-05-18T13:38:39.216Z",
-  "versionId": "9d70f08a-dbf2-413d-a984-d214700dae47"
+  "updatedAt": "2026-08-21T14:17:14.428Z",
+  "versionId": "a03611b0-b494-46f5-a764-62ac6d019649"
 }
