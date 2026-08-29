@@ -1,0 +1,547 @@
+{
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-08-28T10:19:29.710Z",
+    "createdAt": "2026-08-28T10:19:29.710Z",
+    "versionId": "4ed485aa-c05e-4fce-bf15-c2a2863ba27e",
+    "workflowId": "VzhsrtQhKilTMu0j",
+    "nodes": [
+      {
+        "id": "f9200cee-6400-488c-971c-4b0f0d0c3698",
+        "name": "Mercado Paper Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          -460,
+          0
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "mercado-paper",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "webhookId": "03f9c0c6-d805-40b5-897d-f88d415e87ab"
+      },
+      {
+        "id": "5b8ee7fc-ac7c-4fd4-afd1-6a76ced0f595",
+        "name": "Auth Check",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -240,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Normaliza o payload do webhook e valida o secret\nconst raw = $input.first().json;\nconst body = raw && raw.body !== undefined ? raw.body : raw;\nconst hdrs = (raw && raw.headers) || {};\nconst secret = hdrs['x-mercado-secret'] || hdrs['X-Mercado-Secret'] || '';\nif (secret !== 'n8n-webhook-secret-2024') {\n  throw new Error('unauthorized');\n}\nif (!body || !body.drive_name || !body.json) {\n  throw new Error('payload invalido: espera {drive_name, json}');\n}\n// sanea o nome: so [A-Za-z0-9._-]\nbody.drive_name = String(body.drive_name).replace(/[^A-Za-z0-9._-]/g, '_');\nreturn [{ json: { drive_name: body.drive_name, record: body.json } }];"
+        }
+      },
+      {
+        "id": "e425149e-d18f-4d66-abad-643dbd71bb40",
+        "name": "Consultar Drive",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -20,
+          0
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "https://www.googleapis.com/drive/v3/files",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "googleDriveOAuth2Api",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "q",
+                "value": "=name = '{{ $('Auth Check').first().json.drive_name }}' and '16YakJ6htaYpeDDmJSkm9MvP9U2C2Ws2u' in parents and trashed = false"
+              },
+              {
+                "name": "fields",
+                "value": "files(id,name)"
+              },
+              {
+                "name": "pageSize",
+                "value": "5"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lOUQgEfyXT0EShei",
+            "name": "Google Drive Empresa"
+          }
+        }
+      },
+      {
+        "id": "05ee40b2-2d5a-49fe-84cc-88db4e0e4592",
+        "name": "Existe?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          200,
+          0
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "exists-check",
+                "leftValue": "={{ $json.files ? $json.files.length : 0 }}",
+                "rightValue": "0",
+                "operator": {
+                  "type": "number",
+                  "operation": "gt",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "f6568827-d41c-4663-a21f-a2d8528785d0",
+        "name": "Responder Skip",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          420,
+          120
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "= {{ JSON.stringify({ status: 'skipped', reason: 'duplicado', file: $('Auth Check').first().json.drive_name }) }}"
+        }
+      },
+      {
+        "id": "21d24d8c-7d07-4ead-866b-80a341005770",
+        "name": "Upload JSON",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          420,
+          -100
+        ],
+        "parameters": {
+          "jsCode": "// Monta o binario JSON para o upload (fonte: Auth Check, ja executado)\nconst src = $('Auth Check').first().json;\nconst jsonStr = JSON.stringify(src.record, null, 2);\nconst buf = Buffer.from(jsonStr, 'utf8');\nconst binaryData = await this.helpers.prepareBinaryData(buf, src.drive_name, 'application/json');\nreturn [{ json: { drive_name: src.drive_name }, binary: { data: binaryData } }];"
+        }
+      },
+      {
+        "id": "7097312c-fea5-4b86-b72f-c32e986a4987",
+        "name": "Gravar no Drive",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          640,
+          -100
+        ],
+        "parameters": {
+          "operation": "upload",
+          "name": "={{ $json.drive_name }}",
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "16YakJ6htaYpeDDmJSkm9MvP9U2C2Ws2u"
+          },
+          "options": {}
+        },
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lOUQgEfyXT0EShei",
+            "name": "Google Drive Empresa"
+          }
+        }
+      },
+      {
+        "id": "6da7db0a-5a01-4944-bd5d-93b989aea0be",
+        "name": "Responder OK",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          860,
+          -100
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ status: 'ok', file: $json.name, id: $json.id }) }}"
+        }
+      }
+    ],
+    "connections": {
+      "Mercado Paper Webhook": {
+        "main": [
+          [
+            {
+              "node": "Auth Check",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Auth Check": {
+        "main": [
+          [
+            {
+              "node": "Consultar Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consultar Drive": {
+        "main": [
+          [
+            {
+              "node": "Existe?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Existe?": {
+        "main": [
+          [
+            {
+              "node": "Responder Skip",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Upload JSON",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upload JSON": {
+        "main": [
+          [
+            {
+              "node": "Gravar no Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gravar no Drive": {
+        "main": [
+          [
+            {
+              "node": "Responder OK",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
+    "name": "Initial version",
+    "description": "Created with 8 nodes: Mercado Paper Webhook, Auth Check, Consultar Drive, Existe?, Responder Skip and 3 more",
+    "autosaved": false
+  },
+  "activeVersionId": "4ed485aa-c05e-4fce-bf15-c2a2863ba27e",
+  "connections": {
+    "Mercado Paper Webhook": {
+      "main": [
+        [
+          {
+            "node": "Auth Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auth Check": {
+      "main": [
+        [
+          {
+            "node": "Consultar Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Drive": {
+      "main": [
+        [
+          {
+            "node": "Existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe?": {
+      "main": [
+        [
+          {
+            "node": "Responder Skip",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upload JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload JSON": {
+      "main": [
+        [
+          {
+            "node": "Gravar no Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gravar no Drive": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-08-28T10:19:29.710Z",
+  "id": "VzhsrtQhKilTMu0j",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Mercado Paper Intake",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "f9200cee-6400-488c-971c-4b0f0d0c3698",
+      "name": "Mercado Paper Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mercado-paper",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "03f9c0c6-d805-40b5-897d-f88d415e87ab"
+    },
+    {
+      "id": "5b8ee7fc-ac7c-4fd4-afd1-6a76ced0f595",
+      "name": "Auth Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Normaliza o payload do webhook e valida o secret\nconst raw = $input.first().json;\nconst body = raw && raw.body !== undefined ? raw.body : raw;\nconst hdrs = (raw && raw.headers) || {};\nconst secret = hdrs['x-mercado-secret'] || hdrs['X-Mercado-Secret'] || '';\nif (secret !== 'n8n-webhook-secret-2024') {\n  throw new Error('unauthorized');\n}\nif (!body || !body.drive_name || !body.json) {\n  throw new Error('payload invalido: espera {drive_name, json}');\n}\n// sanea o nome: so [A-Za-z0-9._-]\nbody.drive_name = String(body.drive_name).replace(/[^A-Za-z0-9._-]/g, '_');\nreturn [{ json: { drive_name: body.drive_name, record: body.json } }];"
+      }
+    },
+    {
+      "id": "e425149e-d18f-4d66-abad-643dbd71bb40",
+      "name": "Consultar Drive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -20,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "=name = '{{ $('Auth Check').first().json.drive_name }}' and '16YakJ6htaYpeDDmJSkm9MvP9U2C2Ws2u' in parents and trashed = false"
+            },
+            {
+              "name": "fields",
+              "value": "files(id,name)"
+            },
+            {
+              "name": "pageSize",
+              "value": "5"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "id": "05ee40b2-2d5a-49fe-84cc-88db4e0e4592",
+      "name": "Existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        200,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "exists-check",
+              "leftValue": "={{ $json.files ? $json.files.length : 0 }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "f6568827-d41c-4663-a21f-a2d8528785d0",
+      "name": "Responder Skip",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        420,
+        120
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "= {{ JSON.stringify({ status: 'skipped', reason: 'duplicado', file: $('Auth Check').first().json.drive_name }) }}"
+      }
+    },
+    {
+      "id": "21d24d8c-7d07-4ead-866b-80a341005770",
+      "name": "Upload JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        -100
+      ],
+      "parameters": {
+        "jsCode": "// Monta o binario JSON para o upload (fonte: Auth Check, ja executado)\nconst src = $('Auth Check').first().json;\nconst jsonStr = JSON.stringify(src.record, null, 2);\nconst buf = Buffer.from(jsonStr, 'utf8');\nconst binaryData = await this.helpers.prepareBinaryData(buf, src.drive_name, 'application/json');\nreturn [{ json: { drive_name: src.drive_name }, binary: { data: binaryData } }];"
+      }
+    },
+    {
+      "id": "7097312c-fea5-4b86-b72f-c32e986a4987",
+      "name": "Gravar no Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        640,
+        -100
+      ],
+      "parameters": {
+        "operation": "upload",
+        "name": "={{ $json.drive_name }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "16YakJ6htaYpeDDmJSkm9MvP9U2C2Ws2u"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "id": "6da7db0a-5a01-4944-bd5d-93b989aea0be",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        -100
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'ok', file: $json.name, id: $json.id }) }}"
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-08-28T10:19:29.710Z",
+      "createdAt": "2026-08-28T10:19:29.710Z",
+      "role": "workflow:owner",
+      "workflowId": "VzhsrtQhKilTMu0j",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-08-28T10:19:29.710Z",
+  "versionId": "4ed485aa-c05e-4fce-bf15-c2a2863ba27e"
+}
