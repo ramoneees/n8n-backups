@@ -1,0 +1,805 @@
+{
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-08-22T17:22:49.615Z",
+    "createdAt": "2026-08-22T17:22:49.615Z",
+    "versionId": "a611c540-7538-4c6b-b8d5-011cdd2316ee",
+    "workflowId": "06z0PeRKbwNaebhN",
+    "nodes": [
+      {
+        "id": "99b8c97f-a0a3-4435-8f26-191b9640d0df",
+        "name": "Gmail Trigger",
+        "type": "n8n-nodes-base.gmailTrigger",
+        "typeVersion": 1.4,
+        "position": [
+          -500,
+          0
+        ],
+        "parameters": {
+          "pollTimes": {
+            "item": [
+              {
+                "mode": "everyMinute"
+              }
+            ]
+          },
+          "event": "messageReceived",
+          "simple": false,
+          "maxResults": 10,
+          "filters": {
+            "q": "=has:attachment filename:pdf (from:noreply@cartaocontinente.pt OR from:faturacircular@sonaemc.com OR from:noreply@sonaemc.com)",
+            "readStatus": "unread",
+            "includeSpamTrash": true
+          },
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "IZ5cS1EUXpPOEEPu",
+            "name": "Gmail Pessoal"
+          }
+        }
+      },
+      {
+        "id": "f147e83c-b383-4d81-94a1-3bf81a3a5d4a",
+        "name": "Filtrar PDFs Mercado",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -100,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst results = [];\nconst seen = new Set();\nfor (const item of items) {\n  if (!item.binary) continue;\n  const msgId = item.json.id || item.json.threadId || Math.random().toString(36);\n  const rawDate = item.json.internalDate || item.json.date || null;\n  let emailDate = new Date().toISOString().slice(0, 10);\n  if (rawDate) { const d = new Date(Number(rawDate) > 0 ? Number(rawDate) : rawDate); if (!isNaN(d.getTime())) emailDate = d.toISOString().slice(0, 10); }\n  for (const key of Object.keys(item.binary)) {\n    const bin = item.binary[key];\n    const fileName = (bin.fileName || '').trim();\n    if (!fileName) continue;\n    const isPdf = (bin.mimeType || '').toLowerCase().includes('pdf') || fileName.toLowerCase().endsWith('.pdf');\n    if (!isPdf) continue;\n    const dedupKey = msgId + '::' + fileName;\n    if (seen.has(dedupKey)) continue;\n    seen.add(dedupKey);\n    const meta = fileName.match(/(CONTINENTE(?:\\s+MODELO)?|GALERIAS|MM\\s*BOM\\s*DIA|MM|BP|FRANCISCO\\s+MANUEL|BOM\\s+SUCCESSO)[_ ](\\d{8})[._-]?(\\d+)_([\\d.,]+)\\.pdf/i) || fileName.match(/(CONTINENTE|GALERIAS|MM|BP|FRANCISCO\\s+MANUEL|BOM\\s+SUCCESSO).*?(\\d{8})[._-]?(\\d+)_([\\d.,]+)\\.pdf/i);\n    let store = null, docDate = null, docNumber = null, docTotal = null;\n    if (meta) {\n      store = meta[1].toUpperCase().replace(/\\s+/g, ' ').trim();\n      docDate = meta[2].slice(0,4) + '-' + meta[2].slice(4,6) + '-' + meta[2].slice(6,8);\n      docNumber = meta[3];\n      docTotal = meta[4];\n    }\n    results.push({ json: { messageId: msgId, emailDate, fileName, store, docNumber, docDate, docTotal }, binary: { data: bin } });\n  }\n}\nreturn results;"
+        }
+      },
+      {
+        "id": "e371d053-e0b5-404a-a5a8-67fcc8be7eda",
+        "name": "Extrair Texto PDF",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          100,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const TOOLBOX_URL = 'http://toolbox.apps.svc.cluster.local:8000/api/v1/extract/base64';\nconst FIELD_NAME = 'data';\nconst allItems = $input.all();\nconst results = [];\nfor (let i = 0; i < allItems.length; i++) {\n  try {\n    const item = allItems[i];\n    await this.helpers.assertBinaryData(i, FIELD_NAME);\n    const buffer = await this.helpers.getBinaryDataBuffer(i, FIELD_NAME);\n    const binary = item.binary ? item.binary[FIELD_NAME] : null;\n    const fileName = (binary && binary.fileName) || 'invoice.pdf';\n    const mimeType = (binary && binary.mimeType) || 'application/pdf';\n    const response = await this.helpers.httpRequest({\n      method: 'POST', url: TOOLBOX_URL,\n      headers: { 'Content-Type': 'application/json' },\n      body: { fileName, mimeType, data: buffer.toString('base64') },\n      returnFullResponse: true, ignoreHttpStatusErrors: true, timeout: 60000,\n    });\n    const status = response ? response.statusCode : 0;\n    const payload = response ? response.body : null;\n    if (status < 200 || status >= 300) throw new Error('Toolbox returned ' + status + ': ' + (typeof payload === 'string' ? payload : JSON.stringify(payload)));\n    const text = (payload && typeof payload === 'object') ? (payload.text || payload.markdown || payload.content || JSON.stringify(payload)) : String(payload || '');\n    results.push({ json: Object.assign({}, item.json, { text: String(text).substring(0, 60000) }), binary: item.binary });\n  } catch (err) {\n    results.push({ json: Object.assign({}, allItems[i].json, { text: '', extractError: err.message }), binary: allItems[i].binary, pairedItem: { item: i } });\n  }\n}\nreturn results;"
+        }
+      },
+      {
+        "id": "6ef4a6db-245d-44af-a846-dc79290d8f62",
+        "name": "Construir Prompt",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          300,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst L = [ 'Analisa esta fatura de supermercado e retorna APENAS um JSON valido, sem markdown e sem explicacao.', '', 'Schema:', '{', '  \"store\": string,', '  \"document_number\": string,', '  \"date\": \"YYYY-MM-DD\",', '  \"time\": \"HH:MM\" | null,', '  \"total\": string,', '  \"total_net\": string | null,', '  \"payment_method\": string | null,', '  \"savings\": { \"card\": string | null, \"discounts\": string | null },', '  \"items\": [', '    { \"product\": string, \"quantity\": string, \"unit\": \"kg\" | \"un\" | \"lt\" | null, \"unit_price\": string, \"total\": string, \"category\": string, \"brand\": string | null }', '  ]', '}', '', 'Regras: TODAS as keys em ingles, exatamente como no schema; valores como string com PONTO decimal (ex: \"3.49\"); category deve ser UMA de: frutas, vegetais, carne, peixe, laticinios, padaria, mercearia, bebidas, congelados, higiene, limpeza, bebe, animais, outros; nao inventes itens - apenas os que estao na fatura; marca do proprio continente = \"Continente\".', '' ];\nreturn items.map(item => {\n  const j = item.json;\n  const p = L.join('\\n') + '\\nDicas extraidas do nome do ficheiro (usa se o texto nao mostrar): store=' + (j.store || '?') + ', numero=' + (j.docNumber || '?') + ', data=' + (j.docDate || '?') + ', total=' + (j.docTotal || '?') + '\\n\\nTexto da fatura:\\n' + String(j.text || '').substring(0, 12000);\n  return { json: Object.assign({}, j, { prompt: p }), binary: item.binary };\n});"
+        }
+      },
+      {
+        "id": "fab29360-a7aa-489c-819f-57eba75c6deb",
+        "name": "Analisar Fatura (LLM)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          500,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ \n  {\n      \"model\": \"MiniMax-M2.5\",\n      \"messages\": [\n          {\n              \"role\": \"user\",\n              \"content\": $json.prompt\n          }\n      ],\n      \"temperature\": 0.1,\n      \"max_tokens\": 16000\n  }\n }}",
+          "options": {
+            "timeout": 120000
+          }
+        },
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "wXO4qmCuKINk321e",
+            "name": "LiteLLM KEY"
+          }
+        }
+      },
+      {
+        "id": "30d94e2c-1095-45fa-ac50-0f60e07a71d7",
+        "name": "Consolidar JSON",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          700,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const llmItems = $input.all();\nconst src = $('Filtrar PDFs Mercado').all();\nconst results = [];\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  if (str.includes(',') && str.includes('.')) str = str.replace(/\\./g, '').replace(',', '.');\n  else if (str.includes(',')) str = str.replace(',', '.');\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\nconst CATS = ['frutas','vegetais','carne','peixe','laticinios','padaria','mercearia','bebidas','congelados','higiene','limpeza','bebe','animais','outros'];\nlet okCount = 0, errCount = 0, itemCount = 0;\nfor (let i = 0; i < llmItems.length; i++) {\n  const meta = src[i] ? src[i].json : {};\n  const bin = src[i] ? src[i].binary : null;\n  const raw = llmItems[i].json.llmResponse || (llmItems[i].json.choices && llmItems[i].json.choices[0] && llmItems[i].json.choices[0].message ? llmItems[i].json.choices[0].message.content : '') || '';\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const jm = js.match(/\\{[\\s\\S]*\\}/);\n    if (jm) data = JSON.parse(jm[0]);\n    if (data && Array.isArray(data.items)) parsedOk = true; else error = 'schema: items em falta';\n  } catch (e) { error = 'JSON parse: ' + e.message; }\n  if (!data) data = {};\n  const loja = data.store || meta.store || 'DESCONHECIDO';\n  const numero = String(data.document_number || meta.docNumber || (meta.fileName || '').replace(/\\.pdf$/i, ''));\n  const data_doc = data.date || meta.docDate || meta.emailDate;\n  const total = data.total != null ? String(data.total) : (meta.docTotal || null);\n  const itens = (data.items || []).map(it => ({\n    product: String(it.product || '').trim(),\n    quantity: it.quantity != null ? String(it.quantity) : null,\n    unit: it.unit || null,\n    unit_price: it.unit_price != null ? String(it.unit_price) : null,\n    total: it.total != null ? String(it.total) : null,\n    category: CATS.includes(it.category) ? it.category : 'outros',\n    brand: it.brand || null,\n  }));\n  const soma = itens.reduce((acc, it) => acc + (parseNum(it.total) || 0), 0);\n  const totalNum = parseNum(total);\n  const record = {\n    schema: 'mercado_fatura_v2',\n    store: loja, document_number: numero, date: data_doc,\n    time: data.time || null, total: total, total_net: data.total_net || null,\n    payment_method: data.payment_method || null,\n    savings: data.savings || { card: null, discounts: null },\n    items: itens,\n    check: { items_sum: soma.toFixed(2), document_total: totalNum != null ? totalNum.toFixed(2) : null, difference: totalNum != null ? (totalNum - soma).toFixed(2) : null },\n    source: { message_id: meta.messageId || null, file: meta.fileName || null, email_received: meta.emailDate || null },\n    processed_at: new Date().toISOString(),\n  };\n  if (parsedOk) okCount++; else errCount++;\n  itemCount += itens.length;\n  const my = data_doc && data_doc.length >= 7 ? data_doc.slice(5,7) + '-' + data_doc.slice(0,4) : '00-0000';\n  const uploadName = my + '_' + loja.replace(/[^A-Za-z0-9]/g, '').slice(0, 20) + '_' + String(numero).replace(/[^A-Za-z0-9]/g, '').slice(0, 25) + '.json';\n  results.push({ json: Object.assign({}, meta, { parsedOk: parsedOk, error: error, uploadName: uploadName, record: record }), binary: bin || undefined });\n}\nconst summary = { novas: 0, ok: okCount, erros: errCount, itens: itemCount };\nreturn results.map(r => ({ json: Object.assign({}, r.json, { _summary: summary }) }));"
+        }
+      },
+      {
+        "id": "9bc8586d-0f58-4ce0-8f10-6d20a22f6f37",
+        "name": "Dedup",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1100,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const uploadItems = $input.all();\nlet existingItems = [];\ntry { existingItems = $('Listar Ficheiros Mercado').all(); } catch (e) { existingItems = []; }\nconst existing = new Set(existingItems.map(i => (i.json.name || '').toLowerCase()).filter(n => n));\nconst novos = uploadItems.filter(i => !existing.has((i.json.uploadName || '').toLowerCase()));\nconst skipped = uploadItems.length - novos.length;\nif (novos.length > 0) novos[0].json._summary.duplicados = skipped;\nreturn novos;"
+        }
+      },
+      {
+        "id": "4e6b4537-9f36-431d-8fd6-1ef3a4c6a24c",
+        "name": "Upload JSON",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1300,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst results = [];\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const jsonStr = JSON.stringify(item.json.record, null, 2);\n  const buf = Buffer.from(jsonStr, 'utf8');\n  const binaryData = await this.helpers.prepareBinaryData(buf, item.json.uploadName, 'application/json');\n  results.push({ json: { uploadName: item.json.uploadName, parsedOk: item.json.parsedOk, _summary: item.json._summary, record: item.json.record }, binary: { data: binaryData } });\n}\nreturn results;"
+        }
+      },
+      {
+        "id": "09851dce-b063-4b6d-b0c0-6340e750d48b",
+        "name": "Gravar no Drive",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1500,
+          0
+        ],
+        "parameters": {
+          "operation": "upload",
+          "name": "={{ $json.uploadName }}",
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "16YakJ6htaYpeDDmJSkm9MvP9U2C2Ws2u"
+          },
+          "options": {}
+        },
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lOUQgEfyXT0EShei",
+            "name": "Google Drive Empresa"
+          }
+        }
+      },
+      {
+        "id": "3414b986-f820-4070-983c-b1812622ccb1",
+        "name": "Resumo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1700,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const ups = $('Upload JSON').all();\nconst s = ups.length > 0 && ups[0].json._summary ? ups[0].json._summary : { ok: 0, erros: 0, duplicados: 0, itens: 0 };\nlet gravados = 0;\ntry { gravados = $('Gravar no Drive').all().length; } catch (e) { gravados = 0; }\nreturn [{ json: { message: 'Faturas Mercado: ' + (s.ok ?? 0) + ' processadas (' + gravados + ' gravadas), ' + (s.itens ?? 0) + ' itens. Pasta Mercado Dados.' } }];"
+        }
+      },
+      {
+        "id": "83219dce-643f-4f41-a942-59668e70df41",
+        "name": "Notificar Hermes",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1900,
+          0
+        ],
+        "parameters": {
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "D1X5OyGlkuo7UwdR"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "message": "={{ $json.message }}",
+              "webhook_secret": "n8n-webhook-secret-2024",
+              "webhook_url": "http://hermes.ramoneees.com:8644/webhooks/n8n-complete"
+            },
+            "matchingColumns": [],
+            "schema": []
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "246db6c7-7cad-42ea-9109-1b47913e676d",
+        "name": "Listar Ficheiros Mercado",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          900,
+          0
+        ],
+        "parameters": {
+          "resource": "fileFolder",
+          "operation": "search",
+          "searchMethod": "query",
+          "queryString": "=trashed = false",
+          "returnAll": true,
+          "filter": {
+            "driveId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "My Drive"
+            },
+            "folderId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "16YakJ6htaYpeDDmJSkm9MvP9U2C2Ws2u"
+            },
+            "whatToSearch": "files"
+          },
+          "options": {
+            "fields": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lOUQgEfyXT0EShei",
+            "name": "Google Drive Empresa"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Gmail Trigger": {
+        "main": [
+          [
+            {
+              "node": "Filtrar PDFs Mercado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filtrar PDFs Mercado": {
+        "main": [
+          [
+            {
+              "node": "Extrair Texto PDF",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extrair Texto PDF": {
+        "main": [
+          [
+            {
+              "node": "Construir Prompt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Construir Prompt": {
+        "main": [
+          [
+            {
+              "node": "Analisar Fatura (LLM)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Analisar Fatura (LLM)": {
+        "main": [
+          [
+            {
+              "node": "Consolidar JSON",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consolidar JSON": {
+        "main": [
+          [
+            {
+              "node": "Dedup",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Listar Ficheiros Mercado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dedup": {
+        "main": [
+          [
+            {
+              "node": "Upload JSON",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upload JSON": {
+        "main": [
+          [
+            {
+              "node": "Gravar no Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gravar no Drive": {
+        "main": [
+          [
+            {
+              "node": "Resumo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resumo": {
+        "main": [
+          [
+            {
+              "node": "Notificar Hermes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
+    "name": "Updated Construir Prompt, Consolidar JSON",
+    "description": "Updated nodes: Construir Prompt, Consolidar JSON",
+    "autosaved": false
+  },
+  "activeVersionId": "a611c540-7538-4c6b-b8d5-011cdd2316ee",
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Filtrar PDFs Mercado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar PDFs Mercado": {
+      "main": [
+        [
+          {
+            "node": "Extrair Texto PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Texto PDF": {
+      "main": [
+        [
+          {
+            "node": "Construir Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir Prompt": {
+      "main": [
+        [
+          {
+            "node": "Analisar Fatura (LLM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisar Fatura (LLM)": {
+      "main": [
+        [
+          {
+            "node": "Consolidar JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidar JSON": {
+      "main": [
+        [
+          {
+            "node": "Dedup",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Listar Ficheiros Mercado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedup": {
+      "main": [
+        [
+          {
+            "node": "Upload JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload JSON": {
+      "main": [
+        [
+          {
+            "node": "Gravar no Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gravar no Drive": {
+      "main": [
+        [
+          {
+            "node": "Resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumo": {
+      "main": [
+        [
+          {
+            "node": "Notificar Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-08-22T17:19:33.351Z",
+  "id": "06z0PeRKbwNaebhN",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Faturas Mercado - Continente para JSON",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "99b8c97f-a0a3-4435-8f26-191b9640d0df",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -500,
+        0
+      ],
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "event": "messageReceived",
+        "simple": false,
+        "maxResults": 10,
+        "filters": {
+          "q": "=has:attachment filename:pdf (from:noreply@cartaocontinente.pt OR from:faturacircular@sonaemc.com OR from:noreply@sonaemc.com)",
+          "readStatus": "unread",
+          "includeSpamTrash": true
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      }
+    },
+    {
+      "id": "f147e83c-b383-4d81-94a1-3bf81a3a5d4a",
+      "name": "Filtrar PDFs Mercado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\nconst seen = new Set();\nfor (const item of items) {\n  if (!item.binary) continue;\n  const msgId = item.json.id || item.json.threadId || Math.random().toString(36);\n  const rawDate = item.json.internalDate || item.json.date || null;\n  let emailDate = new Date().toISOString().slice(0, 10);\n  if (rawDate) { const d = new Date(Number(rawDate) > 0 ? Number(rawDate) : rawDate); if (!isNaN(d.getTime())) emailDate = d.toISOString().slice(0, 10); }\n  for (const key of Object.keys(item.binary)) {\n    const bin = item.binary[key];\n    const fileName = (bin.fileName || '').trim();\n    if (!fileName) continue;\n    const isPdf = (bin.mimeType || '').toLowerCase().includes('pdf') || fileName.toLowerCase().endsWith('.pdf');\n    if (!isPdf) continue;\n    const dedupKey = msgId + '::' + fileName;\n    if (seen.has(dedupKey)) continue;\n    seen.add(dedupKey);\n    const meta = fileName.match(/(CONTINENTE(?:\\s+MODELO)?|GALERIAS|MM\\s*BOM\\s*DIA|MM|BP|FRANCISCO\\s+MANUEL|BOM\\s+SUCCESSO)[_ ](\\d{8})[._-]?(\\d+)_([\\d.,]+)\\.pdf/i) || fileName.match(/(CONTINENTE|GALERIAS|MM|BP|FRANCISCO\\s+MANUEL|BOM\\s+SUCCESSO).*?(\\d{8})[._-]?(\\d+)_([\\d.,]+)\\.pdf/i);\n    let store = null, docDate = null, docNumber = null, docTotal = null;\n    if (meta) {\n      store = meta[1].toUpperCase().replace(/\\s+/g, ' ').trim();\n      docDate = meta[2].slice(0,4) + '-' + meta[2].slice(4,6) + '-' + meta[2].slice(6,8);\n      docNumber = meta[3];\n      docTotal = meta[4];\n    }\n    results.push({ json: { messageId: msgId, emailDate, fileName, store, docNumber, docDate, docTotal }, binary: { data: bin } });\n  }\n}\nreturn results;"
+      }
+    },
+    {
+      "id": "e371d053-e0b5-404a-a5a8-67fcc8be7eda",
+      "name": "Extrair Texto PDF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const TOOLBOX_URL = 'http://toolbox.apps.svc.cluster.local:8000/api/v1/extract/base64';\nconst FIELD_NAME = 'data';\nconst allItems = $input.all();\nconst results = [];\nfor (let i = 0; i < allItems.length; i++) {\n  try {\n    const item = allItems[i];\n    await this.helpers.assertBinaryData(i, FIELD_NAME);\n    const buffer = await this.helpers.getBinaryDataBuffer(i, FIELD_NAME);\n    const binary = item.binary ? item.binary[FIELD_NAME] : null;\n    const fileName = (binary && binary.fileName) || 'invoice.pdf';\n    const mimeType = (binary && binary.mimeType) || 'application/pdf';\n    const response = await this.helpers.httpRequest({\n      method: 'POST', url: TOOLBOX_URL,\n      headers: { 'Content-Type': 'application/json' },\n      body: { fileName, mimeType, data: buffer.toString('base64') },\n      returnFullResponse: true, ignoreHttpStatusErrors: true, timeout: 60000,\n    });\n    const status = response ? response.statusCode : 0;\n    const payload = response ? response.body : null;\n    if (status < 200 || status >= 300) throw new Error('Toolbox returned ' + status + ': ' + (typeof payload === 'string' ? payload : JSON.stringify(payload)));\n    const text = (payload && typeof payload === 'object') ? (payload.text || payload.markdown || payload.content || JSON.stringify(payload)) : String(payload || '');\n    results.push({ json: Object.assign({}, item.json, { text: String(text).substring(0, 60000) }), binary: item.binary });\n  } catch (err) {\n    results.push({ json: Object.assign({}, allItems[i].json, { text: '', extractError: err.message }), binary: allItems[i].binary, pairedItem: { item: i } });\n  }\n}\nreturn results;"
+      }
+    },
+    {
+      "id": "6ef4a6db-245d-44af-a846-dc79290d8f62",
+      "name": "Construir Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst L = [ 'Analisa esta fatura de supermercado e retorna APENAS um JSON valido, sem markdown e sem explicacao.', '', 'Schema:', '{', '  \"store\": string,', '  \"document_number\": string,', '  \"date\": \"YYYY-MM-DD\",', '  \"time\": \"HH:MM\" | null,', '  \"total\": string,', '  \"total_net\": string | null,', '  \"payment_method\": string | null,', '  \"savings\": { \"card\": string | null, \"discounts\": string | null },', '  \"items\": [', '    { \"product\": string, \"quantity\": string, \"unit\": \"kg\" | \"un\" | \"lt\" | null, \"unit_price\": string, \"total\": string, \"category\": string, \"brand\": string | null }', '  ]', '}', '', 'Regras: TODAS as keys em ingles, exatamente como no schema; valores como string com PONTO decimal (ex: \"3.49\"); category deve ser UMA de: frutas, vegetais, carne, peixe, laticinios, padaria, mercearia, bebidas, congelados, higiene, limpeza, bebe, animais, outros; nao inventes itens - apenas os que estao na fatura; marca do proprio continente = \"Continente\".', '' ];\nreturn items.map(item => {\n  const j = item.json;\n  const p = L.join('\\n') + '\\nDicas extraidas do nome do ficheiro (usa se o texto nao mostrar): store=' + (j.store || '?') + ', numero=' + (j.docNumber || '?') + ', data=' + (j.docDate || '?') + ', total=' + (j.docTotal || '?') + '\\n\\nTexto da fatura:\\n' + String(j.text || '').substring(0, 12000);\n  return { json: Object.assign({}, j, { prompt: p }), binary: item.binary };\n});"
+      }
+    },
+    {
+      "id": "fab29360-a7aa-489c-819f-57eba75c6deb",
+      "name": "Analisar Fatura (LLM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ \n  {\n      \"model\": \"MiniMax-M2.5\",\n      \"messages\": [\n          {\n              \"role\": \"user\",\n              \"content\": $json.prompt\n          }\n      ],\n      \"temperature\": 0.1,\n      \"max_tokens\": 16000\n  }\n }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "wXO4qmCuKINk321e",
+          "name": "LiteLLM KEY"
+        }
+      }
+    },
+    {
+      "id": "30d94e2c-1095-45fa-ac50-0f60e07a71d7",
+      "name": "Consolidar JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const llmItems = $input.all();\nconst src = $('Filtrar PDFs Mercado').all();\nconst results = [];\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  if (str.includes(',') && str.includes('.')) str = str.replace(/\\./g, '').replace(',', '.');\n  else if (str.includes(',')) str = str.replace(',', '.');\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\nconst CATS = ['frutas','vegetais','carne','peixe','laticinios','padaria','mercearia','bebidas','congelados','higiene','limpeza','bebe','animais','outros'];\nlet okCount = 0, errCount = 0, itemCount = 0;\nfor (let i = 0; i < llmItems.length; i++) {\n  const meta = src[i] ? src[i].json : {};\n  const bin = src[i] ? src[i].binary : null;\n  const raw = llmItems[i].json.llmResponse || (llmItems[i].json.choices && llmItems[i].json.choices[0] && llmItems[i].json.choices[0].message ? llmItems[i].json.choices[0].message.content : '') || '';\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const jm = js.match(/\\{[\\s\\S]*\\}/);\n    if (jm) data = JSON.parse(jm[0]);\n    if (data && Array.isArray(data.items)) parsedOk = true; else error = 'schema: items em falta';\n  } catch (e) { error = 'JSON parse: ' + e.message; }\n  if (!data) data = {};\n  const loja = data.store || meta.store || 'DESCONHECIDO';\n  const numero = String(data.document_number || meta.docNumber || (meta.fileName || '').replace(/\\.pdf$/i, ''));\n  const data_doc = data.date || meta.docDate || meta.emailDate;\n  const total = data.total != null ? String(data.total) : (meta.docTotal || null);\n  const itens = (data.items || []).map(it => ({\n    product: String(it.product || '').trim(),\n    quantity: it.quantity != null ? String(it.quantity) : null,\n    unit: it.unit || null,\n    unit_price: it.unit_price != null ? String(it.unit_price) : null,\n    total: it.total != null ? String(it.total) : null,\n    category: CATS.includes(it.category) ? it.category : 'outros',\n    brand: it.brand || null,\n  }));\n  const soma = itens.reduce((acc, it) => acc + (parseNum(it.total) || 0), 0);\n  const totalNum = parseNum(total);\n  const record = {\n    schema: 'mercado_fatura_v2',\n    store: loja, document_number: numero, date: data_doc,\n    time: data.time || null, total: total, total_net: data.total_net || null,\n    payment_method: data.payment_method || null,\n    savings: data.savings || { card: null, discounts: null },\n    items: itens,\n    check: { items_sum: soma.toFixed(2), document_total: totalNum != null ? totalNum.toFixed(2) : null, difference: totalNum != null ? (totalNum - soma).toFixed(2) : null },\n    source: { message_id: meta.messageId || null, file: meta.fileName || null, email_received: meta.emailDate || null },\n    processed_at: new Date().toISOString(),\n  };\n  if (parsedOk) okCount++; else errCount++;\n  itemCount += itens.length;\n  const my = data_doc && data_doc.length >= 7 ? data_doc.slice(5,7) + '-' + data_doc.slice(0,4) : '00-0000';\n  const uploadName = my + '_' + loja.replace(/[^A-Za-z0-9]/g, '').slice(0, 20) + '_' + String(numero).replace(/[^A-Za-z0-9]/g, '').slice(0, 25) + '.json';\n  results.push({ json: Object.assign({}, meta, { parsedOk: parsedOk, error: error, uploadName: uploadName, record: record }), binary: bin || undefined });\n}\nconst summary = { novas: 0, ok: okCount, erros: errCount, itens: itemCount };\nreturn results.map(r => ({ json: Object.assign({}, r.json, { _summary: summary }) }));"
+      }
+    },
+    {
+      "id": "9bc8586d-0f58-4ce0-8f10-6d20a22f6f37",
+      "name": "Dedup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const uploadItems = $input.all();\nlet existingItems = [];\ntry { existingItems = $('Listar Ficheiros Mercado').all(); } catch (e) { existingItems = []; }\nconst existing = new Set(existingItems.map(i => (i.json.name || '').toLowerCase()).filter(n => n));\nconst novos = uploadItems.filter(i => !existing.has((i.json.uploadName || '').toLowerCase()));\nconst skipped = uploadItems.length - novos.length;\nif (novos.length > 0) novos[0].json._summary.duplicados = skipped;\nreturn novos;"
+      }
+    },
+    {
+      "id": "4e6b4537-9f36-431d-8fd6-1ef3a4c6a24c",
+      "name": "Upload JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const jsonStr = JSON.stringify(item.json.record, null, 2);\n  const buf = Buffer.from(jsonStr, 'utf8');\n  const binaryData = await this.helpers.prepareBinaryData(buf, item.json.uploadName, 'application/json');\n  results.push({ json: { uploadName: item.json.uploadName, parsedOk: item.json.parsedOk, _summary: item.json._summary, record: item.json.record }, binary: { data: binaryData } });\n}\nreturn results;"
+      }
+    },
+    {
+      "id": "09851dce-b063-4b6d-b0c0-6340e750d48b",
+      "name": "Gravar no Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1500,
+        0
+      ],
+      "parameters": {
+        "operation": "upload",
+        "name": "={{ $json.uploadName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "16YakJ6htaYpeDDmJSkm9MvP9U2C2Ws2u"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "id": "3414b986-f820-4070-983c-b1812622ccb1",
+      "name": "Resumo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const ups = $('Upload JSON').all();\nconst s = ups.length > 0 && ups[0].json._summary ? ups[0].json._summary : { ok: 0, erros: 0, duplicados: 0, itens: 0 };\nlet gravados = 0;\ntry { gravados = $('Gravar no Drive').all().length; } catch (e) { gravados = 0; }\nreturn [{ json: { message: 'Faturas Mercado: ' + (s.ok ?? 0) + ' processadas (' + gravados + ' gravadas), ' + (s.itens ?? 0) + ' itens. Pasta Mercado Dados.' } }];"
+      }
+    },
+    {
+      "id": "83219dce-643f-4f41-a942-59668e70df41",
+      "name": "Notificar Hermes",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1900,
+        0
+      ],
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "D1X5OyGlkuo7UwdR"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "={{ $json.message }}",
+            "webhook_secret": "n8n-webhook-secret-2024",
+            "webhook_url": "http://hermes.ramoneees.com:8644/webhooks/n8n-complete"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "246db6c7-7cad-42ea-9109-1b47913e676d",
+      "name": "Listar Ficheiros Mercado",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        900,
+        0
+      ],
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "query",
+        "queryString": "=trashed = false",
+        "returnAll": true,
+        "filter": {
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "16YakJ6htaYpeDDmJSkm9MvP9U2C2Ws2u"
+          },
+          "whatToSearch": "files"
+        },
+        "options": {
+          "fields": [
+            "id",
+            "name"
+          ]
+        }
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-08-22T17:19:33.351Z",
+      "createdAt": "2026-08-22T17:19:33.351Z",
+      "role": "workflow:owner",
+      "workflowId": "06z0PeRKbwNaebhN",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": {
+    "node:Gmail Trigger": {
+      "Gmail Trigger": {
+        "lastTimeChecked": 1787419199
+      }
+    }
+  },
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-08-22T17:22:49.613Z",
+  "versionId": "a611c540-7538-4c6b-b8d5-011cdd2316ee"
+}
