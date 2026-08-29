@@ -1,0 +1,875 @@
+{
+  "active": true,
+  "activeVersion": {
+    "updatedAt": "2026-08-28T16:32:08.827Z",
+    "createdAt": "2026-08-28T16:32:08.827Z",
+    "versionId": "b8fdbe0d-3625-46ad-99db-2ab069ad2f63",
+    "workflowId": "vQAJ7HRnv47vXT4O",
+    "nodes": [
+      {
+        "id": "7011efa2-d8d4-4df8-9dc9-9737d15e1a13",
+        "name": "Manual",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -940,
+          0
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "5ed70e3b-6147-4225-a057-59fe963bfe97",
+        "name": "Gmail XP Backfill",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.2,
+        "position": [
+          -700,
+          0
+        ],
+        "parameters": {
+          "operation": "getAll",
+          "simple": false,
+          "maxResults": 50,
+          "filters": {
+            "q": "=from:fatura@xpi.com.br has:attachment filename:pdf after:2026/01/01"
+          },
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "IZ5cS1EUXpPOEEPu",
+            "name": "Gmail Pessoal"
+          }
+        },
+        "webhookId": "cd18188c-1bff-4c98-ae26-9bc8e0aef968"
+      },
+      {
+        "id": "45c361ee-acb3-4427-ba33-25d6587f038e",
+        "name": "Filtrar PDFs XP",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -440,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst results = [];\nconst seen = new Set();\nfor (const item of items) {\n  if (!item.binary) continue;\n  const msgId = item.json.id || item.json.threadId || Math.random().toString(36);\n  const rawDate = item.json.internalDate || item.json.date || null;\n  let emailDate = new Date().toISOString().slice(0, 10);\n  if (rawDate) { const d = new Date(Number(rawDate) > 0 ? Number(rawDate) : rawDate); if (!isNaN(d.getTime())) emailDate = d.toISOString().slice(0, 10); }\n  for (const key of Object.keys(item.binary)) {\n    const bin = item.binary[key];\n    const fileName = (bin.fileName || '').trim();\n    if (!fileName) continue;\n    const isPdf = (bin.mimeType || '').toLowerCase().includes('pdf') || fileName.toLowerCase().endsWith('.pdf');\n    if (!isPdf) continue;\n    const dedupKey = msgId + '::' + fileName;\n    if (seen.has(dedupKey)) continue;\n    seen.add(dedupKey);\n    results.push({ json: { msgId, emailDate, fileName, source: 'gmail-xp' }, binary: { data: bin } });\n  }\n}\nreturn results;\n"
+        }
+      },
+      {
+        "id": "fc36fd42-b0ff-4adb-bb71-83fe7d0bac4a",
+        "name": "Converter Páginas",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -220,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://toolbox.apps.svc.cluster.local:8000/api/v1/convert-all?dpi=150",
+          "sendBody": true,
+          "contentType": "multipart-form-data",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "parameterType": "formBinaryData",
+                "inputDataFieldName": "data",
+                "name": "file"
+              }
+            ]
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "9705dd4a-387e-45e4-8f00-4d8e6067ffc4",
+        "name": "Reacoplar Metadados",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -100,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const src = $('Filtrar PDFs XP').all();\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  const meta = src[i] ? src[i].json : {};\n  const pages = (j.pages || []).map(p => 'data:image/png;base64,' + ((p && p.image && p.image.data) || ''));\n  out.push({ json: Object.assign({}, meta, { pages: pages, pageCount: pages.length, convertError: pages.length ? undefined : 'sem paginas' }) });\n}\nreturn out;"
+        }
+      },
+      {
+        "id": "31ea6f42-1bb8-4460-b579-fff9007b13e1",
+        "name": "Construir Corpo LLM",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          20,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst results = [];\nconst SCHEMA_TEXT = [\n  'Você é um extrator preciso de faturas de cartão de crédito do banco XP (XP Investimentos / xpi.com.br).',\n  'Você recebe as PÁGINAS da fatura como imagens, em ordem. Devolva EXCLUSIVAMENTE um objeto JSON válido, sem markdown, sem comentários.',\n  '',\n  'Schema (chaves em inglês, valores em português quando texto):',\n  '{',\n  '  \"schema\": \"xp_fatura_v1\",',\n  '  \"card_holder\": string|null,',\n  '  \"card_last4\": string|null,',\n  '  \"statement_period\": { \"open_date\": \"YYYY-MM-DD\"|null, \"close_date\": \"YYYY-MM-DD\"|null },',\n  '  \"due_date\": \"YYYY-MM-DD\"|null,',\n  '  \"payment_code\": string|null,',\n  '  \"total_balance\": number|null,',\n  '  \"minimum_payment\": number|null,',\n  '  \"previous_balance\": number|null,',\n  '  \"credits_payments\": number|null,',\n  '  \"limit\": number|null,',\n  '  \"available_limit\": number|null,',\n  '  \"points_balance\": number|null,',\n  '  \"transactions\": [',\n  '    {',\n  '      \"date\": \"YYYY-MM-DD\"|null,',\n  '      \"description\": string,',\n  '      \"merchant\": string|null,',\n  '      \"category\": string,',\n  '      \"amount\": number,',\n  '      \"installment_info\": string|null',\n  '    }',\n  '  ],',\n  '  \"warnings\": [string]',\n  '}',\n  '',\n  'Regras:',\n  '- category é UMA de: mercado, restaurante, transporte, assinaturas, saude, educacao, casa, viagem, tecnologia, lazer, vestuario, servicos_bancarios, taxas, saque, pagamento, outros.',\n  '- Números com ponto decimal, sem símbolos (R$ 1.234,56 -> 1234.56).',\n  '- Datas YYYY-MM-DD; se o ano não estiver explícito, use o ano do período da fatura.',\n  '- NÃO invente valores; ilegível => null + warnings.',\n  '- Cada linha de transação = um objeto; \"Parcela X/Y\" vai em installment_info.',\n  '- POSITIVO compras, NEGATIVO estornos/pagamentos.',\n  '- Ignore rodapés de marketing, SAC, Ouvidoria.',\n  '- Se a soma das transactions ± créditos divergir do total_balance mais de 0.05, registre em warnings (não ajuste).',\n  '- Responda SOMENTE o JSON.'\n].join('\\n');\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const pages = item.json.pages || [];\n  if (!pages.length) {\n    results.push({ json: Object.assign({}, item.json, { skipped: true, skipReason: 'sem páginas: ' + (item.json.convertError || '?') }), binary: item.binary, pairedItem: { item: i } });\n    continue;\n  }\n  const content = [];\n  for (const p of pages) content.push({ type: 'image_url', image_url: { url: p } });\n  content.push({ type: 'text', text: SCHEMA_TEXT });\n  const reqBody = { model: 'qwen-plan/qwen3.8-flash', messages: [{ role: 'user', content }], temperature: 0, max_tokens: 12000 };\n  const buf = Buffer.from(JSON.stringify(reqBody), 'utf8');\n  const bin = await this.helpers.prepareBinaryData(buf, 'llm_body.json', 'application/json');\n  results.push({ json: Object.assign({}, item.json, { skipped: false }), binary: { data: item.binary ? item.binary.data : null, reqbody: bin }, pairedItem: { item: i } });\n}\nreturn results;\n"
+        }
+      },
+      {
+        "id": "af94b520-3f13-486e-b9ad-57733c5e124b",
+        "name": "Analisar Fatura (LLM)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          240,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "sendBody": true,
+          "contentType": "binary",
+          "inputDataFieldName": "reqbody",
+          "options": {
+            "timeout": 300000
+          }
+        },
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "wXO4qmCuKINk321e",
+            "name": "LiteLLM KEY"
+          }
+        }
+      },
+      {
+        "id": "7543c07d-2818-4a46-8eab-163bb15e6e06",
+        "name": "Consolidar JSON",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          460,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const llmItems = $input.all();\nconst src = $('Filtrar PDFs XP').all();\nconst results = [];\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  if (str.includes(',') && str.includes('.')) str = str.replace(/\\./g, '').replace(',', '.');\n  else if (str.includes(',')) str = str.replace(',', '.');\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\nconst CATS = ['mercado','restaurante','transporte','assinaturas','saude','educacao','casa','viagem','tecnologia','lazer','vestuario','servicos_bancarios','taxas','saque','pagamento','outros'];\nlet okCount = 0, errCount = 0, txCount = 0;\nfor (let i = 0; i < llmItems.length; i++) {\n  const meta = src[i] ? src[i].json : {};\n  const raw = llmItems[i].json.llmResponse || (llmItems[i].json.choices && llmItems[i].json.choices[0] && llmItems[i].json.choices[0].message ? llmItems[i].json.choices[0].message.content : '') || '';\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const s = js.indexOf('{'); const e = js.lastIndexOf('}');\n    if (s >= 0 && e > s) js = js.slice(s, e + 1);\n    data = JSON.parse(js);\n    parsedOk = true; okCount++;\n  } catch (err) { error = err.message; errCount++; }\n  if (!data) data = { schema: 'xp_fatura_v1', transactions: [], warnings: ['parse falhou: ' + error] };\n  data.schema = 'xp_fatura_v1';\n  const txs = Array.isArray(data.transactions) ? data.transactions : [];\n  txs.forEach(t => {\n    t.amount = parseNum(t.amount);\n    if (!t.category || !CATS.includes(t.category)) t.category = 'outros';\n    if (typeof t.date === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(t.date)) { /* ok */ } else { t.date = null; }\n  });\n  ['total_balance','minimum_payment','previous_balance','credits_payments','limit','available_limit','points_balance'].forEach(k => { data[k] = parseNum(data[k]); });\n  if (data.statement_period && data.statement_period.open_date && !/^\\d{4}-\\d{2}-\\d{2}$/.test(data.statement_period.open_date)) data.statement_period.open_date = null;\n  if (data.statement_period && data.statement_period.close_date && !/^\\d{4}-\\d{2}-\\d{2}$/.test(data.statement_period.close_date)) data.statement_period.close_date = null;\n  if (data.due_date && !/^\\d{4}-\\d{2}-\\d{2}$/.test(data.due_date)) data.due_date = null;\n  // validação de soma\n  const sum = txs.reduce((a, t) => a + (t.amount || 0), 0);\n  const total = data.total_balance;\n  if (total !== null) {\n    const credits = data.credits_payments || 0;\n    const diff = Math.abs((sum + credits) - total);\n    if (diff > 0.05 && !Array.isArray(data.warnings)) data.warnings = [];\n    if (diff > 0.05 && data.warnings.indexOf('soma divergente do total em ' + diff.toFixed(2)) === -1) data.warnings.push('soma divergente do total em ' + diff.toFixed(2));\n  }\n  // nome do ficheiro: período fechado + last4 + msgId curto\n  const period = (data.statement_period && data.statement_period.close_date) ? data.statement_period.close_date : meta.emailDate;\n  const last4 = (data.card_last4 || '0000').toString().padStart(4, '0');\n  const uploadName = 'XP_' + period + '_' + last4 + '_' + String(meta.msgId || '').slice(-8) + '.json';\n  txCount += txs.length;\n  results.push({ json: {\n    parsedOk, error, uploadName,\n    emailDate: meta.emailDate, fileName: meta.fileName, msgId: meta.msgId,\n    record: data,\n    _summary: { file: meta.fileName, parsedOk, transactions: txs.length, total: data.total_balance, due: data.due_date, warnings: (data.warnings || []).length }\n  }});\n}\nconsole.log('XP consolidate: ok=' + okCount + ' err=' + errCount + ' tx=' + txCount);\nreturn results;\n"
+        }
+      },
+      {
+        "id": "f14b3b82-3d8a-434f-a1de-fff6155c69f2",
+        "name": "Dedup Check Drive",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          680,
+          0
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ \"https://www.googleapis.com/drive/v3/files?q=\" + encodeURIComponent(\"name = '\" + $json.uploadName + \"' and trashed = false\") + \"&fields=files(id,name)\" }}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "googleDriveOAuth2Api",
+          "options": {}
+        },
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lOUQgEfyXT0EShei",
+            "name": "Google Drive Empresa"
+          }
+        }
+      },
+      {
+        "id": "6de46d30-adae-4d21-a2dc-05954d410541",
+        "name": "Só Novos",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          900,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Saída do Dedup Check (HTTP). Referência linear à cadeia é segura (não é side-branch agendada).\nconst checks = $input.all();\nconst consolidados = $('Consolidar JSON').all();\nconst results = [];\nlet skipped = 0;\nfor (let i = 0; i < checks.length; i++) {\n  const existe = checks[i].json && checks[i].json.files && checks[i].json.files.length > 0;\n  if (existe) { skipped++; continue; }\n  const orig = consolidados[i];\n  if (!orig) continue;\n  results.push({ json: orig.json });\n}\nif (results.length > 0) results[0].json._summary = Object.assign({}, results[0].json._summary, { duplicados: skipped });\nconsole.log('XP dedup: novos=' + results.length + ' duplicados=' + skipped);\nreturn results;\n"
+        }
+      },
+      {
+        "id": "bd24c703-567c-4131-92d7-bf3ad6b64ced",
+        "name": "Preparar Binário",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst results = [];\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const jsonStr = JSON.stringify(item.json.record, null, 2);\n  const buf = Buffer.from(jsonStr, 'utf8');\n  const binaryData = await this.helpers.prepareBinaryData(buf, item.json.uploadName, 'application/json');\n  results.push({ json: { uploadName: item.json.uploadName, parsedOk: item.json.parsedOk, _summary: item.json._summary, record: item.json.record }, binary: { data: binaryData } });\n}\nreturn results;\n"
+        }
+      },
+      {
+        "id": "5a85d888-fd5c-45e4-84cb-8c8431dca0cf",
+        "name": "Gravar no Drive",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1340,
+          0
+        ],
+        "parameters": {
+          "operation": "upload",
+          "name": "={ $json.uploadName }",
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "1CSGf0iQ8flp59wpealIpdEKbijBD5iKT"
+          },
+          "options": {}
+        },
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lOUQgEfyXT0EShei",
+            "name": "Google Drive Empresa"
+          }
+        }
+      },
+      {
+        "id": "bd1b76bb-8500-415d-be7f-398104423cc9",
+        "name": "Resumo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1560,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Depois do upload o $json é o objeto do ficheiro — stats vêm da referência linear ao Consolidar\nconst cons = $('Consolidar JSON').all();\nconst novos = $input.all().length;\nconst parts = [];\nfor (const c of cons) {\n  const s = c.json._summary || {};\n  const w = s.warnings ? ' ⚠' + s.warnings : '';\n  parts.push('• ' + (s.file || '?') + ' → ' + (s.transactions || 0) + ' transações, total R$ ' + (s.total !== null && s.total !== undefined ? s.total.toFixed(2) : '?') + ', vence ' + (s.due || '?') + (s.parsedOk ? '' : ' [PARSE FALHOU]') + w);\n}\nconst message = '💳 Fatura XP processada (' + novos + ' nova(s)):\\n' + parts.join('\\n');\nreturn [{ json: { message, novos } }];\n"
+        }
+      },
+      {
+        "id": "3758e320-1645-467d-af11-b9364434bb70",
+        "name": "Notificar Hermes",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1780,
+          0
+        ],
+        "parameters": {
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "D1X5OyGlkuo7UwdR"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "message": "={ $json.message }",
+              "webhook_secret": "n8n-webhook-secret-2024",
+              "webhook_url": "http://hermes.ramoneees.com:8644/webhooks/n8n-complete"
+            },
+            "matchingColumns": [],
+            "schema": []
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Manual": {
+        "main": [
+          [
+            {
+              "node": "Gmail XP Backfill",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gmail XP Backfill": {
+        "main": [
+          [
+            {
+              "node": "Filtrar PDFs XP",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filtrar PDFs XP": {
+        "main": [
+          [
+            {
+              "node": "Converter Páginas",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Converter Páginas": {
+        "main": [
+          [
+            {
+              "node": "Reacoplar Metadados",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reacoplar Metadados": {
+        "main": [
+          [
+            {
+              "node": "Construir Corpo LLM",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Construir Corpo LLM": {
+        "main": [
+          [
+            {
+              "node": "Analisar Fatura (LLM)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Analisar Fatura (LLM)": {
+        "main": [
+          [
+            {
+              "node": "Consolidar JSON",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consolidar JSON": {
+        "main": [
+          [
+            {
+              "node": "Dedup Check Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dedup Check Drive": {
+        "main": [
+          [
+            {
+              "node": "Só Novos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Só Novos": {
+        "main": [
+          [
+            {
+              "node": "Preparar Binário",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar Binário": {
+        "main": [
+          [
+            {
+              "node": "Gravar no Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gravar no Drive": {
+        "main": [
+          [
+            {
+              "node": "Resumo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resumo": {
+        "main": [
+          [
+            {
+              "node": "Notificar Hermes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
+    "name": "Initial version",
+    "description": "Created with 14 nodes: Manual, Gmail XP Backfill, Filtrar PDFs XP, Converter Páginas, Reacoplar Metadados and 9 more",
+    "autosaved": false
+  },
+  "activeVersionId": "b8fdbe0d-3625-46ad-99db-2ab069ad2f63",
+  "connections": {
+    "Manual": {
+      "main": [
+        [
+          {
+            "node": "Gmail XP Backfill",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail XP Backfill": {
+      "main": [
+        [
+          {
+            "node": "Filtrar PDFs XP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar PDFs XP": {
+      "main": [
+        [
+          {
+            "node": "Converter Páginas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Converter Páginas": {
+      "main": [
+        [
+          {
+            "node": "Reacoplar Metadados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reacoplar Metadados": {
+      "main": [
+        [
+          {
+            "node": "Construir Corpo LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir Corpo LLM": {
+      "main": [
+        [
+          {
+            "node": "Analisar Fatura (LLM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisar Fatura (LLM)": {
+      "main": [
+        [
+          {
+            "node": "Consolidar JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidar JSON": {
+      "main": [
+        [
+          {
+            "node": "Dedup Check Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedup Check Drive": {
+      "main": [
+        [
+          {
+            "node": "Só Novos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Só Novos": {
+      "main": [
+        [
+          {
+            "node": "Preparar Binário",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Binário": {
+      "main": [
+        [
+          {
+            "node": "Gravar no Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gravar no Drive": {
+      "main": [
+        [
+          {
+            "node": "Resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumo": {
+      "main": [
+        [
+          {
+            "node": "Notificar Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-08-28T16:32:08.827Z",
+  "id": "vQAJ7HRnv47vXT4O",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Fatura Cartão XP → JSON (Backfill v4)",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "7011efa2-d8d4-4df8-9dc9-9737d15e1a13",
+      "name": "Manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -940,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "5ed70e3b-6147-4225-a057-59fe963bfe97",
+      "name": "Gmail XP Backfill",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -700,
+        0
+      ],
+      "parameters": {
+        "operation": "getAll",
+        "simple": false,
+        "maxResults": 50,
+        "filters": {
+          "q": "=from:fatura@xpi.com.br has:attachment filename:pdf after:2026/01/01"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      },
+      "webhookId": "cd18188c-1bff-4c98-ae26-9bc8e0aef968"
+    },
+    {
+      "id": "45c361ee-acb3-4427-ba33-25d6587f038e",
+      "name": "Filtrar PDFs XP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\nconst seen = new Set();\nfor (const item of items) {\n  if (!item.binary) continue;\n  const msgId = item.json.id || item.json.threadId || Math.random().toString(36);\n  const rawDate = item.json.internalDate || item.json.date || null;\n  let emailDate = new Date().toISOString().slice(0, 10);\n  if (rawDate) { const d = new Date(Number(rawDate) > 0 ? Number(rawDate) : rawDate); if (!isNaN(d.getTime())) emailDate = d.toISOString().slice(0, 10); }\n  for (const key of Object.keys(item.binary)) {\n    const bin = item.binary[key];\n    const fileName = (bin.fileName || '').trim();\n    if (!fileName) continue;\n    const isPdf = (bin.mimeType || '').toLowerCase().includes('pdf') || fileName.toLowerCase().endsWith('.pdf');\n    if (!isPdf) continue;\n    const dedupKey = msgId + '::' + fileName;\n    if (seen.has(dedupKey)) continue;\n    seen.add(dedupKey);\n    results.push({ json: { msgId, emailDate, fileName, source: 'gmail-xp' }, binary: { data: bin } });\n  }\n}\nreturn results;\n"
+      }
+    },
+    {
+      "id": "fc36fd42-b0ff-4adb-bb71-83fe7d0bac4a",
+      "name": "Converter Páginas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -220,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://toolbox.apps.svc.cluster.local:8000/api/v1/convert-all?dpi=150",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "inputDataFieldName": "data",
+              "name": "file"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "9705dd4a-387e-45e4-8f00-4d8e6067ffc4",
+      "name": "Reacoplar Metadados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const src = $('Filtrar PDFs XP').all();\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  const meta = src[i] ? src[i].json : {};\n  const pages = (j.pages || []).map(p => 'data:image/png;base64,' + ((p && p.image && p.image.data) || ''));\n  out.push({ json: Object.assign({}, meta, { pages: pages, pageCount: pages.length, convertError: pages.length ? undefined : 'sem paginas' }) });\n}\nreturn out;"
+      }
+    },
+    {
+      "id": "31ea6f42-1bb8-4460-b579-fff9007b13e1",
+      "name": "Construir Corpo LLM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\nconst SCHEMA_TEXT = [\n  'Você é um extrator preciso de faturas de cartão de crédito do banco XP (XP Investimentos / xpi.com.br).',\n  'Você recebe as PÁGINAS da fatura como imagens, em ordem. Devolva EXCLUSIVAMENTE um objeto JSON válido, sem markdown, sem comentários.',\n  '',\n  'Schema (chaves em inglês, valores em português quando texto):',\n  '{',\n  '  \"schema\": \"xp_fatura_v1\",',\n  '  \"card_holder\": string|null,',\n  '  \"card_last4\": string|null,',\n  '  \"statement_period\": { \"open_date\": \"YYYY-MM-DD\"|null, \"close_date\": \"YYYY-MM-DD\"|null },',\n  '  \"due_date\": \"YYYY-MM-DD\"|null,',\n  '  \"payment_code\": string|null,',\n  '  \"total_balance\": number|null,',\n  '  \"minimum_payment\": number|null,',\n  '  \"previous_balance\": number|null,',\n  '  \"credits_payments\": number|null,',\n  '  \"limit\": number|null,',\n  '  \"available_limit\": number|null,',\n  '  \"points_balance\": number|null,',\n  '  \"transactions\": [',\n  '    {',\n  '      \"date\": \"YYYY-MM-DD\"|null,',\n  '      \"description\": string,',\n  '      \"merchant\": string|null,',\n  '      \"category\": string,',\n  '      \"amount\": number,',\n  '      \"installment_info\": string|null',\n  '    }',\n  '  ],',\n  '  \"warnings\": [string]',\n  '}',\n  '',\n  'Regras:',\n  '- category é UMA de: mercado, restaurante, transporte, assinaturas, saude, educacao, casa, viagem, tecnologia, lazer, vestuario, servicos_bancarios, taxas, saque, pagamento, outros.',\n  '- Números com ponto decimal, sem símbolos (R$ 1.234,56 -> 1234.56).',\n  '- Datas YYYY-MM-DD; se o ano não estiver explícito, use o ano do período da fatura.',\n  '- NÃO invente valores; ilegível => null + warnings.',\n  '- Cada linha de transação = um objeto; \"Parcela X/Y\" vai em installment_info.',\n  '- POSITIVO compras, NEGATIVO estornos/pagamentos.',\n  '- Ignore rodapés de marketing, SAC, Ouvidoria.',\n  '- Se a soma das transactions ± créditos divergir do total_balance mais de 0.05, registre em warnings (não ajuste).',\n  '- Responda SOMENTE o JSON.'\n].join('\\n');\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const pages = item.json.pages || [];\n  if (!pages.length) {\n    results.push({ json: Object.assign({}, item.json, { skipped: true, skipReason: 'sem páginas: ' + (item.json.convertError || '?') }), binary: item.binary, pairedItem: { item: i } });\n    continue;\n  }\n  const content = [];\n  for (const p of pages) content.push({ type: 'image_url', image_url: { url: p } });\n  content.push({ type: 'text', text: SCHEMA_TEXT });\n  const reqBody = { model: 'qwen-plan/qwen3.8-flash', messages: [{ role: 'user', content }], temperature: 0, max_tokens: 12000 };\n  const buf = Buffer.from(JSON.stringify(reqBody), 'utf8');\n  const bin = await this.helpers.prepareBinaryData(buf, 'llm_body.json', 'application/json');\n  results.push({ json: Object.assign({}, item.json, { skipped: false }), binary: { data: item.binary ? item.binary.data : null, reqbody: bin }, pairedItem: { item: i } });\n}\nreturn results;\n"
+      }
+    },
+    {
+      "id": "af94b520-3f13-486e-b9ad-57733c5e124b",
+      "name": "Analisar Fatura (LLM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "binary",
+        "inputDataFieldName": "reqbody",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "wXO4qmCuKINk321e",
+          "name": "LiteLLM KEY"
+        }
+      }
+    },
+    {
+      "id": "7543c07d-2818-4a46-8eab-163bb15e6e06",
+      "name": "Consolidar JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const llmItems = $input.all();\nconst src = $('Filtrar PDFs XP').all();\nconst results = [];\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  if (str.includes(',') && str.includes('.')) str = str.replace(/\\./g, '').replace(',', '.');\n  else if (str.includes(',')) str = str.replace(',', '.');\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\nconst CATS = ['mercado','restaurante','transporte','assinaturas','saude','educacao','casa','viagem','tecnologia','lazer','vestuario','servicos_bancarios','taxas','saque','pagamento','outros'];\nlet okCount = 0, errCount = 0, txCount = 0;\nfor (let i = 0; i < llmItems.length; i++) {\n  const meta = src[i] ? src[i].json : {};\n  const raw = llmItems[i].json.llmResponse || (llmItems[i].json.choices && llmItems[i].json.choices[0] && llmItems[i].json.choices[0].message ? llmItems[i].json.choices[0].message.content : '') || '';\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const s = js.indexOf('{'); const e = js.lastIndexOf('}');\n    if (s >= 0 && e > s) js = js.slice(s, e + 1);\n    data = JSON.parse(js);\n    parsedOk = true; okCount++;\n  } catch (err) { error = err.message; errCount++; }\n  if (!data) data = { schema: 'xp_fatura_v1', transactions: [], warnings: ['parse falhou: ' + error] };\n  data.schema = 'xp_fatura_v1';\n  const txs = Array.isArray(data.transactions) ? data.transactions : [];\n  txs.forEach(t => {\n    t.amount = parseNum(t.amount);\n    if (!t.category || !CATS.includes(t.category)) t.category = 'outros';\n    if (typeof t.date === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(t.date)) { /* ok */ } else { t.date = null; }\n  });\n  ['total_balance','minimum_payment','previous_balance','credits_payments','limit','available_limit','points_balance'].forEach(k => { data[k] = parseNum(data[k]); });\n  if (data.statement_period && data.statement_period.open_date && !/^\\d{4}-\\d{2}-\\d{2}$/.test(data.statement_period.open_date)) data.statement_period.open_date = null;\n  if (data.statement_period && data.statement_period.close_date && !/^\\d{4}-\\d{2}-\\d{2}$/.test(data.statement_period.close_date)) data.statement_period.close_date = null;\n  if (data.due_date && !/^\\d{4}-\\d{2}-\\d{2}$/.test(data.due_date)) data.due_date = null;\n  // validação de soma\n  const sum = txs.reduce((a, t) => a + (t.amount || 0), 0);\n  const total = data.total_balance;\n  if (total !== null) {\n    const credits = data.credits_payments || 0;\n    const diff = Math.abs((sum + credits) - total);\n    if (diff > 0.05 && !Array.isArray(data.warnings)) data.warnings = [];\n    if (diff > 0.05 && data.warnings.indexOf('soma divergente do total em ' + diff.toFixed(2)) === -1) data.warnings.push('soma divergente do total em ' + diff.toFixed(2));\n  }\n  // nome do ficheiro: período fechado + last4 + msgId curto\n  const period = (data.statement_period && data.statement_period.close_date) ? data.statement_period.close_date : meta.emailDate;\n  const last4 = (data.card_last4 || '0000').toString().padStart(4, '0');\n  const uploadName = 'XP_' + period + '_' + last4 + '_' + String(meta.msgId || '').slice(-8) + '.json';\n  txCount += txs.length;\n  results.push({ json: {\n    parsedOk, error, uploadName,\n    emailDate: meta.emailDate, fileName: meta.fileName, msgId: meta.msgId,\n    record: data,\n    _summary: { file: meta.fileName, parsedOk, transactions: txs.length, total: data.total_balance, due: data.due_date, warnings: (data.warnings || []).length }\n  }});\n}\nconsole.log('XP consolidate: ok=' + okCount + ' err=' + errCount + ' tx=' + txCount);\nreturn results;\n"
+      }
+    },
+    {
+      "id": "f14b3b82-3d8a-434f-a1de-fff6155c69f2",
+      "name": "Dedup Check Drive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://www.googleapis.com/drive/v3/files?q=\" + encodeURIComponent(\"name = '\" + $json.uploadName + \"' and trashed = false\") + \"&fields=files(id,name)\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "id": "6de46d30-adae-4d21-a2dc-05954d410541",
+      "name": "Só Novos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Saída do Dedup Check (HTTP). Referência linear à cadeia é segura (não é side-branch agendada).\nconst checks = $input.all();\nconst consolidados = $('Consolidar JSON').all();\nconst results = [];\nlet skipped = 0;\nfor (let i = 0; i < checks.length; i++) {\n  const existe = checks[i].json && checks[i].json.files && checks[i].json.files.length > 0;\n  if (existe) { skipped++; continue; }\n  const orig = consolidados[i];\n  if (!orig) continue;\n  results.push({ json: orig.json });\n}\nif (results.length > 0) results[0].json._summary = Object.assign({}, results[0].json._summary, { duplicados: skipped });\nconsole.log('XP dedup: novos=' + results.length + ' duplicados=' + skipped);\nreturn results;\n"
+      }
+    },
+    {
+      "id": "bd24c703-567c-4131-92d7-bf3ad6b64ced",
+      "name": "Preparar Binário",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const jsonStr = JSON.stringify(item.json.record, null, 2);\n  const buf = Buffer.from(jsonStr, 'utf8');\n  const binaryData = await this.helpers.prepareBinaryData(buf, item.json.uploadName, 'application/json');\n  results.push({ json: { uploadName: item.json.uploadName, parsedOk: item.json.parsedOk, _summary: item.json._summary, record: item.json.record }, binary: { data: binaryData } });\n}\nreturn results;\n"
+      }
+    },
+    {
+      "id": "5a85d888-fd5c-45e4-84cb-8c8431dca0cf",
+      "name": "Gravar no Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1340,
+        0
+      ],
+      "parameters": {
+        "operation": "upload",
+        "name": "={ $json.uploadName }",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1CSGf0iQ8flp59wpealIpdEKbijBD5iKT"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "id": "bd1b76bb-8500-415d-be7f-398104423cc9",
+      "name": "Resumo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Depois do upload o $json é o objeto do ficheiro — stats vêm da referência linear ao Consolidar\nconst cons = $('Consolidar JSON').all();\nconst novos = $input.all().length;\nconst parts = [];\nfor (const c of cons) {\n  const s = c.json._summary || {};\n  const w = s.warnings ? ' ⚠' + s.warnings : '';\n  parts.push('• ' + (s.file || '?') + ' → ' + (s.transactions || 0) + ' transações, total R$ ' + (s.total !== null && s.total !== undefined ? s.total.toFixed(2) : '?') + ', vence ' + (s.due || '?') + (s.parsedOk ? '' : ' [PARSE FALHOU]') + w);\n}\nconst message = '💳 Fatura XP processada (' + novos + ' nova(s)):\\n' + parts.join('\\n');\nreturn [{ json: { message, novos } }];\n"
+      }
+    },
+    {
+      "id": "3758e320-1645-467d-af11-b9364434bb70",
+      "name": "Notificar Hermes",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1780,
+        0
+      ],
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "D1X5OyGlkuo7UwdR"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "={ $json.message }",
+            "webhook_secret": "n8n-webhook-secret-2024",
+            "webhook_url": "http://hermes.ramoneees.com:8644/webhooks/n8n-complete"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-08-28T16:32:08.827Z",
+      "createdAt": "2026-08-28T16:32:08.827Z",
+      "role": "workflow:owner",
+      "workflowId": "vQAJ7HRnv47vXT4O",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-08-28T16:32:08.827Z",
+  "versionId": "b8fdbe0d-3625-46ad-99db-2ab069ad2f63"
+}
