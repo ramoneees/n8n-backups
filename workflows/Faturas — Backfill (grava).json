@@ -1,0 +1,492 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Gmail Trigger Faturas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger Faturas": {
+      "main": [
+        [
+          {
+            "node": "Ler Fontes e Senhas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ler Fontes e Senhas": {
+      "main": [
+        [
+          {
+            "node": "Config e Filtrar PDFs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config e Filtrar PDFs": {
+      "main": [
+        [
+          {
+            "node": "Converter Paginas (toolbox)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Converter Paginas (toolbox)": {
+      "main": [
+        [
+          {
+            "node": "Reacoplar Metadados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reacoplar Metadados": {
+      "main": [
+        [
+          {
+            "node": "Construir Corpo LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir Corpo LLM": {
+      "main": [
+        [
+          {
+            "node": "Analisar Fatura (LLM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisar Fatura (LLM)": {
+      "main": [
+        [
+          {
+            "node": "Consolidar JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidar JSON": {
+      "main": [
+        [
+          {
+            "node": "Dedup Check Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedup Check Drive": {
+      "main": [
+        [
+          {
+            "node": "So Novos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "So Novos": {
+      "main": [
+        [
+          {
+            "node": "Preparar Binario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Binario": {
+      "main": [
+        [
+          {
+            "node": "Gravar no Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gravar no Drive": {
+      "main": [
+        [
+          {
+            "node": "Resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-08-28T20:18:58.726Z",
+  "id": "LnuY3waEU8ZZBHB9",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Faturas — Backfill (grava)",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "ad7ab7b5-01d2-4623-a593-37d7161a5ca7",
+      "name": "Start",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1300,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 99
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d0b2495a-78fc-4444-b412-4bc417639150",
+      "name": "Gmail Trigger Faturas",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1120,
+        0
+      ],
+      "parameters": {
+        "operation": "getAll",
+        "simple": false,
+        "maxResults": 20,
+        "filters": {
+          "q": "(from:extrato@universo.pt OR from:fatura@xpi.com.br OR (from:banco@millenniumbcp.pt subject:\"Extrato de Cartão\")) has:attachment filename:pdf after:2026/06/30 before:2026/08/02"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      },
+      "webhookId": "4f289d4d-e51b-4416-b988-43adec1bada3"
+    },
+    {
+      "id": "3b47321d-c69d-4902-85e0-88d8dd020bf6",
+      "name": "Ler Fontes e Senhas",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -940,
+        0
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "WYAARu8PqmZDAh9X"
+        },
+        "returnAll": true
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "ee7bf6d8-5476-4b1c-bc1b-1bd28dc8a3b9",
+      "name": "Config e Filtrar PDFs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -760,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const rows = $input.all();\nconst emails = $('Gmail Trigger Faturas').all();\n\nfunction norm(s) {\n  return String(s || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n}\n\nconst SOURCES = [];\nfor (const r of rows) {\n  const j = r.json || {};\n  if (j.enabled === false) continue;\n  if (!j.sender_match) continue;\n  SOURCES.push({\n    issuer: j.issuer || 'desconhecido',\n    senderMatch: norm(j.sender_match),\n    subjectMatch: norm(j.subject_match),\n    password: j.password == null ? '' : String(j.password)\n  });\n}\n\nfunction resolveSource(from, subject) {\n  const f = norm(from);\n  const s = norm(subject);\n  for (const src of SOURCES) {\n    if (f.indexOf(src.senderMatch) === -1) continue;\n    if (src.subjectMatch && s.indexOf(src.subjectMatch) === -1) continue;\n    return src;\n  }\n  return null;\n}\n\nconst results = [];\nconst seen = new Set();\nlet ignorados = 0;\n\nfor (const item of emails) {\n  if (!item.binary) continue;\n  const j = item.json || {};\n  const msgId = j.id || j.threadId || Math.random().toString(36);\n\n  let from = '';\n  if (j.from && j.from.value && j.from.value[0]) from = j.from.value[0].address || '';\n  if (!from && typeof j.from === 'string') from = j.from;\n  if (!from && j.headers && j.headers.from) from = j.headers.from;\n\n  let subject = j.subject || '';\n  if (!subject && j.headers && j.headers.subject) subject = j.headers.subject;\n\n  const src = resolveSource(from, subject);\n  if (!src) { ignorados++; continue; }\n\n  const rawDate = j.internalDate || j.date || null;\n  let emailDate = new Date().toISOString().slice(0, 10);\n  if (rawDate) {\n    const d = new Date(Number(rawDate) > 0 ? Number(rawDate) : rawDate);\n    if (!isNaN(d.getTime())) emailDate = d.toISOString().slice(0, 10);\n  }\n\n  for (const key of Object.keys(item.binary)) {\n    const bin = item.binary[key];\n    const fileName = (bin.fileName || '').trim();\n    if (!fileName) continue;\n    const isPdf = (bin.mimeType || '').toLowerCase().includes('pdf') || fileName.toLowerCase().endsWith('.pdf');\n    if (!isPdf) continue;\n    const dedupKey = msgId + '::' + fileName;\n    if (seen.has(dedupKey)) continue;\n    seen.add(dedupKey);\n    results.push({\n      json: { msgId, emailDate, fileName, from, subject, issuer: src.issuer, password: src.password },\n      binary: { data: bin }\n    });\n  }\n}\n\nconsole.log('backfill: ' + results.length + ' pdf(s), ' + ignorados + ' ignorado(s)');\nreturn results;\n"
+      }
+    },
+    {
+      "id": "781a1634-ba54-46ce-8dba-ba3d12ee9c07",
+      "name": "Converter Paginas (toolbox)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -580,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://toolbox.apps.svc.cluster.local:8000/api/v1/convert-all?dpi=150",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "inputDataFieldName": "data",
+              "name": "file"
+            },
+            {
+              "parameterType": "formData",
+              "name": "password",
+              "value": "={{ $json.password }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "0e26f62f-4773-4fc1-9998-31f73f9833f3",
+      "name": "Reacoplar Metadados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const src = $('Config e Filtrar PDFs').all();\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  const meta = src[i] ? src[i].json : {};\n  const pages = (j.pages || []).map(p => 'data:image/png;base64,' + ((p && p.image && p.image.data) || ''));\n  let convertError = undefined;\n  if (!pages.length) {\n    convertError = (j.error && j.error.code) ? (j.error.code + ': ' + j.error.message) : 'sem paginas';\n  }\n  out.push({ json: Object.assign({}, meta, { pages: pages, pageCount: pages.length, convertError: convertError }) });\n}\nreturn out;\n"
+      }
+    },
+    {
+      "id": "8ec928e3-6497-4f4b-a854-8c7f54d09774",
+      "name": "Construir Corpo LLM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -220,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nconst SCHEMA_TEXT = [\n  'Voce e um extrator preciso de faturas/extratos de cartao de credito de QUALQUER banco (Portugal ou Brasil).',\n  'Voce recebe as PAGINAS da fatura como imagens, em ordem. Devolva EXCLUSIVAMENTE um objeto JSON valido, sem markdown, sem comentarios.',\n  '',\n  'Schema:',\n  '{',\n  '  \"schema\": \"card_statement_v1\",',\n  '  \"issuer\": string|null,',\n  '  \"currency\": string|null,',\n  '  \"card_holder\": string|null,',\n  '  \"card_last4\": string|null,',\n  '  \"statement_period\": { \"open_date\": \"YYYY-MM-DD\"|null, \"close_date\": \"YYYY-MM-DD\"|null },',\n  '  \"due_date\": \"YYYY-MM-DD\"|null,',\n  '  \"payment_reference\": string|null,',\n  '  \"total_balance\": number|null,',\n  '  \"minimum_payment\": number|null,',\n  '  \"previous_balance\": number|null,',\n  '  \"credits_payments\": number|null,',\n  '  \"credit_limit\": number|null,',\n  '  \"available_limit\": number|null,',\n  '  \"transactions\": [',\n  '    {',\n  '      \"date\": \"YYYY-MM-DD\"|null,',\n  '      \"description\": string,',\n  '      \"merchant\": string|null,',\n  '      \"category\": string,',\n  '      \"amount\": number,',\n  '      \"installment_info\": string|null,',\n  '      \"foreign_amount\": number|null,',\n  '      \"foreign_currency\": string|null',\n  '    }',\n  '  ],',\n  '  \"warnings\": [string]',\n  '}',\n  '',\n  'Regras:',\n  '- issuer: nome do banco/emissor como aparece no documento.',\n  '- currency: codigo ISO 4217 detectado no documento (BRL, EUR, USD...).',\n  '- category e UMA de: mercado, restaurante, transporte, assinaturas, saude, educacao, casa, viagem, tecnologia, lazer, vestuario, servicos_bancarios, taxas, saque, pagamento, outros.',\n  '- Numeros com ponto decimal, sem simbolos. \"R$ 1.234,56\" -> 1234.56 ; \"$1,234.56\" -> 1234.56',\n  '- payment_reference: referencia Multibanco, codigo de barras, boleto ou IBAN, se existir.',\n  '- Datas YYYY-MM-DD; se o ano nao estiver explicito, use o ano do periodo da fatura.',\n  '- NAO invente valores; ilegivel => null + warnings.',\n  '- Cada linha de transacao = um objeto; \"Parcela X/Y\" vai em installment_info.',\n  '- POSITIVO compras, NEGATIVO estornos/pagamentos/creditos.',\n  '- Ignore rodapes de marketing, SAC, Ouvidoria, avisos legais.',\n  '- Responda SOMENTE o JSON.'\n].join('\\n');\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const pages = item.json.pages || [];\n  if (!pages.length) {\n    results.push({ json: Object.assign({}, item.json, { skipped: true }), pairedItem: { item: i } });\n    continue;\n  }\n  const content = [];\n  for (const p of pages) content.push({ type: 'image_url', image_url: { url: p } });\n  let hint = SCHEMA_TEXT;\n  if (item.json.issuer && item.json.issuer !== 'desconhecido') {\n    hint = hint + '\\n- Dica: este documento deve ser do emissor \"' + item.json.issuer + '\".';\n  }\n  content.push({ type: 'text', text: hint });\n  const reqBody = { model: 'qwen-plan/qwen3.8-flash', messages: [{ role: 'user', content }], temperature: 0, max_tokens: 12000 };\n  const buf = Buffer.from(JSON.stringify(reqBody), 'utf8');\n  const bin = await this.helpers.prepareBinaryData(buf, 'llm_body.json', 'application/json');\n  results.push({ json: Object.assign({}, item.json, { skipped: false }), binary: { reqbody: bin }, pairedItem: { item: i } });\n}\nreturn results;\n"
+      }
+    },
+    {
+      "id": "ae9a5277-ac06-4c06-9ed7-bf55cd673f9c",
+      "name": "Analisar Fatura (LLM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -40,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "reqbody",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "wXO4qmCuKINk321e",
+          "name": "LiteLLM KEY"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "a93672b6-266b-4d99-a99e-5a4e587147cd",
+      "name": "Consolidar JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const llmItems = $input.all();\nconst src = $('Config e Filtrar PDFs').all();\nconst results = [];\n\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  if (typeof s === 'number') return isNaN(s) ? null : s;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  const lastComma = str.lastIndexOf(',');\n  const lastDot = str.lastIndexOf('.');\n  if (lastComma > -1 && lastDot > -1) {\n    if (lastComma > lastDot) str = str.replace(/\\./g, '').replace(',', '.');\n    else str = str.replace(/,/g, '');\n  } else if (lastComma > -1) {\n    const decimals = str.length - lastComma - 1;\n    if (decimals === 3) str = str.replace(/,/g, '');\n    else str = str.replace(',', '.');\n  }\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\n\nconst CATS = ['mercado','restaurante','transporte','assinaturas','saude','educacao','casa','viagem','tecnologia','lazer','vestuario','servicos_bancarios','taxas','saque','pagamento','outros'];\nconst ISO = /^\\d{4}-\\d{2}-\\d{2}$/;\n\nfunction slug(s) {\n  return String(s || 'banco').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24) || 'banco';\n}\n\nfor (let i = 0; i < llmItems.length; i++) {\n  const meta = src[i] ? src[i].json : {};\n  const body = llmItems[i].json || {};\n  const raw = (body.choices && body.choices[0] && body.choices[0].message ? body.choices[0].message.content : '') || '';\n\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const s = js.indexOf('{');\n    const e = js.lastIndexOf('}');\n    if (s >= 0 && e > s) js = js.slice(s, e + 1);\n    data = JSON.parse(js);\n    parsedOk = true;\n  } catch (err) { error = err.message; }\n\n  if (!data) data = { schema: 'card_statement_v1', transactions: [], warnings: ['parse falhou: ' + error] };\n  data.schema = 'card_statement_v1';\n  if (!Array.isArray(data.warnings)) data.warnings = [];\n  if (!data.issuer && meta.issuer) data.issuer = meta.issuer;\n\n  const txs = Array.isArray(data.transactions) ? data.transactions : [];\n  txs.forEach(t => {\n    t.amount = parseNum(t.amount);\n    t.foreign_amount = parseNum(t.foreign_amount);\n    if (!t.category || CATS.indexOf(t.category) === -1) t.category = 'outros';\n    if (!(typeof t.date === 'string' && ISO.test(t.date))) t.date = null;\n  });\n  data.transactions = txs;\n\n  ['total_balance','minimum_payment','previous_balance','credits_payments','credit_limit','available_limit'].forEach(k => { data[k] = parseNum(data[k]); });\n  if (data.statement_period) {\n    if (data.statement_period.open_date && !ISO.test(data.statement_period.open_date)) data.statement_period.open_date = null;\n    if (data.statement_period.close_date && !ISO.test(data.statement_period.close_date)) data.statement_period.close_date = null;\n  }\n  if (data.due_date && !ISO.test(data.due_date)) data.due_date = null;\n\n  const issuerSlug = slug(meta.issuer || data.issuer);\n  const period = (data.statement_period && data.statement_period.close_date) ? data.statement_period.close_date : meta.emailDate;\n  const last4 = String(data.card_last4 || '0000').replace(/\\D/g, '').slice(-4).padStart(4, '0');\n  const uploadName = issuerSlug + '_' + period + '_' + last4 + '_' + String(meta.msgId || '').slice(-8) + '.json';\n\n  results.push({ json: {\n    parsedOk, error, uploadName,\n    emailDate: meta.emailDate, fonte: meta.issuer, ficheiro: meta.fileName,\n    record: data\n  }});\n}\nreturn results;\n"
+      }
+    },
+    {
+      "id": "238dcd5a-5357-4836-86ea-592d11a2c222",
+      "name": "Dedup Check Drive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://www.googleapis.com/drive/v3/files?q=\" + encodeURIComponent(\"name = '\" + $json.uploadName + \"' and '1RyO_xmviaYG2hN0WsUnVUhJKu5WdhtoD' in parents and trashed = false\") + \"&fields=\" + encodeURIComponent(\"files(id,name)\") }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "id": "858281d8-bc09-4558-8f97-7e70ee55cee0",
+      "name": "So Novos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const checks = $input.all();\nconst consolidados = $('Consolidar JSON').all();\nconst results = [];\nlet skipped = 0;\nfor (let i = 0; i < checks.length; i++) {\n  const existe = checks[i].json && checks[i].json.files && checks[i].json.files.length > 0;\n  if (existe) { skipped++; continue; }\n  const orig = consolidados[i];\n  if (!orig) continue;\n  results.push({ json: orig.json });\n}\nconsole.log('dedup: novos=' + results.length + ' duplicados=' + skipped);\nreturn results;\n"
+      }
+    },
+    {
+      "id": "3d5aaec5-17a9-4e75-a149-89fb53017aef",
+      "name": "Preparar Binario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const items = $input.all();\nconst results = [];\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const jsonStr = JSON.stringify(item.json.record, null, 2);\n  const buf = Buffer.from(jsonStr, 'utf8');\n  const binaryData = await this.helpers.prepareBinaryData(buf, item.json.uploadName, 'application/json');\n  results.push({\n    json: { uploadName: item.json.uploadName, fonte: item.json.fonte, emailDate: item.json.emailDate },\n    binary: { data: binaryData }\n  });\n}\nreturn results;\n"
+      }
+    },
+    {
+      "id": "60663424-c37f-483f-b31a-96f765263b04",
+      "name": "Gravar no Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        860,
+        0
+      ],
+      "parameters": {
+        "operation": "upload",
+        "name": "={{ $json.uploadName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1RyO_xmviaYG2hN0WsUnVUhJKu5WdhtoD"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "id": "8e4e449e-62b5-4297-a764-4e5748280a24",
+      "name": "Resumo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const gravados = $input.all();\nconst nomes = [];\nfor (const g of gravados) {\n  nomes.push((g.json && g.json.name) ? g.json.name : '?');\n}\nreturn [{ json: { gravados: gravados.length, ficheiros: nomes } }];\n"
+      }
+    },
+    {
+      "id": "0f783524-99ff-412f-92e3-fa9dc6d27ba3",
+      "name": "Sticky Note 610bcd26",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1170,
+        -50
+      ],
+      "parameters": {
+        "content": "## 💾 BACKFILL — GRAVA no Drive\n\nDestino: **Faturas Cartões**\n\n- nomes deterministicos (issuer vem da Data Table, nao do LLM)\n- dedup limitado a esta pasta → seguro re-correr\n- **nao** notifica o Hermes\n\n**Janela:** `after:2026/06/30 before:2026/08/02`",
+        "color": 4,
+        "width": 660,
+        "height": 200
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-08-28T20:18:58.726Z",
+      "createdAt": "2026-08-28T20:18:58.726Z",
+      "role": "workflow:owner",
+      "workflowId": "LnuY3waEU8ZZBHB9",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-08-28T20:18:58.726Z",
+  "versionId": "f12354c5-4204-4170-a294-07fa4cc86937"
+}
