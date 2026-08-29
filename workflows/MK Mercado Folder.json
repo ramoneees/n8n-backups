@@ -1,0 +1,85 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Criar Pasta Mercado Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-08-22T11:54:16.911Z",
+  "id": "Aav1LPXqm7Ehwz4W",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "MK Mercado Folder",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "8025d99e-8f66-404e-bb3e-3a6d78b5bfd6",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "15536a68-4077-419e-be0a-814bde0a9800",
+      "name": "Criar Pasta Mercado Dados",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "resource": "folder",
+        "name": "Mercado Dados",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "updatedAt": "2026-08-22T11:54:16.911Z",
+      "createdAt": "2026-08-22T11:54:16.911Z",
+      "role": "workflow:owner",
+      "workflowId": "Aav1LPXqm7Ehwz4W",
+      "projectId": "NIWdtECswkBCcQBM"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-08-22T11:54:16.911Z",
+  "versionId": "f0db8ac6-011b-4f0e-a818-067d4e638bca"
+}
