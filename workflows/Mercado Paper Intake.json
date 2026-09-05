@@ -1,8 +1,6 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-08-28T10:19:29.710Z",
-    "createdAt": "2026-08-28T10:19:29.710Z",
     "versionId": "4ed485aa-c05e-4fce-bf15-c2a2863ba27e",
     "workflowId": "VzhsrtQhKilTMu0j",
     "nodes": [
@@ -261,7 +259,9 @@
     "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
     "name": "Initial version",
     "description": "Created with 8 nodes: Mercado Paper Webhook, Auth Check, Consultar Drive, Existe?, Responder Skip and 3 more",
-    "autosaved": false
+    "autosaved": false,
+    "createdAt": "2026-08-28T10:19:29.710Z",
+    "updatedAt": "2026-08-28T10:19:29.710Z"
   },
   "activeVersionId": "4ed485aa-c05e-4fce-bf15-c2a2863ba27e",
   "connections": {
@@ -532,11 +532,11 @@
   },
   "shared": [
     {
-      "updatedAt": "2026-08-28T10:19:29.710Z",
-      "createdAt": "2026-08-28T10:19:29.710Z",
       "role": "workflow:owner",
       "workflowId": "VzhsrtQhKilTMu0j",
-      "projectId": "NIWdtECswkBCcQBM"
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-08-28T10:19:29.710Z",
+      "updatedAt": "2026-08-28T10:19:29.710Z"
     }
   ],
   "staticData": null,
