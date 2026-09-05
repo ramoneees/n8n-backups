@@ -195,6 +195,11 @@
         },
         "options": {
           "downloadAttachments": true
+        },
+        "parameters": {
+          "filters": {
+            "q": "(from:extrato@universo.pt OR from:fatura@xpi.com.br OR (from:banco@millenniumbcp.pt subject:\"Extrato de Cartão\")) has:attachment filename:pdf after:2026/08/01 before:2026/09/02 in:anywhere"
+          }
         }
       },
       "credentials": {
@@ -477,16 +482,16 @@
   },
   "shared": [
     {
-      "updatedAt": "2026-08-28T20:18:58.726Z",
-      "createdAt": "2026-08-28T20:18:58.726Z",
       "role": "workflow:owner",
       "workflowId": "LnuY3waEU8ZZBHB9",
-      "projectId": "NIWdtECswkBCcQBM"
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-08-28T20:18:58.726Z",
+      "updatedAt": "2026-08-28T20:18:58.726Z"
     }
   ],
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-08-28T20:18:58.726Z",
-  "versionId": "f12354c5-4204-4170-a294-07fa4cc86937"
+  "updatedAt": "2026-09-01T07:51:14.592Z",
+  "versionId": "41ca7218-dcf1-495e-83be-03c72ea8a343"
 }
