@@ -1,0 +1,143 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Read JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read JSON": {
+      "main": [
+        [
+          {
+            "node": "Prep Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Binary": {
+      "main": [
+        [
+          {
+            "node": "Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-09-01T08:13:20.205Z",
+  "id": "w8V2Fr6zIse6VL3O",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "XP Aug upload",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "5710494d-9962-4e66-bd8f-2f923b690d9d",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -300,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "c76cbf51-ed02-449f-a6b3-70da2fc10c4f",
+      "name": "Read JSON",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "fileSelector": "/tmp/xp_aug/statement.json",
+        "options": {
+          "dataPropertyName": "data"
+        }
+      }
+    },
+    {
+      "id": "c5c106b9-1b38-4dad-bed6-0f471e99d571",
+      "name": "Prep Binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const items = $input.all();\nconst results = [];\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const record = item.json.data || item.json;\n  // deterministic name identical to live workflow: issuer_close_last4_msgid-suffix\n  record.card_last4 = '4147';\n  const buf = Buffer.from(JSON.stringify(record, null, 2), 'utf8');\n  const bin = await this.helpers.prepareBinaryData(buf, 'XP_2026-08-27_4147_bd6356.json', 'application/json');\n  results.push({ json: { uploadName: 'XP_2026-08-27_4147_bd6356.json' }, binary: { data: bin } });\n}\nreturn results;"
+      }
+    },
+    {
+      "id": "89bec8ab-afd1-4c8e-85ba-75bd42a1b410",
+      "name": "Upload",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "operation": "upload",
+        "name": "={{ $json.uploadName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1RyO_xmviaYG2hN0WsUnVUhJKu5WdhtoD"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "w8V2Fr6zIse6VL3O",
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-09-01T08:13:20.205Z",
+      "updatedAt": "2026-09-01T08:13:20.205Z"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-09-01T08:13:20.205Z",
+  "versionId": "52edbbe0-b225-401e-a267-3c9200f9492a"
+}
