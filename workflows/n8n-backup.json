@@ -1,8 +1,6 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-03-25T16:51:45.196Z",
-    "createdAt": "2026-03-25T16:50:26.664Z",
     "versionId": "e61466ba-734d-43ef-9207-9509115d271b",
     "workflowId": "VW69pq5KTET5KQv6",
     "nodes": [
@@ -558,7 +556,9 @@
     "authors": "Ramon ramon@pereirariosoftware.com",
     "name": "Version e61466ba",
     "description": "",
-    "autosaved": true
+    "autosaved": true,
+    "createdAt": "2026-03-25T16:50:26.664Z",
+    "updatedAt": "2026-03-25T16:51:45.196Z"
   },
   "activeVersionId": "e61466ba-734d-43ef-9207-9509115d271b",
   "connections": {
@@ -1129,11 +1129,11 @@
   },
   "shared": [
     {
-      "updatedAt": "2026-03-25T16:32:38.278Z",
-      "createdAt": "2026-03-25T16:32:38.278Z",
       "role": "workflow:owner",
       "workflowId": "VW69pq5KTET5KQv6",
-      "projectId": "NIWdtECswkBCcQBM"
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-03-25T16:32:38.278Z",
+      "updatedAt": "2026-03-25T16:32:38.278Z"
     }
   ],
   "staticData": null,
