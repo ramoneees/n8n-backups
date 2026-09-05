@@ -1,9 +1,7 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-07-10T14:35:02.655Z",
-    "createdAt": "2026-07-10T14:35:02.655Z",
-    "versionId": "7ec4ca88-01de-4a33-b38a-0ece209fabde",
+    "versionId": "bd7b8a41-7285-46a9-be2a-6445bb46fa4a",
     "workflowId": "VfdNxA8c7CgGr5q7",
     "nodes": [
       {
@@ -326,7 +324,7 @@
           "genericAuthType": "httpBearerAuth",
           "sendBody": true,
           "specifyBody": "json",
-          "jsonBody": "={{ \n  {\n      \"model\": \"MiniMax-M2.5\",\n      \"messages\": [\n          {\n              \"role\": \"user\",\n              \"content\": $json.prompt\n          }\n      ],\n      \"temperature\": 0.1,\n      \"max_tokens\": 10000\n  }\n }}",
+          "jsonBody": "={{ \n  {\n      \"model\": \"glm-5.3-flash\",\n      \"messages\": [\n          {\n              \"role\": \"user\",\n              \"content\": $json.prompt\n          }\n      ],\n      \"temperature\": 0.1,\n      \"max_tokens\": 10000\n  }\n }}",
           "options": {
             "timeout": 60000
           }
@@ -608,20 +606,9 @@
         ]
       },
       {
-        "id": "91274aa1-69d0-4fc1-b28f-3cba9b765ecf",
-        "name": "Find existing folder",
-        "type": "n8n-nodes-base.googleDrive",
-        "typeVersion": 3,
-        "position": [
-          -992,
-          -120
-        ],
         "parameters": {
           "resource": "fileFolder",
-          "operation": "search",
-          "searchMethod": "name",
           "queryString": "={{ String(new Date().getMonth() + 1).padStart(2, '0') + '-' + new Date().getFullYear() }}",
-          "returnAll": false,
           "limit": 1,
           "filter": {
             "driveId": {
@@ -643,6 +630,14 @@
             ]
           }
         },
+        "id": "91274aa1-69d0-4fc1-b28f-3cba9b765ecf",
+        "name": "Find existing folder",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          -992,
+          -128
+        ],
         "credentials": {
           "googleDriveOAuth2Api": {
             "id": "lOUQgEfyXT0EShei",
@@ -651,17 +646,8 @@
         }
       },
       {
-        "id": "68b9a7cd-9ca3-4e17-96f5-f3dcb7a0a791",
-        "name": "List files in folder",
-        "type": "n8n-nodes-base.googleDrive",
-        "typeVersion": 3,
-        "position": [
-          -768,
-          -120
-        ],
         "parameters": {
           "resource": "fileFolder",
-          "operation": "search",
           "searchMethod": "query",
           "queryString": "=trashed = false",
           "returnAll": true,
@@ -685,6 +671,14 @@
             ]
           }
         },
+        "id": "68b9a7cd-9ca3-4e17-96f5-f3dcb7a0a791",
+        "name": "List files in folder",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          -768,
+          -128
+        ],
         "credentials": {
           "googleDriveOAuth2Api": {
             "id": "lOUQgEfyXT0EShei",
@@ -693,31 +687,25 @@
         }
       },
       {
+        "parameters": {
+          "jsCode": "const uploadItems = $input.all();\n\nlet existingItems = [];\ntry {\n  existingItems = $('List files in folder').all();\n} catch (e) {\n  existingItems = [];\n}\n\nconst existingNames = new Set(\n  existingItems.map(item => (item.json.name || '').toLowerCase())\n);\n\nconst newItems = [];\nlet skippedCount = 0;\n\nfor (const item of uploadItems) {\n  const fileName = (item.json.fileName || '').toLowerCase();\n  if (existingNames.has(fileName)) {\n    skippedCount++;\n  } else {\n    newItems.push(item);\n  }\n}\n\nif (newItems.length > 0) {\n  newItems[0].json._dedupSkippedCount = skippedCount;\n}\n\nreturn newItems;"
+        },
         "id": "ac9a8a22-8e27-4265-945f-ceb96a26616b",
         "name": "Dedup Check",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          1256,
+          1264,
           496
-        ],
-        "parameters": {
-          "jsCode": "const uploadItems = $input.all();\n\nlet existingItems = [];\ntry {\n  existingItems = $('List files in folder').all();\n} catch (e) {\n  existingItems = [];\n}\n\nconst existingNames = new Set(\n  existingItems.map(item => (item.json.name || '').toLowerCase())\n);\n\nconst newItems = [];\nlet skippedCount = 0;\n\nfor (const item of uploadItems) {\n  const fileName = (item.json.fileName || '').toLowerCase();\n  if (existingNames.has(fileName)) {\n    skippedCount++;\n  } else {\n    newItems.push(item);\n  }\n}\n\nif (newItems.length > 0) {\n  newItems[0].json._dedupSkippedCount = skippedCount;\n}\n\nreturn newItems;"
-        }
+        ]
       },
       {
-        "id": "733ad440-af55-460e-9994-a05eeb42c981",
-        "name": "PUT to Octa S3",
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.4,
-        "position": [
-          1808,
-          620
-        ],
         "parameters": {
+          "method": "PUT",
+          "url": "={{ $json.presignedUrl || 'http://127.0.0.1:1/skip-octa' }}",
+          "sendBody": true,
           "contentType": "binaryData",
           "inputDataFieldName": "data",
-          "method": "PUT",
           "options": {
             "response": {
               "response": {
@@ -726,23 +714,29 @@
                 "responseFormat": "text"
               }
             }
-          },
-          "sendBody": true,
-          "url": "={{ $json.presignedUrl || 'http://127.0.0.1:1/skip-octa' }}"
-        }
+          }
+        },
+        "id": "733ad440-af55-460e-9994-a05eeb42c981",
+        "name": "PUT to Octa S3",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1808,
+          624
+        ]
       },
       {
+        "parameters": {
+          "jsCode": "// Input = PUT to Octa S3 responses (full response, neverError=true so failures pass through).\n// Upload Octa Manager aligns 1:1 by index with HTTP node output (If node was removed).\n// Items without presignedUrl upstream surface here as HTTP errors (empty/invalid URL) -> 'failed'.\nconst src = $('Upload Octa Manager').all();\nconst out = [];\nconst inputs = $input.all();\nfor (let i = 0; i < inputs.length; i++) {\n  const resp = inputs[i].json;\n  const up = src[i]?.json || {};\n  // Preserve upstream skip/error/auth_failed status if present\n  let status;\n  if (up.octaStatus === 'skipped' || up.octaStatus === 'auth_failed') {\n    status = up.octaStatus;\n  } else {\n    const code = resp?.statusCode;\n    status = (code && code >= 200 && code < 300) ? 'uploaded' : 'failed';\n  }\n  out.push({\n    json: {\n      fileName: up.fileName || 'unknown',\n      folderId: up.folderId || '',\n      octaStatus: status,\n      octaCode: resp?.statusCode,\n      octaError: status === 'failed' ? String(resp?.body || resp?.message || '').slice(0, 200) : undefined\n    }\n  });\n}\nreturn out;"
+        },
         "id": "8996965c-b6e4-4d55-abbd-14e97c810393",
         "name": "Mark Octa Upload",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          2008,
-          620
-        ],
-        "parameters": {
-          "jsCode": "// Input = PUT to Octa S3 responses (full response, neverError=true so failures pass through).\n// Upload Octa Manager aligns 1:1 by index with HTTP node output (If node was removed).\n// Items without presignedUrl upstream surface here as HTTP errors (empty/invalid URL) -> 'failed'.\nconst src = $('Upload Octa Manager').all();\nconst out = [];\nconst inputs = $input.all();\nfor (let i = 0; i < inputs.length; i++) {\n  const resp = inputs[i].json;\n  const up = src[i]?.json || {};\n  // Preserve upstream skip/error/auth_failed status if present\n  let status;\n  if (up.octaStatus === 'skipped' || up.octaStatus === 'auth_failed') {\n    status = up.octaStatus;\n  } else {\n    const code = resp?.statusCode;\n    status = (code && code >= 200 && code < 300) ? 'uploaded' : 'failed';\n  }\n  out.push({\n    json: {\n      fileName: up.fileName || 'unknown',\n      folderId: up.folderId || '',\n      octaStatus: status,\n      octaCode: resp?.statusCode,\n      octaError: status === 'failed' ? String(resp?.body || resp?.message || '').slice(0, 200) : undefined\n    }\n  });\n}\nreturn out;"
-        }
+          2016,
+          624
+        ]
       }
     ],
     "connections": {
@@ -1019,11 +1013,13 @@
     },
     "nodeGroups": [],
     "authors": "Ramon ramon@pereirariosoftware.com",
-    "name": null,
-    "description": null,
-    "autosaved": false
+    "name": "Version bd7b8a41",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-08-31T13:44:45.309Z",
+    "updatedAt": "2026-08-31T13:44:49.722Z"
   },
-  "activeVersionId": "7ec4ca88-01de-4a33-b38a-0ece209fabde",
+  "activeVersionId": "bd7b8a41-7285-46a9-be2a-6445bb46fa4a",
   "connections": {
     "Schedule Trigger": {
       "main": [
@@ -1627,7 +1623,7 @@
         "genericAuthType": "httpBearerAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ \n  {\n      \"model\": \"MiniMax-M2.5\",\n      \"messages\": [\n          {\n              \"role\": \"user\",\n              \"content\": $json.prompt\n          }\n      ],\n      \"temperature\": 0.1,\n      \"max_tokens\": 10000\n  }\n }}",
+        "jsonBody": "={{ \n  {\n      \"model\": \"glm-5.3-flash\",\n      \"messages\": [\n          {\n              \"role\": \"user\",\n              \"content\": $json.prompt\n          }\n      ],\n      \"temperature\": 0.1,\n      \"max_tokens\": 10000\n  }\n }}",
         "options": {
           "timeout": 60000
         }
@@ -1909,20 +1905,9 @@
       ]
     },
     {
-      "id": "91274aa1-69d0-4fc1-b28f-3cba9b765ecf",
-      "name": "Find existing folder",
-      "type": "n8n-nodes-base.googleDrive",
-      "typeVersion": 3,
-      "position": [
-        -992,
-        -120
-      ],
       "parameters": {
         "resource": "fileFolder",
-        "operation": "search",
-        "searchMethod": "name",
         "queryString": "={{ String(new Date().getMonth() + 1).padStart(2, '0') + '-' + new Date().getFullYear() }}",
-        "returnAll": false,
         "limit": 1,
         "filter": {
           "driveId": {
@@ -1944,6 +1929,14 @@
           ]
         }
       },
+      "id": "91274aa1-69d0-4fc1-b28f-3cba9b765ecf",
+      "name": "Find existing folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -992,
+        -128
+      ],
       "credentials": {
         "googleDriveOAuth2Api": {
           "id": "lOUQgEfyXT0EShei",
@@ -1952,17 +1945,8 @@
       }
     },
     {
-      "id": "68b9a7cd-9ca3-4e17-96f5-f3dcb7a0a791",
-      "name": "List files in folder",
-      "type": "n8n-nodes-base.googleDrive",
-      "typeVersion": 3,
-      "position": [
-        -768,
-        -120
-      ],
       "parameters": {
         "resource": "fileFolder",
-        "operation": "search",
         "searchMethod": "query",
         "queryString": "=trashed = false",
         "returnAll": true,
@@ -1986,6 +1970,14 @@
           ]
         }
       },
+      "id": "68b9a7cd-9ca3-4e17-96f5-f3dcb7a0a791",
+      "name": "List files in folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -768,
+        -128
+      ],
       "credentials": {
         "googleDriveOAuth2Api": {
           "id": "lOUQgEfyXT0EShei",
@@ -1994,31 +1986,25 @@
       }
     },
     {
+      "parameters": {
+        "jsCode": "const uploadItems = $input.all();\n\nlet existingItems = [];\ntry {\n  existingItems = $('List files in folder').all();\n} catch (e) {\n  existingItems = [];\n}\n\nconst existingNames = new Set(\n  existingItems.map(item => (item.json.name || '').toLowerCase())\n);\n\nconst newItems = [];\nlet skippedCount = 0;\n\nfor (const item of uploadItems) {\n  const fileName = (item.json.fileName || '').toLowerCase();\n  if (existingNames.has(fileName)) {\n    skippedCount++;\n  } else {\n    newItems.push(item);\n  }\n}\n\nif (newItems.length > 0) {\n  newItems[0].json._dedupSkippedCount = skippedCount;\n}\n\nreturn newItems;"
+      },
       "id": "ac9a8a22-8e27-4265-945f-ceb96a26616b",
       "name": "Dedup Check",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1256,
+        1264,
         496
-      ],
-      "parameters": {
-        "jsCode": "const uploadItems = $input.all();\n\nlet existingItems = [];\ntry {\n  existingItems = $('List files in folder').all();\n} catch (e) {\n  existingItems = [];\n}\n\nconst existingNames = new Set(\n  existingItems.map(item => (item.json.name || '').toLowerCase())\n);\n\nconst newItems = [];\nlet skippedCount = 0;\n\nfor (const item of uploadItems) {\n  const fileName = (item.json.fileName || '').toLowerCase();\n  if (existingNames.has(fileName)) {\n    skippedCount++;\n  } else {\n    newItems.push(item);\n  }\n}\n\nif (newItems.length > 0) {\n  newItems[0].json._dedupSkippedCount = skippedCount;\n}\n\nreturn newItems;"
-      }
+      ]
     },
     {
-      "id": "733ad440-af55-460e-9994-a05eeb42c981",
-      "name": "PUT to Octa S3",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        1808,
-        620
-      ],
       "parameters": {
+        "method": "PUT",
+        "url": "={{ $json.presignedUrl || 'http://127.0.0.1:1/skip-octa' }}",
+        "sendBody": true,
         "contentType": "binaryData",
         "inputDataFieldName": "data",
-        "method": "PUT",
         "options": {
           "response": {
             "response": {
@@ -2027,23 +2013,29 @@
               "responseFormat": "text"
             }
           }
-        },
-        "sendBody": true,
-        "url": "={{ $json.presignedUrl || 'http://127.0.0.1:1/skip-octa' }}"
-      }
+        }
+      },
+      "id": "733ad440-af55-460e-9994-a05eeb42c981",
+      "name": "PUT to Octa S3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1808,
+        624
+      ]
     },
     {
+      "parameters": {
+        "jsCode": "// Input = PUT to Octa S3 responses (full response, neverError=true so failures pass through).\n// Upload Octa Manager aligns 1:1 by index with HTTP node output (If node was removed).\n// Items without presignedUrl upstream surface here as HTTP errors (empty/invalid URL) -> 'failed'.\nconst src = $('Upload Octa Manager').all();\nconst out = [];\nconst inputs = $input.all();\nfor (let i = 0; i < inputs.length; i++) {\n  const resp = inputs[i].json;\n  const up = src[i]?.json || {};\n  // Preserve upstream skip/error/auth_failed status if present\n  let status;\n  if (up.octaStatus === 'skipped' || up.octaStatus === 'auth_failed') {\n    status = up.octaStatus;\n  } else {\n    const code = resp?.statusCode;\n    status = (code && code >= 200 && code < 300) ? 'uploaded' : 'failed';\n  }\n  out.push({\n    json: {\n      fileName: up.fileName || 'unknown',\n      folderId: up.folderId || '',\n      octaStatus: status,\n      octaCode: resp?.statusCode,\n      octaError: status === 'failed' ? String(resp?.body || resp?.message || '').slice(0, 200) : undefined\n    }\n  });\n}\nreturn out;"
+      },
       "id": "8996965c-b6e4-4d55-abbd-14e97c810393",
       "name": "Mark Octa Upload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2008,
-        620
-      ],
-      "parameters": {
-        "jsCode": "// Input = PUT to Octa S3 responses (full response, neverError=true so failures pass through).\n// Upload Octa Manager aligns 1:1 by index with HTTP node output (If node was removed).\n// Items without presignedUrl upstream surface here as HTTP errors (empty/invalid URL) -> 'failed'.\nconst src = $('Upload Octa Manager').all();\nconst out = [];\nconst inputs = $input.all();\nfor (let i = 0; i < inputs.length; i++) {\n  const resp = inputs[i].json;\n  const up = src[i]?.json || {};\n  // Preserve upstream skip/error/auth_failed status if present\n  let status;\n  if (up.octaStatus === 'skipped' || up.octaStatus === 'auth_failed') {\n    status = up.octaStatus;\n  } else {\n    const code = resp?.statusCode;\n    status = (code && code >= 200 && code < 300) ? 'uploaded' : 'failed';\n  }\n  out.push({\n    json: {\n      fileName: up.fileName || 'unknown',\n      folderId: up.folderId || '',\n      octaStatus: status,\n      octaCode: resp?.statusCode,\n      octaError: status === 'failed' ? String(resp?.body || resp?.message || '').slice(0, 200) : undefined\n    }\n  });\n}\nreturn out;"
-      }
+        2016,
+        624
+      ]
     }
   ],
   "pinData": {},
@@ -2054,11 +2046,11 @@
   },
   "shared": [
     {
-      "updatedAt": "2026-06-04T23:16:33.012Z",
-      "createdAt": "2026-06-04T23:16:33.012Z",
       "role": "workflow:owner",
       "workflowId": "VfdNxA8c7CgGr5q7",
-      "projectId": "NIWdtECswkBCcQBM"
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-06-04T23:16:33.012Z",
+      "updatedAt": "2026-06-04T23:16:33.012Z"
     }
   ],
   "staticData": {
@@ -2073,6 +2065,6 @@
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-07-10T14:35:02.653Z",
-  "versionId": "7ec4ca88-01de-4a33-b38a-0ece209fabde"
+  "updatedAt": "2026-08-31T13:44:45.307Z",
+  "versionId": "bd7b8a41-7285-46a9-be2a-6445bb46fa4a"
 }
