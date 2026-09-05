@@ -1,8 +1,6 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-08-21T14:17:14.430Z",
-    "createdAt": "2026-08-21T14:17:14.430Z",
     "versionId": "a03611b0-b494-46f5-a764-62ac6d019649",
     "workflowId": "0N6TcGdlox95JzJq",
     "nodes": [
@@ -279,7 +277,9 @@
     "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
     "name": "Updated Notify Hermes",
     "description": "Updated nodes: Notify Hermes",
-    "autosaved": false
+    "autosaved": false,
+    "createdAt": "2026-08-21T14:17:14.430Z",
+    "updatedAt": "2026-08-21T14:17:14.430Z"
   },
   "activeVersionId": "a03611b0-b494-46f5-a764-62ac6d019649",
   "connections": {
@@ -568,11 +568,11 @@
   },
   "shared": [
     {
-      "updatedAt": "2026-05-18T13:38:39.216Z",
-      "createdAt": "2026-05-18T13:38:39.216Z",
       "role": "workflow:owner",
       "workflowId": "0N6TcGdlox95JzJq",
-      "projectId": "NIWdtECswkBCcQBM"
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-05-18T13:38:39.216Z",
+      "updatedAt": "2026-05-18T13:38:39.216Z"
     }
   ],
   "staticData": null,
