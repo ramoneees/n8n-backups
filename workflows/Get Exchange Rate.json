@@ -1,8 +1,6 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-07-30T11:49:35.383Z",
-    "createdAt": "2026-07-30T11:47:51.582Z",
     "versionId": "a599cfab-6429-444e-a1ac-32cdf37497bc",
     "workflowId": "GHoOCyO1zSw4D2be",
     "nodes": [
@@ -276,7 +274,9 @@
     "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
     "name": "Split BTC onto its own 2-hourly schedule; remove unused wallet-balance branch",
     "description": "Removed the temp delete node and the now-unused wallet-balance branch (Set Wallet Balance, BTC Wallet Address, Get Wallet Balance, Compute BTC Balance, Update Firefly Balance) since the account it targeted no longer exists. Split scheduling: fiat rates (EUR->BRL,GBP) stay on the 18:00 Lisbon trigger (after ECB publishes); BTC/EUR now runs on its own new trigger every 2 hours, independent of the fiat branch. Note: Firefly only stores one rate per calendar day per pair, so intraday BTC runs overwrite the same day's row rather than building intraday history -- confirmed via two same-day posts landing on the same row IDs with updated_at bumped.",
-    "autosaved": false
+    "autosaved": false,
+    "createdAt": "2026-07-30T11:47:51.582Z",
+    "updatedAt": "2026-07-30T11:49:35.383Z"
   },
   "activeVersionId": "a599cfab-6429-444e-a1ac-32cdf37497bc",
   "connections": {
@@ -564,11 +564,11 @@
   },
   "shared": [
     {
-      "updatedAt": "2026-04-05T20:49:43.849Z",
-      "createdAt": "2026-04-05T20:49:43.849Z",
       "role": "workflow:owner",
       "workflowId": "GHoOCyO1zSw4D2be",
-      "projectId": "NIWdtECswkBCcQBM"
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-04-05T20:49:43.849Z",
+      "updatedAt": "2026-04-05T20:49:43.849Z"
     }
   ],
   "staticData": {
