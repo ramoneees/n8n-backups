@@ -1,7 +1,541 @@
 {
-  "active": false,
-  "activeVersion": null,
-  "activeVersionId": null,
+  "active": true,
+  "activeVersion": {
+    "versionId": "cc6715a1-5128-4a86-921b-e509be1fdb7c",
+    "workflowId": "XIThcU2rzYxVfRSG",
+    "nodes": [
+      {
+        "id": "da12d30b-e4d5-4157-a584-4f8a0c82984c",
+        "name": "Config e Filtrar PDFs",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -640,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "// Fontes e senhas vem da Data Table 'Faturas - Fontes e Senhas'.\n// Para adicionar um banco novo, acrescente uma linha na tabela — nao mexa neste codigo.\nconst rows = $input.all();\nconst emails = $('Buscar Emails Faturas').all();\n\nfunction norm(s) {\n  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');\n}\n\nfunction getHeader(headers, name) {\n  if (!Array.isArray(headers)) return '';\n  const h = headers.find(x => x && x.name && x.name.toLowerCase() === name);\n  return h ? (h.value || '') : '';\n}\n\nconst SOURCES = [];\nfor (const r of rows) {\n  const j = r.json || {};\n  if (j.enabled === false) continue;\n  if (!j.sender_match) continue;\n  SOURCES.push({\n    issuer: j.issuer || 'desconhecido',\n    senderMatch: norm(j.sender_match),\n    subjectMatch: norm(j.subject_match),\n    password: j.password == null ? '' : String(j.password)\n  });\n}\n\nif (!SOURCES.length) {\n  console.warn('ATENCAO: nenhuma fonte activa na Data Table — nada sera processado.');\n}\n\nfunction resolveSource(from, subject) {\n  const f = norm(from);\n  const s = norm(subject);\n  for (const src of SOURCES) {\n    if (f.indexOf(src.senderMatch) === -1) continue;\n    if (src.subjectMatch && s.indexOf(src.subjectMatch) === -1) continue;\n    return src;\n  }\n  return null;\n}\n\nconst results = [];\nconst seen = new Set();\nlet ignorados = 0;\n\nfor (const item of emails) {\n  if (!item.binary) continue;\n  const j = item.json || {};\n  const msgId = j.id || j.threadId || Math.random().toString(36);\n  const headers = (j.payload && j.payload.headers) || [];\n\n  let from = getHeader(headers, 'from');\n  if (!from && j.From) from = j.From;\n  if (!from && j.from && j.from.value && j.from.value[0]) from = j.from.value[0].address || '';\n  if (!from && typeof j.from === 'string') from = j.from;\n\n  let subject = getHeader(headers, 'subject');\n  if (!subject && j.Subject) subject = j.Subject;\n  if (!subject && j.subject) subject = j.subject;\n\n  const src = resolveSource(from, subject);\n  if (!src) {\n    ignorados++;\n    console.log('ignorado (sem fonte correspondente): from=' + from + ' subject=' + subject);\n    continue;\n  }\n\n  const rawDate = j.internalDate || j.date || null;\n  let emailDate = new Date().toISOString().slice(0, 10);\n  if (rawDate) {\n    const d = new Date(Number(rawDate) > 0 ? Number(rawDate) : rawDate);\n    if (!isNaN(d.getTime())) emailDate = d.toISOString().slice(0, 10);\n  }\n\n  for (const key of Object.keys(item.binary)) {\n    const bin = item.binary[key];\n    const fileName = (bin.fileName || '').trim();\n    if (!fileName) continue;\n    const isPdf = (bin.mimeType || '').toLowerCase().includes('pdf') || fileName.toLowerCase().endsWith('.pdf');\n    if (!isPdf) continue;\n    const dedupKey = msgId + '::' + fileName;\n    if (seen.has(dedupKey)) continue;\n    seen.add(dedupKey);\n    results.push({\n      json: {\n        msgId, emailDate, fileName, from, subject,\n        issuer: src.issuer,\n        password: src.password\n      },\n      binary: { data: bin }\n    });\n  }\n}\n\nconsole.log('faturas: ' + results.length + ' pdf(s) aceites, ' + ignorados + ' email(s) ignorado(s)');\nreturn results;\n"
+        }
+      },
+      {
+        "id": "14a243bc-e644-476d-bc0d-58ceb4664b26",
+        "name": "Converter Paginas (toolbox)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -400,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://toolbox.apps.svc.cluster.local:8000/api/v1/convert-all?dpi=150",
+          "sendBody": true,
+          "contentType": "multipart-form-data",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "parameterType": "formBinaryData",
+                "inputDataFieldName": "data",
+                "name": "file"
+              },
+              {
+                "parameterType": "formData",
+                "name": "password",
+                "value": "={{ $json.password }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 120000
+          }
+        }
+      },
+      {
+        "id": "d6de9bfe-9936-4f60-a3e2-00d2eff2ab80",
+        "name": "Reacoplar Metadados",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -160,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const src = $('Config e Filtrar PDFs').all();\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  const meta = src[i] ? src[i].json : {};\n  const pages = (j.pages || []).map(p => 'data:image/png;base64,' + ((p && p.image && p.image.data) || ''));\n  out.push({ json: Object.assign({}, meta, {\n    pages: pages,\n    pageCount: pages.length,\n    convertError: pages.length ? undefined : 'sem paginas'\n  }) });\n}\nreturn out;\n"
+        }
+      },
+      {
+        "id": "0109174d-0daf-4a2e-938e-4e82bf20c7c6",
+        "name": "Construir Corpo LLM",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          80,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const items = $input.all();\nconst results = [];\n\nconst SCHEMA_TEXT = [\n  'Voce e um extrator preciso de faturas/extratos de cartao de credito de QUALQUER banco (Portugal ou Brasil).',\n  'Voce recebe as PAGINAS da fatura como imagens, em ordem. Devolva EXCLUSIVAMENTE um objeto JSON valido, sem markdown, sem comentarios.',\n  '',\n  'Schema:',\n  '{',\n  '  \"schema\": \"card_statement_v1\",',\n  '  \"issuer\": string|null,',\n  '  \"currency\": string|null,',\n  '  \"card_holder\": string|null,',\n  '  \"card_last4\": string|null,',\n  '  \"statement_period\": { \"open_date\": \"YYYY-MM-DD\"|null, \"close_date\": \"YYYY-MM-DD\"|null },',\n  '  \"due_date\": \"YYYY-MM-DD\"|null,',\n  '  \"payment_reference\": string|null,',\n  '  \"total_balance\": number|null,',\n  '  \"minimum_payment\": number|null,',\n  '  \"previous_balance\": number|null,',\n  '  \"credits_payments\": number|null,',\n  '  \"credit_limit\": number|null,',\n  '  \"available_limit\": number|null,',\n  '  \"transactions\": [',\n  '    {',\n  '      \"date\": \"YYYY-MM-DD\"|null,',\n  '      \"description\": string,',\n  '      \"merchant\": string|null,',\n  '      \"category\": string,',\n  '      \"amount\": number,',\n  '      \"installment_info\": string|null,',\n  '      \"foreign_amount\": number|null,',\n  '      \"foreign_currency\": string|null',\n  '    }',\n  '  ],',\n  '  \"warnings\": [string]',\n  '}',\n  '',\n  'Regras:',\n  '- issuer: nome do banco/emissor como aparece no documento (ex: XP, Nubank, Millennium BCP, Revolut).',\n  '- currency: codigo ISO 4217 detectado no documento (BRL, EUR, USD...). Se ambiguo, null + warning.',\n  '- category e UMA de: mercado, restaurante, transporte, assinaturas, saude, educacao, casa, viagem, tecnologia, lazer, vestuario, servicos_bancarios, taxas, saque, pagamento, outros.',\n  '- Numeros com ponto decimal, sem simbolos. Atencao ao formato:',\n  '    \"R$ 1.234,56\" -> 1234.56   (pt-BR/pt-PT: ponto = milhar, virgula = decimal)',\n  '    \"$1,234.56\"   -> 1234.56   (en-US: virgula = milhar, ponto = decimal)',\n  '- payment_reference: referencia Multibanco, codigo de barras, boleto ou IBAN de pagamento, se existir.',\n  '- Datas YYYY-MM-DD; se o ano nao estiver explicito, use o ano do periodo da fatura.',\n  '- NAO invente valores; ilegivel => null + warnings.',\n  '- Cada linha de transacao = um objeto; \"Parcela X/Y\" ou \"1/12\" vai em installment_info.',\n  '- Compras em moeda estrangeira: valor convertido em amount, original em foreign_amount/foreign_currency.',\n  '- POSITIVO compras, NEGATIVO estornos/pagamentos/creditos.',\n  '- Ignore rodapes de marketing, SAC, Ouvidoria, avisos legais.',\n  '- Se a soma das transactions +/- creditos divergir do total_balance mais de 0.05, registre em warnings (nao ajuste).',\n  '- Responda SOMENTE o JSON.'\n].join('\\n');\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const pages = item.json.pages || [];\n  if (!pages.length) {\n    results.push({\n      json: Object.assign({}, item.json, { skipped: true, skipReason: 'sem paginas: ' + (item.json.convertError || '?') }),\n      pairedItem: { item: i }\n    });\n    continue;\n  }\n  const content = [];\n  for (const p of pages) content.push({ type: 'image_url', image_url: { url: p } });\n  let hint = SCHEMA_TEXT;\n  if (item.json.issuer && item.json.issuer !== 'desconhecido') {\n    hint = hint + '\\n- Dica: este documento deve ser do emissor \"' + item.json.issuer + '\".';\n  }\n  content.push({ type: 'text', text: hint });\n  const reqBody = { model: 'qwen-plan/qwen3.8-flash', messages: [{ role: 'user', content }], temperature: 0, max_tokens: 12000 };\n  const buf = Buffer.from(JSON.stringify(reqBody), 'utf8');\n  const bin = await this.helpers.prepareBinaryData(buf, 'llm_body.json', 'application/json');\n  results.push({\n    json: Object.assign({}, item.json, { skipped: false }),\n    binary: { reqbody: bin },\n    pairedItem: { item: i }\n  });\n}\nreturn results;\n"
+        }
+      },
+      {
+        "id": "5b193777-724b-4c59-9de4-aa5ace7420d7",
+        "name": "Analisar Fatura (LLM)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          320,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "sendBody": true,
+          "contentType": "binaryData",
+          "inputDataFieldName": "reqbody",
+          "options": {
+            "timeout": 300000
+          }
+        },
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "wXO4qmCuKINk321e",
+            "name": "LiteLLM KEY"
+          }
+        }
+      },
+      {
+        "id": "28063198-cfd4-40b5-b1f8-b66a6944a858",
+        "name": "Consolidar JSON",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          560,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const llmItems = $input.all();\nconst src = $('Config e Filtrar PDFs').all();\nconst results = [];\n\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  if (typeof s === 'number') return isNaN(s) ? null : s;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  const lastComma = str.lastIndexOf(',');\n  const lastDot = str.lastIndexOf('.');\n  if (lastComma > -1 && lastDot > -1) {\n    if (lastComma > lastDot) str = str.replace(/\\./g, '').replace(',', '.');\n    else str = str.replace(/,/g, '');\n  } else if (lastComma > -1) {\n    const decimals = str.length - lastComma - 1;\n    if (decimals === 3) str = str.replace(/,/g, '');\n    else str = str.replace(',', '.');\n  }\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\n\nconst CATS = ['mercado','restaurante','transporte','assinaturas','saude','educacao','casa','viagem','tecnologia','lazer','vestuario','servicos_bancarios','taxas','saque','pagamento','outros'];\nconst ISO = /^\\d{4}-\\d{2}-\\d{2}$/;\n\nfunction slug(s) {\n  return String(s || 'banco').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24) || 'banco';\n}\n\nlet okCount = 0, errCount = 0, txCount = 0;\n\nfor (let i = 0; i < llmItems.length; i++) {\n  const meta = src[i] ? src[i].json : {};\n  const body = llmItems[i].json || {};\n  const raw = (body.choices && body.choices[0] && body.choices[0].message ? body.choices[0].message.content : '') || '';\n\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const s = js.indexOf('{');\n    const e = js.lastIndexOf('}');\n    if (s >= 0 && e > s) js = js.slice(s, e + 1);\n    data = JSON.parse(js);\n    parsedOk = true; okCount++;\n  } catch (err) { error = err.message; errCount++; }\n\n  if (!data) data = { schema: 'card_statement_v1', transactions: [], warnings: ['parse falhou: ' + error] };\n  data.schema = 'card_statement_v1';\n  if (!data.issuer && meta.issuer && meta.issuer !== 'desconhecido') data.issuer = meta.issuer;\n  if (!Array.isArray(data.warnings)) data.warnings = [];\n\n  const txs = Array.isArray(data.transactions) ? data.transactions : [];\n  txs.forEach(t => {\n    t.amount = parseNum(t.amount);\n    t.foreign_amount = parseNum(t.foreign_amount);\n    if (!t.category || CATS.indexOf(t.category) === -1) t.category = 'outros';\n    if (!(typeof t.date === 'string' && ISO.test(t.date))) t.date = null;\n  });\n  data.transactions = txs;\n\n  ['total_balance','minimum_payment','previous_balance','credits_payments','credit_limit','available_limit'].forEach(k => { data[k] = parseNum(data[k]); });\n\n  if (data.statement_period) {\n    if (data.statement_period.open_date && !ISO.test(data.statement_period.open_date)) data.statement_period.open_date = null;\n    if (data.statement_period.close_date && !ISO.test(data.statement_period.close_date)) data.statement_period.close_date = null;\n  }\n  if (data.due_date && !ISO.test(data.due_date)) data.due_date = null;\n\n  const sum = txs.reduce((a, t) => a + (t.amount || 0), 0);\n  if (data.total_balance !== null && data.total_balance !== undefined) {\n    const credits = data.credits_payments || 0;\n    const diff = Math.abs((sum + credits) - data.total_balance);\n    if (diff > 0.05) data.warnings.push('soma divergente do total em ' + diff.toFixed(2));\n  }\n\n  // nome deterministico: usa o issuer da Data Table, nao o texto livre do LLM\n  const issuerSlug = slug(meta.issuer || data.issuer);\n  const period = (data.statement_period && data.statement_period.close_date) ? data.statement_period.close_date : meta.emailDate;\n  const last4 = String(data.card_last4 || '0000').replace(/\\D/g, '').slice(-4).padStart(4, '0');\n  const uploadName = issuerSlug + '_' + period + '_' + last4 + '_' + String(meta.msgId || '').slice(-8) + '.json';\n\n  const driveQueryUrl = 'https://www.googleapis.com/drive/v3/files?q=' +\n    encodeURIComponent(\"name = '\" + uploadName + \"' and trashed = false\") +\n    '&fields=' + encodeURIComponent('files(id,name)');\n\n  txCount += txs.length;\n  results.push({ json: {\n    parsedOk, error, uploadName, driveQueryUrl,\n    emailDate: meta.emailDate, fileName: meta.fileName, msgId: meta.msgId, issuer: data.issuer || meta.issuer,\n    record: data,\n    _summary: {\n      file: meta.fileName, issuer: data.issuer || meta.issuer, parsedOk,\n      transactions: txs.length, total: data.total_balance, currency: data.currency,\n      due: data.due_date, warnings: data.warnings.length\n    }\n  }});\n}\n\nconsole.log('consolidate: ok=' + okCount + ' err=' + errCount + ' tx=' + txCount);\nreturn results;\n"
+        }
+      },
+      {
+        "id": "be96a82e-40b9-4511-a7cd-0dcfcfbee2f2",
+        "name": "Dedup Check Drive",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          800,
+          0
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ \"https://www.googleapis.com/drive/v3/files?q=\" + encodeURIComponent(\"name = '\" + $json.uploadName + \"' and '1RyO_xmviaYG2hN0WsUnVUhJKu5WdhtoD' in parents and trashed = false\") + \"&fields=\" + encodeURIComponent(\"files(id,name)\") }}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "googleDriveOAuth2Api",
+          "options": {}
+        },
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lOUQgEfyXT0EShei",
+            "name": "Google Drive Empresa"
+          }
+        }
+      },
+      {
+        "id": "c1822496-5d89-4c85-8e60-d7b8ba3bdb29",
+        "name": "So Novos",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1040,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const checks = $input.all();\nconst consolidados = $('Consolidar JSON').all();\nconst results = [];\nlet skipped = 0;\nfor (let i = 0; i < checks.length; i++) {\n  const existe = checks[i].json && checks[i].json.files && checks[i].json.files.length > 0;\n  if (existe) { skipped++; continue; }\n  const orig = consolidados[i];\n  if (!orig) continue;\n  results.push({ json: orig.json });\n}\nif (results.length > 0) {\n  results[0].json._summary = Object.assign({}, results[0].json._summary, { duplicados: skipped });\n}\nconsole.log('dedup: novos=' + results.length + ' duplicados=' + skipped);\nreturn results;\n"
+        }
+      },
+      {
+        "id": "a7b65f8f-023b-4729-91b2-62de1b2b6d72",
+        "name": "Preparar Binario",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1280,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const items = $input.all();\nconst results = [];\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const jsonStr = JSON.stringify(item.json.record, null, 2);\n  const buf = Buffer.from(jsonStr, 'utf8');\n  const binaryData = await this.helpers.prepareBinaryData(buf, item.json.uploadName, 'application/json');\n  results.push({\n    json: { uploadName: item.json.uploadName, parsedOk: item.json.parsedOk, _summary: item.json._summary },\n    binary: { data: binaryData }\n  });\n}\nreturn results;\n"
+        }
+      },
+      {
+        "id": "0ce4fdae-ade2-4760-a5b0-4017f1fbdc72",
+        "name": "Gravar no Drive",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1520,
+          0
+        ],
+        "parameters": {
+          "operation": "upload",
+          "name": "={{ $json.uploadName }}",
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "1RyO_xmviaYG2hN0WsUnVUhJKu5WdhtoD",
+            "cachedResultName": "Faturas Cartões"
+          },
+          "options": {}
+        },
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lOUQgEfyXT0EShei",
+            "name": "Google Drive Empresa"
+          }
+        }
+      },
+      {
+        "id": "f5d6db5a-5e41-4889-b678-0e2dd63773c0",
+        "name": "Resumo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1760,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const novos = $input.all().length;\nconst cons = $('So Novos').all();\nconst parts = [];\nfor (const c of cons) {\n  const s = c.json._summary || {};\n  const cur = s.currency ? (' ' + s.currency) : '';\n  const total = (s.total !== null && s.total !== undefined) ? s.total.toFixed(2) : '?';\n  const w = s.warnings ? (' [!' + s.warnings + ']') : '';\n  parts.push('• ' + (s.issuer || '?') + ' — ' + (s.file || '?') + ' → ' + (s.transactions || 0) + ' transacoes, total' + cur + ' ' + total + ', vence ' + (s.due || '?') + (s.parsedOk ? '' : ' [PARSE FALHOU]') + w);\n}\nconst message = '💳 Fatura processada (' + novos + ' nova(s)):\\n' + parts.join('\\n');\nreturn [{ json: { message, novos } }];\n"
+        }
+      },
+      {
+        "id": "fcd35446-8b95-4018-8da0-2db0bec6877c",
+        "name": "Notificar Hermes",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          2000,
+          0
+        ],
+        "parameters": {
+          "mode": "once",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "D1X5OyGlkuo7UwdR"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "message": "={{ $json.message }}",
+              "webhook_secret": "n8n-webhook-secret-2024",
+              "webhook_url": "http://hermes.ramoneees.com:8644/webhooks/n8n-complete"
+            },
+            "matchingColumns": [],
+            "schema": []
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "executeOnce": true
+      },
+      {
+        "id": "e4219105-c887-4afd-9967-48c8dd6f38fb",
+        "name": "Sticky Note d08ed3c1",
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          -1170,
+          -280
+        ],
+        "parameters": {
+          "content": "## ⚙️ Fontes e senhas vivem na Data Table\n\nTabela: **Faturas - Fontes e Senhas**\n\n| coluna | para que serve |\n|---|---|\n| `issuer` | nome do banco |\n| `sender_match` | trecho do email do remetente |\n| `subject_match` | (opcional) exige este texto no assunto |\n| `password` | senha do PDF — vazio se nao tiver |\n| `enabled` | desliga a fonte sem apagar a linha |\n\n➕ **Banco novo = linha nova na tabela.** Nao e preciso mexer no codigo.\n\n⚠️ Se acrescentar um remetente, junte-o tambem a query do **Gmail Trigger**.",
+          "color": 3,
+          "width": 560,
+          "height": 380
+        }
+      },
+      {
+        "id": "eee99597-dcc6-4456-8299-234c8654f112",
+        "name": "Sticky Note e0b396e9",
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          -450,
+          -50
+        ],
+        "parameters": {
+          "content": "## 🔓 PDFs com senha\n\nO **toolbox** (`/api/v1/convert-all`) recebe o campo `password` e abre PDFs encriptados.\n\n- sem senha num PDF protegido → 403\n- senha errada → 401\n- tambem existe `/api/v1/decrypt` se precisar do PDF aberto",
+          "color": 4,
+          "width": 300,
+          "height": 200
+        }
+      },
+      {
+        "id": "2fb2ac20-c373-4bd8-805d-40bef5fa719b",
+        "name": "Ler Fontes e Senhas",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          -880,
+          0
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "WYAARu8PqmZDAh9X"
+          },
+          "returnAll": true
+        },
+        "executeOnce": true
+      },
+      {
+        "id": "201c99c8-ca1e-4e5a-8e25-5ef4913d7010",
+        "name": "Agendamento (dia 3 e 5)",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.4,
+        "position": [
+          -1360,
+          0
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "months",
+                "triggerAtDayOfMonth": 3,
+                "triggerAtHour": 8,
+                "triggerAtMinute": 0
+              },
+              {
+                "field": "months",
+                "triggerAtDayOfMonth": 5,
+                "triggerAtHour": 8,
+                "triggerAtMinute": 0
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "b97e7015-2140-47c6-abf1-52b91e8ebe3e",
+        "name": "Buscar Emails Faturas",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.2,
+        "position": [
+          -1120,
+          0
+        ],
+        "parameters": {
+          "resource": "message",
+          "operation": "getAll",
+          "returnAll": true,
+          "simple": false,
+          "filters": {
+            "q": "(from:extrato@universo.pt OR from:fatura@xpi.com.br OR (from:banco@millenniumbcp.pt subject:\"Extrato de Cartão\")) has:attachment filename:pdf newer_than:30d",
+            "readStatus": "both",
+            "includeSpamTrash": true
+          },
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "IZ5cS1EUXpPOEEPu",
+            "name": "Gmail Pessoal"
+          }
+        },
+        "webhookId": "b5337d68-4c1e-483a-bda6-00fae306ecf7"
+      }
+    ],
+    "connections": {
+      "Converter Paginas (toolbox)": {
+        "main": [
+          [
+            {
+              "node": "Reacoplar Metadados",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reacoplar Metadados": {
+        "main": [
+          [
+            {
+              "node": "Construir Corpo LLM",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Construir Corpo LLM": {
+        "main": [
+          [
+            {
+              "node": "Analisar Fatura (LLM)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Analisar Fatura (LLM)": {
+        "main": [
+          [
+            {
+              "node": "Consolidar JSON",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consolidar JSON": {
+        "main": [
+          [
+            {
+              "node": "Dedup Check Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dedup Check Drive": {
+        "main": [
+          [
+            {
+              "node": "So Novos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "So Novos": {
+        "main": [
+          [
+            {
+              "node": "Preparar Binario",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar Binario": {
+        "main": [
+          [
+            {
+              "node": "Gravar no Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gravar no Drive": {
+        "main": [
+          [
+            {
+              "node": "Resumo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resumo": {
+        "main": [
+          [
+            {
+              "node": "Notificar Hermes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ler Fontes e Senhas": {
+        "main": [
+          [
+            {
+              "node": "Config e Filtrar PDFs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Config e Filtrar PDFs": {
+        "main": [
+          [
+            {
+              "node": "Converter Paginas (toolbox)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agendamento (dia 3 e 5)": {
+        "main": [
+          [
+            {
+              "node": "Buscar Emails Faturas",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Buscar Emails Faturas": {
+        "main": [
+          [
+            {
+              "node": "Ler Fontes e Senhas",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
+    "name": "Switch to scheduled 30-day Gmail search (was unread-poll)",
+    "description": "Gmail Trigger only fired on unread mail after its own last-saved cursor, so already-read faturas never triggered a run. Replaced with Schedule Trigger (days 3 and 5 of month, 08:00) -> Gmail node (message/getAll) searching the last 30 days regardless of read status. Downstream Dedup Check Drive already skips PDFs already uploaded, so overlapping runs are safe.",
+    "autosaved": false,
+    "createdAt": "2026-09-03T13:53:18.408Z",
+    "updatedAt": "2026-09-03T13:53:18.408Z"
+  },
+  "activeVersionId": "cc6715a1-5128-4a86-921b-e509be1fdb7c",
   "connections": {
     "Converter Paginas (toolbox)": {
       "main": [
@@ -113,17 +647,6 @@
         ]
       ]
     },
-    "Gmail Trigger Faturas": {
-      "main": [
-        [
-          {
-            "node": "Ler Fontes e Senhas",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Ler Fontes e Senhas": {
       "main": [
         [
@@ -145,6 +668,28 @@
           }
         ]
       ]
+    },
+    "Agendamento (dia 3 e 5)": {
+      "main": [
+        [
+          {
+            "node": "Buscar Emails Faturas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Emails Faturas": {
+      "main": [
+        [
+          {
+            "node": "Ler Fontes e Senhas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "createdAt": "2026-08-28T19:36:18.925Z",
@@ -158,42 +703,6 @@
   "nodeGroups": [],
   "nodes": [
     {
-      "id": "a83758dc-9a00-424c-9c48-9d9c17184273",
-      "name": "Gmail Trigger Faturas",
-      "type": "n8n-nodes-base.gmailTrigger",
-      "typeVersion": 1.4,
-      "position": [
-        -1120,
-        0
-      ],
-      "parameters": {
-        "pollTimes": {
-          "item": [
-            {
-              "mode": "everyMinute"
-            }
-          ]
-        },
-        "event": "messageReceived",
-        "simple": false,
-        "maxResults": 5,
-        "filters": {
-          "q": "(from:extrato@universo.pt OR from:fatura@xpi.com.br OR (from:banco@millenniumbcp.pt subject:\"Extrato de Cartão\")) has:attachment filename:pdf",
-          "readStatus": "unread",
-          "includeSpamTrash": true
-        },
-        "options": {
-          "downloadAttachments": true
-        }
-      },
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "IZ5cS1EUXpPOEEPu",
-          "name": "Gmail Pessoal"
-        }
-      }
-    },
-    {
       "id": "da12d30b-e4d5-4157-a584-4f8a0c82984c",
       "name": "Config e Filtrar PDFs",
       "type": "n8n-nodes-base.code",
@@ -205,7 +714,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Fontes e senhas vem da Data Table 'Faturas - Fontes e Senhas'.\n// Para adicionar um banco novo, acrescente uma linha na tabela — nao mexa neste codigo.\nconst rows = $input.all();\nconst emails = $('Gmail Trigger Faturas').all();\n\nfunction norm(s) {\n  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');\n}\n\nconst SOURCES = [];\nfor (const r of rows) {\n  const j = r.json || {};\n  if (j.enabled === false) continue;\n  if (!j.sender_match) continue;\n  SOURCES.push({\n    issuer: j.issuer || 'desconhecido',\n    senderMatch: norm(j.sender_match),\n    subjectMatch: norm(j.subject_match),\n    password: j.password == null ? '' : String(j.password)\n  });\n}\n\nif (!SOURCES.length) {\n  console.warn('ATENCAO: nenhuma fonte activa na Data Table — nada sera processado.');\n}\n\nfunction resolveSource(from, subject) {\n  const f = norm(from);\n  const s = norm(subject);\n  for (const src of SOURCES) {\n    if (f.indexOf(src.senderMatch) === -1) continue;\n    if (src.subjectMatch && s.indexOf(src.subjectMatch) === -1) continue;\n    return src;\n  }\n  return null;\n}\n\nconst results = [];\nconst seen = new Set();\nlet ignorados = 0;\n\nfor (const item of emails) {\n  if (!item.binary) continue;\n  const j = item.json || {};\n  const msgId = j.id || j.threadId || Math.random().toString(36);\n\n  let from = '';\n  if (j.from && j.from.value && j.from.value[0]) from = j.from.value[0].address || '';\n  if (!from && typeof j.from === 'string') from = j.from;\n  if (!from && j.headers && j.headers.from) from = j.headers.from;\n\n  let subject = j.subject || '';\n  if (!subject && j.headers && j.headers.subject) subject = j.headers.subject;\n\n  const src = resolveSource(from, subject);\n  if (!src) {\n    ignorados++;\n    console.log('ignorado (sem fonte correspondente): from=' + from + ' subject=' + subject);\n    continue;\n  }\n\n  const rawDate = j.internalDate || j.date || null;\n  let emailDate = new Date().toISOString().slice(0, 10);\n  if (rawDate) {\n    const d = new Date(Number(rawDate) > 0 ? Number(rawDate) : rawDate);\n    if (!isNaN(d.getTime())) emailDate = d.toISOString().slice(0, 10);\n  }\n\n  for (const key of Object.keys(item.binary)) {\n    const bin = item.binary[key];\n    const fileName = (bin.fileName || '').trim();\n    if (!fileName) continue;\n    const isPdf = (bin.mimeType || '').toLowerCase().includes('pdf') || fileName.toLowerCase().endsWith('.pdf');\n    if (!isPdf) continue;\n    const dedupKey = msgId + '::' + fileName;\n    if (seen.has(dedupKey)) continue;\n    seen.add(dedupKey);\n    results.push({\n      json: {\n        msgId, emailDate, fileName, from, subject,\n        issuer: src.issuer,\n        password: src.password\n      },\n      binary: { data: bin }\n    });\n  }\n}\n\nconsole.log('faturas: ' + results.length + ' pdf(s) aceites, ' + ignorados + ' email(s) ignorado(s)');\nreturn results;\n"
+        "jsCode": "// Fontes e senhas vem da Data Table 'Faturas - Fontes e Senhas'.\n// Para adicionar um banco novo, acrescente uma linha na tabela — nao mexa neste codigo.\nconst rows = $input.all();\nconst emails = $('Buscar Emails Faturas').all();\n\nfunction norm(s) {\n  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');\n}\n\nfunction getHeader(headers, name) {\n  if (!Array.isArray(headers)) return '';\n  const h = headers.find(x => x && x.name && x.name.toLowerCase() === name);\n  return h ? (h.value || '') : '';\n}\n\nconst SOURCES = [];\nfor (const r of rows) {\n  const j = r.json || {};\n  if (j.enabled === false) continue;\n  if (!j.sender_match) continue;\n  SOURCES.push({\n    issuer: j.issuer || 'desconhecido',\n    senderMatch: norm(j.sender_match),\n    subjectMatch: norm(j.subject_match),\n    password: j.password == null ? '' : String(j.password)\n  });\n}\n\nif (!SOURCES.length) {\n  console.warn('ATENCAO: nenhuma fonte activa na Data Table — nada sera processado.');\n}\n\nfunction resolveSource(from, subject) {\n  const f = norm(from);\n  const s = norm(subject);\n  for (const src of SOURCES) {\n    if (f.indexOf(src.senderMatch) === -1) continue;\n    if (src.subjectMatch && s.indexOf(src.subjectMatch) === -1) continue;\n    return src;\n  }\n  return null;\n}\n\nconst results = [];\nconst seen = new Set();\nlet ignorados = 0;\n\nfor (const item of emails) {\n  if (!item.binary) continue;\n  const j = item.json || {};\n  const msgId = j.id || j.threadId || Math.random().toString(36);\n  const headers = (j.payload && j.payload.headers) || [];\n\n  let from = getHeader(headers, 'from');\n  if (!from && j.From) from = j.From;\n  if (!from && j.from && j.from.value && j.from.value[0]) from = j.from.value[0].address || '';\n  if (!from && typeof j.from === 'string') from = j.from;\n\n  let subject = getHeader(headers, 'subject');\n  if (!subject && j.Subject) subject = j.Subject;\n  if (!subject && j.subject) subject = j.subject;\n\n  const src = resolveSource(from, subject);\n  if (!src) {\n    ignorados++;\n    console.log('ignorado (sem fonte correspondente): from=' + from + ' subject=' + subject);\n    continue;\n  }\n\n  const rawDate = j.internalDate || j.date || null;\n  let emailDate = new Date().toISOString().slice(0, 10);\n  if (rawDate) {\n    const d = new Date(Number(rawDate) > 0 ? Number(rawDate) : rawDate);\n    if (!isNaN(d.getTime())) emailDate = d.toISOString().slice(0, 10);\n  }\n\n  for (const key of Object.keys(item.binary)) {\n    const bin = item.binary[key];\n    const fileName = (bin.fileName || '').trim();\n    if (!fileName) continue;\n    const isPdf = (bin.mimeType || '').toLowerCase().includes('pdf') || fileName.toLowerCase().endsWith('.pdf');\n    if (!isPdf) continue;\n    const dedupKey = msgId + '::' + fileName;\n    if (seen.has(dedupKey)) continue;\n    seen.add(dedupKey);\n    results.push({\n      json: {\n        msgId, emailDate, fileName, from, subject,\n        issuer: src.issuer,\n        password: src.password\n      },\n      binary: { data: bin }\n    });\n  }\n}\n\nconsole.log('faturas: ' + results.length + ' pdf(s) aceites, ' + ignorados + ' email(s) ignorado(s)');\nreturn results;\n"
       }
     },
     {
@@ -499,6 +1008,65 @@
         "returnAll": true
       },
       "executeOnce": true
+    },
+    {
+      "id": "201c99c8-ca1e-4e5a-8e25-5ef4913d7010",
+      "name": "Agendamento (dia 3 e 5)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1360,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtDayOfMonth": 3,
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
+            },
+            {
+              "field": "months",
+              "triggerAtDayOfMonth": 5,
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "b97e7015-2140-47c6-abf1-52b91e8ebe3e",
+      "name": "Buscar Emails Faturas",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1120,
+        0
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "returnAll": true,
+        "simple": false,
+        "filters": {
+          "q": "(from:extrato@universo.pt OR from:fatura@xpi.com.br OR (from:banco@millenniumbcp.pt subject:\"Extrato de Cartão\")) has:attachment filename:pdf newer_than:30d",
+          "readStatus": "both",
+          "includeSpamTrash": true
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      },
+      "webhookId": "b5337d68-4c1e-483a-bda6-00fae306ecf7"
     }
   ],
   "pinData": null,
@@ -508,16 +1076,32 @@
   },
   "shared": [
     {
-      "updatedAt": "2026-08-28T19:36:18.925Z",
-      "createdAt": "2026-08-28T19:36:18.925Z",
       "role": "workflow:owner",
       "workflowId": "XIThcU2rzYxVfRSG",
-      "projectId": "NIWdtECswkBCcQBM"
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-08-28T19:36:18.925Z",
+      "updatedAt": "2026-08-28T19:36:18.925Z"
     }
   ],
-  "staticData": null,
+  "staticData": {
+    "node:Gmail Trigger Faturas": {
+      "Gmail Trigger Faturas": {
+        "lastTimeChecked": 1787985349
+      }
+    },
+    "node:Agendamento (dia 3 e 5)": {
+      "recurrenceRules": [
+        null,
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null,
+        null
+      ]
+    }
+  },
   "tags": [],
-  "triggerCount": 0,
-  "updatedAt": "2026-08-28T20:17:20.288Z",
-  "versionId": "951e275a-4e1c-4d28-bcf5-7f457363d5df"
+  "triggerCount": 1,
+  "updatedAt": "2026-09-03T13:53:18.406Z",
+  "versionId": "cc6715a1-5128-4a86-921b-e509be1fdb7c"
 }
