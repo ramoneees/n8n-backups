@@ -1,8 +1,6 @@
 {
   "active": true,
   "activeVersion": {
-    "updatedAt": "2026-08-28T16:32:08.827Z",
-    "createdAt": "2026-08-28T16:32:08.827Z",
     "versionId": "b8fdbe0d-3625-46ad-99db-2ab069ad2f63",
     "workflowId": "vQAJ7HRnv47vXT4O",
     "nodes": [
@@ -425,7 +423,9 @@
     "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
     "name": "Initial version",
     "description": "Created with 14 nodes: Manual, Gmail XP Backfill, Filtrar PDFs XP, Converter Páginas, Reacoplar Metadados and 9 more",
-    "autosaved": false
+    "autosaved": false,
+    "createdAt": "2026-08-28T16:32:08.827Z",
+    "updatedAt": "2026-08-28T16:32:08.827Z"
   },
   "activeVersionId": "b8fdbe0d-3625-46ad-99db-2ab069ad2f63",
   "connections": {
@@ -860,11 +860,11 @@
   },
   "shared": [
     {
-      "updatedAt": "2026-08-28T16:32:08.827Z",
-      "createdAt": "2026-08-28T16:32:08.827Z",
       "role": "workflow:owner",
       "workflowId": "vQAJ7HRnv47vXT4O",
-      "projectId": "NIWdtECswkBCcQBM"
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-08-28T16:32:08.827Z",
+      "updatedAt": "2026-08-28T16:32:08.827Z"
     }
   ],
   "staticData": null,
