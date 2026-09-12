@@ -1,7 +1,7 @@
 {
   "active": true,
   "activeVersion": {
-    "versionId": "c21afb6b-dec0-4607-a4ef-a13b516ae281",
+    "versionId": "27651ccf-dc07-4d5f-aa85-056e3bcd40fa",
     "workflowId": "06z0PeRKbwNaebhN",
     "nodes": [
       {
@@ -86,7 +86,7 @@
           "genericAuthType": "httpBearerAuth",
           "sendBody": true,
           "specifyBody": "json",
-          "jsonBody": "={{ \n  {\n      \"model\": \"qwen-3.8-flash\",\n      \"messages\": [\n          {\n              \"role\": \"user\",\n              \"content\": $json.prompt\n          }\n      ],\n      \"temperature\": 0.1,\n      \"max_tokens\": 16000\n  }\n }}",
+          "jsonBody": "={{ \n  {\n      \"model\": \"glm-5.3-flash\",\n      \"messages\": [\n          {\n              \"role\": \"user\",\n              \"content\": $json.prompt\n          }\n      ],\n      \"temperature\": 0.1,\n      \"max_tokens\": 16000\n  }\n }}",
           "options": {
             "timeout": 120000
           }
@@ -379,13 +379,13 @@
     },
     "nodeGroups": [],
     "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
-    "name": "Updated Gmail Trigger",
-    "description": "Updated nodes: Gmail Trigger",
+    "name": "Extraction model -> \"glm-5.3-flash\"",
+    "description": "Boss 2026-09-09: weekly quota exhausted on qwen; swap statement extraction to glm-5.3-flash.",
     "autosaved": false,
-    "createdAt": "2026-08-30T14:36:11.438Z",
-    "updatedAt": "2026-08-30T14:36:11.438Z"
+    "createdAt": "2026-09-09T10:00:59.267Z",
+    "updatedAt": "2026-09-09T10:00:59.267Z"
   },
-  "activeVersionId": "c21afb6b-dec0-4607-a4ef-a13b516ae281",
+  "activeVersionId": "27651ccf-dc07-4d5f-aa85-056e3bcd40fa",
   "connections": {
     "Gmail Trigger": {
       "main": [
@@ -596,7 +596,7 @@
         "genericAuthType": "httpBearerAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ \n  {\n      \"model\": \"qwen-3.8-flash\",\n      \"messages\": [\n          {\n              \"role\": \"user\",\n              \"content\": $json.prompt\n          }\n      ],\n      \"temperature\": 0.1,\n      \"max_tokens\": 16000\n  }\n }}",
+        "jsonBody": "={{ \n  {\n      \"model\": \"glm-5.3-flash\",\n      \"messages\": [\n          {\n              \"role\": \"user\",\n              \"content\": $json.prompt\n          }\n      ],\n      \"temperature\": 0.1,\n      \"max_tokens\": 16000\n  }\n }}",
         "options": {
           "timeout": 120000
         }
@@ -797,6 +797,6 @@
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-08-30T14:36:11.437Z",
-  "versionId": "c21afb6b-dec0-4607-a4ef-a13b516ae281"
+  "updatedAt": "2026-09-09T10:00:59.266Z",
+  "versionId": "27651ccf-dc07-4d5f-aa85-056e3bcd40fa"
 }
