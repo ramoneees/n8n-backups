@@ -1,7 +1,7 @@
 {
   "active": true,
   "activeVersion": {
-    "versionId": "bd7b8a41-7285-46a9-be2a-6445bb46fa4a",
+    "versionId": "71892a80-a82d-4ea9-a868-bfa15d8f8861",
     "workflowId": "VfdNxA8c7CgGr5q7",
     "nodes": [
       {
@@ -77,7 +77,7 @@
       },
       {
         "parameters": {
-          "jsCode": "const items = $input.all();\nconst results = [];\nconst seen = new Map();\nconst sourceItems = $('Build LLM Prompt').all();\n\nlet folderId;\ntry {\n  const existingFolders = $('Find existing folder').all();\n  folderId = existingFolders.length > 0 ? existingFolders[0].json.id : $('Create folder').first().json.id;\n} catch (e) {\n  folderId = $('Create folder').first().json.id;\n}\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const fileName = item.json.fileName || 'unknown.pdf';\n  const binary = item.binary?.data || sourceItems[i]?.binary?.data;\n  const llmResponse = item.json.llmResponse || item.json.choices?.[0]?.message?.content || '';\n  let invoiceData = {};\n  let renameStatus = 'error';\n  let newName = fileName;\n  let monthYear = '';\n\n  try {\n    let jsonStr = llmResponse;\n    const codeBlockMatch = llmResponse.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (codeBlockMatch) jsonStr = codeBlockMatch[1];\n    const jsonMatch = jsonStr.match(/\\{[\\s\\S]*\\}/);\n    if (jsonMatch) invoiceData = JSON.parse(jsonMatch[0]);\n  } catch (e) {\n    invoiceData = { erro: 'JSON parse failed: ' + e.message };\n  }\n\n  if (invoiceData.erro) {\n    renameStatus = 'not_fiscal';\n  } else if (invoiceData.emitente && invoiceData.data_emissao) {\n    const parts = invoiceData.data_emissao.split('-');\n    const year = parts[0];\n    const month = parts[1];\n    monthYear = month + '-' + year;\n\n    const tipo = (invoiceData.tipo || 'FT').toUpperCase();\n    let emitente = invoiceData.emitente.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30);\n\n    const dedupKey = ((invoiceData.nif || emitente).toLowerCase()) + '-' + invoiceData.data_emissao;\n    const count = (seen.get(dedupKey) || 0) + 1;\n    seen.set(dedupKey, count);\n\n    const suffix = count > 1 ? '_' + count : '';\n    newName = month + '_' + year + '_' + tipo + '_' + emitente + suffix + '.pdf';\n    renameStatus = 'renamed';\n  } else {\n    renameStatus = 'partial';\n  }\n\n  results.push({\n    json: { originalName: fileName, fileName: newName, renameStatus, monthYear, invoiceData, folderId },\n    binary: binary ? { data: binary } : undefined\n  });\n}\nreturn results;"
+          "jsCode": "const items = $input.all();\nconst results = [];\nconst seen = new Map();\nconst sourceItems = $('Build LLM Prompt').all();\n\nlet folderId;\ntry {\n  const existingFolders = $('Find existing folder').all();\n  folderId = existingFolders.length > 0 ? existingFolders[0].json.id : $('Create folder').first().json.id;\n} catch (e) {\n  folderId = $('Create folder').first().json.id;\n}\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  // LLM responses carry no fileName — take it from the aligned Build LLM Prompt item.\n  const fileName = (sourceItems[i] && sourceItems[i].json && sourceItems[i].json.fileName) || item.json.fileName || 'unknown.pdf';\n  const binary = item.binary?.data || sourceItems[i]?.binary?.data;\n  const llmResponse = item.json.llmResponse || item.json.choices?.[0]?.message?.content || '';\n  let invoiceData = {};\n  let renameStatus = 'error';\n  let newName = fileName;\n  let monthYear = '';\n\n  try {\n    let jsonStr = llmResponse;\n    const codeBlockMatch = llmResponse.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (codeBlockMatch) jsonStr = codeBlockMatch[1];\n    const jsonMatch = jsonStr.match(/\\{[\\s\\S]*\\}/);\n    if (jsonMatch) invoiceData = JSON.parse(jsonMatch[0]);\n  } catch (e) {\n    invoiceData = { erro: 'JSON parse failed: ' + e.message };\n  }\n\n  if (invoiceData.erro) {\n    renameStatus = 'not_fiscal';\n  } else if (invoiceData.emitente && invoiceData.data_emissao) {\n    const parts = invoiceData.data_emissao.split('-');\n    const year = parts[0];\n    const month = parts[1];\n    monthYear = month + '-' + year;\n\n    const tipo = (invoiceData.tipo || 'FT').toUpperCase();\n    let emitente = invoiceData.emitente.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30);\n\n    const dedupKey = ((invoiceData.nif || emitente).toLowerCase()) + '-' + invoiceData.data_emissao;\n    const count = (seen.get(dedupKey) || 0) + 1;\n    seen.set(dedupKey, count);\n\n    const suffix = count > 1 ? '_' + count : '';\n    newName = month + '_' + year + '_' + tipo + '_' + emitente + suffix + '.pdf';\n    renameStatus = 'renamed';\n  } else {\n    renameStatus = 'partial';\n  }\n\n  results.push({\n    json: { originalName: fileName, fileName: newName, renameStatus, monthYear, invoiceData, folderId },\n    binary: binary ? { data: binary } : undefined\n  });\n}\nreturn results;"
         },
         "id": "7c414e8c-f5a3-4e5d-81b7-6a1cb7db7701",
         "name": "Parse & Rename",
@@ -146,7 +146,7 @@
       },
       {
         "parameters": {
-          "jsCode": "const items = $input.all();\nconst stats = { uploaded: 0, failed: 0, skipped: 0, error: 0 };\n\nlet dedupSkipped = 0;\ntry {\n  const dedupItems = $('Dedup Check').all();\n  dedupSkipped = dedupItems[0]?.json?._dedupSkippedCount || 0;\n} catch (e) {}\n\nfor (const item of items) {\n  const s = item.json.octaStatus || 'unknown';\n  if (stats[s] !== undefined) stats[s]++;\n  else stats.error++;\n}\n\nconst total = items.length + dedupSkipped;\nconst allOk = stats.failed === 0 && stats.error === 0;\nconst icon = allOk ? '✅' : '⚠️';\n\nconst details = items.map(i => {\n  const s = i.json.octaStatus || '?';\n  const dot = s === 'uploaded' ? '✅' : s === 'skipped' ? '⏭️' : '❌';\n  return dot + ' ' + (i.json.fileName || 'unknown');\n}).join('\\n');\n\nlet summary = 'Notificar o chefe que as faturas foram renomeadas e enviadas.\\n\\n';\nsummary += icon + ' Invoice Upload — ' + (allOk ? 'All good' : 'Issues found') + '\\n';\nsummary += '📄 ' + total + ' file' + (total !== 1 ? 's' : '') + ' processed\\n';\nsummary += '☁️ Octa Manager: ' + stats.uploaded + ' uploaded';\nif (stats.failed > 0) summary += ', ' + stats.failed + ' failed';\nif (stats.skipped > 0) summary += ', ' + stats.skipped + ' skipped';\nif (stats.error > 0) summary += ', ' + stats.error + ' error(s)';\nif (dedupSkipped > 0) summary += '\\n🔁 Dedup: ' + dedupSkipped + ' already existed (skipped)';\nsummary += '\\n\\n' + details;\n\nreturn [{ json: {\n  message: summary,\n  stats,\n  dedupSkipped,\n  webhook_secret: 'n8n-webhook-secret-2024',\n  webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete'\n} }];"
+          "jsCode": "const items = $input.all();\nconst stats = { uploaded: 0, failed: 0, skipped: 0, error: 0 };\n\nlet dedupSkipped = 0;\ntry {\n  const dedupItems = $('Dedup Check').all();\n  dedupSkipped = dedupItems[0]?.json?._dedupSkippedCount || 0;\n} catch (e) {}\n\nfor (const item of items) {\n  const s = item.json.octaStatus || 'unknown';\n  if (stats[s] !== undefined) stats[s]++;\n  else stats.error++;\n}\n\nconst total = items.length + dedupSkipped;\nconst allOk = stats.failed === 0 && stats.error === 0;\nconst icon = allOk ? '✅' : '⚠️';\n\nconst details = items.map(i => {\n  const s = i.json.octaStatus || '?';\n  const dot = s === 'uploaded' ? '✅' : s === 'skipped' ? '⏭️' : '❌';\n  return dot + ' ' + (i.json.fileName || 'unknown');\n}).join('\\n');\n\nlet summary = 'Notificar o chefe que as faturas foram renomeadas e enviadas.\\n\\n';\nsummary += icon + ' Invoice Upload — ' + (allOk ? 'All good' : 'Issues found') + '\\n';\nsummary += '📄 ' + total + ' file' + (total !== 1 ? 's' : '') + ' processed\\n';\nsummary += '☁️ Octa Manager: ' + stats.uploaded + ' uploaded';\nif (stats.failed > 0) summary += ', ' + stats.failed + ' failed';\nif (stats.skipped > 0) summary += ', ' + stats.skipped + ' skipped';\nif (stats.error > 0) summary += ', ' + stats.error + ' error(s)';\nif (dedupSkipped > 0) summary += '\\n🔁 Dedup: ' + dedupSkipped + ' already existed (skipped)';\nsummary += '\\n\\n' + details;\n\nreturn [{ json: {\n  message: summary,\n  stats,\n  dedupSkipped,\n  webhook_secret: 'n8n-webhook-secret-2024',\n  webhook_url: 'http://192.168.50.12:8644/webhooks/n8n-complete'\n} }];"
         },
         "id": "6a7bdf12-5e4a-405d-837d-fa43f172e22e",
         "name": "Aggregate Results",
@@ -301,11 +301,12 @@
         "position": [
           2256,
           496
-        ]
+        ],
+        "onError": "continueRegularOutput"
       },
       {
         "parameters": {
-          "jsCode": "const TOOLBOX_URL = 'http://toolbox.apps.svc.cluster.local:8000/api/v1/extract/base64';\nconst FIELD_NAME = 'data';\n\nconst allItems = $input.all();\nconst results = [];\n\nfor (let i = 0; i < allItems.length; i++) {\n  try {\n    const item = allItems[i];\n    await this.helpers.assertBinaryData(i, FIELD_NAME);\n    const buffer = await this.helpers.getBinaryDataBuffer(i, FIELD_NAME);\n\n    const binary = item.binary?.[FIELD_NAME];\n    const fileName = binary?.fileName || 'invoice.pdf';\n    const mimeType = binary?.mimeType || 'application/pdf';\n\n    const response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: TOOLBOX_URL,\n      headers: { 'Content-Type': 'application/json' },\n      body: {\n        fileName,\n        mimeType,\n        data: buffer.toString('base64'),\n      },\n      returnFullResponse: true,\n      ignoreHttpStatusErrors: true,\n      timeout: 60000,\n    });\n\n    const status = response?.statusCode ?? 0;\n    const payload = response?.body ?? null;\n    if (status < 200 || status >= 300) {\n      throw new Error(\n        'Toolbox /extract/base64 returned ' + status + ': ' + (typeof payload === 'string' ? payload : JSON.stringify(payload))\n      );\n    }\n\n    const jsonOut = typeof payload === 'object' && payload !== null\n      ? { fileName, mimeType, ...payload }\n      : { fileName, mimeType, _raw: payload };\n\n    results.push({ json: jsonOut, binary: item.binary });\n  } catch (err) {\n    results.push({\n      json: { fileName: (allItems[i].binary?.[FIELD_NAME]?.fileName || '?'), extractError: err.message },\n      pairedItem: { item: i },\n    });\n  }\n}\n\nreturn results;\n"
+          "jsCode": "// Input: full HTTP responses from 'Extrair Texto (toolbox)', aligned 1:1 by index with the\n// non-personal items of Filter PDFs (the Is Personal Doc? false branch preserves order).\n// Binary is re-attached from Filter PDFs so files ALWAYS reach the upload, even when\n// extraction fails (previous behavior dropped binary here and crashed Upload Google Drive).\nconst items = $input.all();\nconst source = $('Filter PDFs').all().filter((i) => i && i.json && !i.json.personalDoc);\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const resp = items[i].json || {};\n  const src = source[i];\n  const fileName = (src && src.json && src.json.fileName) || 'unknown.pdf';\n  const binary = src ? src.binary : undefined;\n  const status = resp.statusCode;\n  const ok = typeof status === 'number' && status >= 200 && status < 300;\n\n  if (ok && resp.body) {\n    const b = resp.body;\n    results.push({\n      json: {\n        fileName,\n        mimeType: 'application/pdf',\n        text: b.text || b.markdown || '',\n        markdown: b.markdown || b.text || '',\n        metadata: b.metadata || {},\n      },\n      binary,\n      pairedItem: { item: i },\n    });\n  } else {\n    const detail = resp.error || resp.body || resp.message || 'no response';\n    const detailStr = (typeof detail === 'object') ? JSON.stringify(detail) : String(detail);\n    results.push({\n      json: {\n        fileName,\n        extractError: 'Toolbox /api/v1/extract HTTP ' + (status || 'n/a') + ': ' + detailStr.slice(0, 300),\n      },\n      binary,\n      pairedItem: { item: i },\n    });\n  }\n}\nreturn results;"
         },
         "id": "extract-pdf-text",
         "name": "Extract PDF Text",
@@ -350,7 +351,7 @@
           "operation": "getAll",
           "simple": false,
           "filters": {
-            "q": "=has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:noreply@grupoyour.com OR from:noreply@weoinvoice.com OR from:noreply@factura.grenke.pt OR from:payments-noreply@google.com OR from:noreply@documentos.meoempresas.pt OR from:geral@alcocheteup.pt OR from:no_reply@mun-montijo.pt OR from:extractoelectronico@extracto.viaverde.pt OR \nfrom:faturacao.clientes@prio.pt OR \nfrom:no-reply@bbvacf.pt)"
+            "q": "=has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:noreply@grupoyour.com OR from:noreply@weoinvoice.com OR from:noreply@factura.grenke.pt OR from:payments-noreply@google.com OR from:noreply@documentos.meoempresas.pt OR from:geral@alcocheteup.pt OR from:no_reply@mun-montijo.pt OR from:extractoelectronico@extracto.viaverde.pt OR from:faturacao.clientes@prio.pt OR from:apoiocliente@prio.pt OR from:no-reply@bbvacf.pt OR from:support@atlante.energy)"
           },
           "options": {
             "downloadAttachments": true
@@ -737,6 +738,132 @@
           2016,
           624
         ]
+      },
+      {
+        "id": "6b32e4de-a7b7-48e0-bf66-81a8387a279f",
+        "name": "Extrair Texto (toolbox)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          -104,
+          400
+        ],
+        "parameters": {
+          "bodyParameters": {
+            "parameters": [
+              {
+                "inputDataFieldName": "data",
+                "name": "file",
+                "parameterType": "formBinaryData"
+              }
+            ]
+          },
+          "contentType": "multipart-form-data",
+          "method": "POST",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 60000
+          },
+          "sendBody": true,
+          "url": "http://toolbox.apps.svc.cluster.local:8000/api/v1/extract"
+        },
+        "onError": "continueRegularOutput",
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 2000
+      },
+      {
+        "id": "aa1bade0-4d7d-456d-bab4-e40cad7c2eda",
+        "name": "Error Trigger",
+        "type": "n8n-nodes-base.errorTrigger",
+        "typeVersion": 1,
+        "position": [
+          2256,
+          750
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "1cbace95-372c-40f7-9e93-8b6f97198f17",
+        "name": "Build Error Alert",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2472,
+          750
+        ],
+        "parameters": {
+          "jsCode": "const j = $input.first().json || {};\nconst err = (j.execution && j.execution.error) || {};\nconst msg = '❌ Invoice Rename & Upload FAILED\\n' +\n  'Node: ' + ((j.execution && j.execution.lastNodeExecuted) || '?') + '\\n' +\n  'Error: ' + String(err.message || JSON.stringify(err) || 'unknown').slice(0, 400) + '\\n' +\n  'Execution: ' + ((j.execution && j.execution.url) || (j.execution && j.execution.id) || '?');\nreturn [{ json: { message: msg } }];",
+          "language": "javaScript",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "e005b4d1-f5ee-4509-92a1-e787fd63156d",
+        "name": "Alert Hermes on Error",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          2688,
+          750
+        ],
+        "parameters": {
+          "options": {
+            "waitForSubWorkflow": true
+          },
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "D1X5OyGlkuo7UwdR"
+          },
+          "workflowInputs": {
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true,
+            "mappingMode": "defineBelow",
+            "matchingColumns": [],
+            "schema": [
+              {
+                "canBeUsedToMatch": true,
+                "defaultMatch": false,
+                "display": true,
+                "displayName": "message",
+                "id": "message",
+                "required": false,
+                "type": "string"
+              },
+              {
+                "canBeUsedToMatch": true,
+                "defaultMatch": false,
+                "display": true,
+                "displayName": "webhook_secret",
+                "id": "webhook_secret",
+                "required": false,
+                "type": "string"
+              },
+              {
+                "canBeUsedToMatch": true,
+                "defaultMatch": false,
+                "display": true,
+                "displayName": "webhook_url",
+                "id": "webhook_url",
+                "required": false,
+                "type": "string"
+              }
+            ],
+            "value": {
+              "message": "={{ $json.message }}",
+              "webhook_secret": "n8n-webhook-secret-2024",
+              "webhook_url": "http://192.168.50.12:8644/webhooks/n8n-complete"
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
       }
     ],
     "connections": {
@@ -893,7 +1020,7 @@
           ],
           [
             {
-              "node": "Extract PDF Text",
+              "node": "Extrair Texto (toolbox)",
               "type": "main",
               "index": 0
             }
@@ -1009,17 +1136,50 @@
             }
           ]
         ]
+      },
+      "Extrair Texto (toolbox)": {
+        "main": [
+          [
+            {
+              "node": "Extract PDF Text",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Error Trigger": {
+        "main": [
+          [
+            {
+              "node": "Build Error Alert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Error Alert": {
+        "main": [
+          [
+            {
+              "node": "Alert Hermes on Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "nodeGroups": [],
-    "authors": "Ramon ramon@pereirariosoftware.com",
-    "name": "Version bd7b8a41",
-    "description": "",
-    "autosaved": true,
-    "createdAt": "2026-08-31T13:44:45.309Z",
-    "updatedAt": "2026-08-31T13:44:49.722Z"
+    "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
+    "name": "Revert to standard 30d window",
+    "description": "Sweep complete (execution 2468: 27 files uploaded to Drive + Octa, all 200, Hermes notified via 192.168.50.12). Reverting both Gmail queries from the one-time 60d/before:Aug16 window back to the standard newer_than:30d for normal monthly operation.",
+    "autosaved": false,
+    "createdAt": "2026-09-14T14:47:28.894Z",
+    "updatedAt": "2026-09-14T14:47:28.894Z"
   },
-  "activeVersionId": "bd7b8a41-7285-46a9-be2a-6445bb46fa4a",
+  "activeVersionId": "71892a80-a82d-4ea9-a868-bfa15d8f8861",
   "connections": {
     "Schedule Trigger": {
       "main": [
@@ -1174,7 +1334,7 @@
         ],
         [
           {
-            "node": "Extract PDF Text",
+            "node": "Extrair Texto (toolbox)",
             "type": "main",
             "index": 0
           }
@@ -1290,6 +1450,39 @@
           }
         ]
       ]
+    },
+    "Extrair Texto (toolbox)": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Alert": {
+      "main": [
+        [
+          {
+            "node": "Alert Hermes on Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "createdAt": "2026-06-04T23:16:33.012Z",
@@ -1376,7 +1569,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst results = [];\nconst seen = new Map();\nconst sourceItems = $('Build LLM Prompt').all();\n\nlet folderId;\ntry {\n  const existingFolders = $('Find existing folder').all();\n  folderId = existingFolders.length > 0 ? existingFolders[0].json.id : $('Create folder').first().json.id;\n} catch (e) {\n  folderId = $('Create folder').first().json.id;\n}\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const fileName = item.json.fileName || 'unknown.pdf';\n  const binary = item.binary?.data || sourceItems[i]?.binary?.data;\n  const llmResponse = item.json.llmResponse || item.json.choices?.[0]?.message?.content || '';\n  let invoiceData = {};\n  let renameStatus = 'error';\n  let newName = fileName;\n  let monthYear = '';\n\n  try {\n    let jsonStr = llmResponse;\n    const codeBlockMatch = llmResponse.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (codeBlockMatch) jsonStr = codeBlockMatch[1];\n    const jsonMatch = jsonStr.match(/\\{[\\s\\S]*\\}/);\n    if (jsonMatch) invoiceData = JSON.parse(jsonMatch[0]);\n  } catch (e) {\n    invoiceData = { erro: 'JSON parse failed: ' + e.message };\n  }\n\n  if (invoiceData.erro) {\n    renameStatus = 'not_fiscal';\n  } else if (invoiceData.emitente && invoiceData.data_emissao) {\n    const parts = invoiceData.data_emissao.split('-');\n    const year = parts[0];\n    const month = parts[1];\n    monthYear = month + '-' + year;\n\n    const tipo = (invoiceData.tipo || 'FT').toUpperCase();\n    let emitente = invoiceData.emitente.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30);\n\n    const dedupKey = ((invoiceData.nif || emitente).toLowerCase()) + '-' + invoiceData.data_emissao;\n    const count = (seen.get(dedupKey) || 0) + 1;\n    seen.set(dedupKey, count);\n\n    const suffix = count > 1 ? '_' + count : '';\n    newName = month + '_' + year + '_' + tipo + '_' + emitente + suffix + '.pdf';\n    renameStatus = 'renamed';\n  } else {\n    renameStatus = 'partial';\n  }\n\n  results.push({\n    json: { originalName: fileName, fileName: newName, renameStatus, monthYear, invoiceData, folderId },\n    binary: binary ? { data: binary } : undefined\n  });\n}\nreturn results;"
+        "jsCode": "const items = $input.all();\nconst results = [];\nconst seen = new Map();\nconst sourceItems = $('Build LLM Prompt').all();\n\nlet folderId;\ntry {\n  const existingFolders = $('Find existing folder').all();\n  folderId = existingFolders.length > 0 ? existingFolders[0].json.id : $('Create folder').first().json.id;\n} catch (e) {\n  folderId = $('Create folder').first().json.id;\n}\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  // LLM responses carry no fileName — take it from the aligned Build LLM Prompt item.\n  const fileName = (sourceItems[i] && sourceItems[i].json && sourceItems[i].json.fileName) || item.json.fileName || 'unknown.pdf';\n  const binary = item.binary?.data || sourceItems[i]?.binary?.data;\n  const llmResponse = item.json.llmResponse || item.json.choices?.[0]?.message?.content || '';\n  let invoiceData = {};\n  let renameStatus = 'error';\n  let newName = fileName;\n  let monthYear = '';\n\n  try {\n    let jsonStr = llmResponse;\n    const codeBlockMatch = llmResponse.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (codeBlockMatch) jsonStr = codeBlockMatch[1];\n    const jsonMatch = jsonStr.match(/\\{[\\s\\S]*\\}/);\n    if (jsonMatch) invoiceData = JSON.parse(jsonMatch[0]);\n  } catch (e) {\n    invoiceData = { erro: 'JSON parse failed: ' + e.message };\n  }\n\n  if (invoiceData.erro) {\n    renameStatus = 'not_fiscal';\n  } else if (invoiceData.emitente && invoiceData.data_emissao) {\n    const parts = invoiceData.data_emissao.split('-');\n    const year = parts[0];\n    const month = parts[1];\n    monthYear = month + '-' + year;\n\n    const tipo = (invoiceData.tipo || 'FT').toUpperCase();\n    let emitente = invoiceData.emitente.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30);\n\n    const dedupKey = ((invoiceData.nif || emitente).toLowerCase()) + '-' + invoiceData.data_emissao;\n    const count = (seen.get(dedupKey) || 0) + 1;\n    seen.set(dedupKey, count);\n\n    const suffix = count > 1 ? '_' + count : '';\n    newName = month + '_' + year + '_' + tipo + '_' + emitente + suffix + '.pdf';\n    renameStatus = 'renamed';\n  } else {\n    renameStatus = 'partial';\n  }\n\n  results.push({\n    json: { originalName: fileName, fileName: newName, renameStatus, monthYear, invoiceData, folderId },\n    binary: binary ? { data: binary } : undefined\n  });\n}\nreturn results;"
       },
       "id": "7c414e8c-f5a3-4e5d-81b7-6a1cb7db7701",
       "name": "Parse & Rename",
@@ -1445,7 +1638,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst stats = { uploaded: 0, failed: 0, skipped: 0, error: 0 };\n\nlet dedupSkipped = 0;\ntry {\n  const dedupItems = $('Dedup Check').all();\n  dedupSkipped = dedupItems[0]?.json?._dedupSkippedCount || 0;\n} catch (e) {}\n\nfor (const item of items) {\n  const s = item.json.octaStatus || 'unknown';\n  if (stats[s] !== undefined) stats[s]++;\n  else stats.error++;\n}\n\nconst total = items.length + dedupSkipped;\nconst allOk = stats.failed === 0 && stats.error === 0;\nconst icon = allOk ? '✅' : '⚠️';\n\nconst details = items.map(i => {\n  const s = i.json.octaStatus || '?';\n  const dot = s === 'uploaded' ? '✅' : s === 'skipped' ? '⏭️' : '❌';\n  return dot + ' ' + (i.json.fileName || 'unknown');\n}).join('\\n');\n\nlet summary = 'Notificar o chefe que as faturas foram renomeadas e enviadas.\\n\\n';\nsummary += icon + ' Invoice Upload — ' + (allOk ? 'All good' : 'Issues found') + '\\n';\nsummary += '📄 ' + total + ' file' + (total !== 1 ? 's' : '') + ' processed\\n';\nsummary += '☁️ Octa Manager: ' + stats.uploaded + ' uploaded';\nif (stats.failed > 0) summary += ', ' + stats.failed + ' failed';\nif (stats.skipped > 0) summary += ', ' + stats.skipped + ' skipped';\nif (stats.error > 0) summary += ', ' + stats.error + ' error(s)';\nif (dedupSkipped > 0) summary += '\\n🔁 Dedup: ' + dedupSkipped + ' already existed (skipped)';\nsummary += '\\n\\n' + details;\n\nreturn [{ json: {\n  message: summary,\n  stats,\n  dedupSkipped,\n  webhook_secret: 'n8n-webhook-secret-2024',\n  webhook_url: 'http://192.168.50.11:8644/webhooks/n8n-complete'\n} }];"
+        "jsCode": "const items = $input.all();\nconst stats = { uploaded: 0, failed: 0, skipped: 0, error: 0 };\n\nlet dedupSkipped = 0;\ntry {\n  const dedupItems = $('Dedup Check').all();\n  dedupSkipped = dedupItems[0]?.json?._dedupSkippedCount || 0;\n} catch (e) {}\n\nfor (const item of items) {\n  const s = item.json.octaStatus || 'unknown';\n  if (stats[s] !== undefined) stats[s]++;\n  else stats.error++;\n}\n\nconst total = items.length + dedupSkipped;\nconst allOk = stats.failed === 0 && stats.error === 0;\nconst icon = allOk ? '✅' : '⚠️';\n\nconst details = items.map(i => {\n  const s = i.json.octaStatus || '?';\n  const dot = s === 'uploaded' ? '✅' : s === 'skipped' ? '⏭️' : '❌';\n  return dot + ' ' + (i.json.fileName || 'unknown');\n}).join('\\n');\n\nlet summary = 'Notificar o chefe que as faturas foram renomeadas e enviadas.\\n\\n';\nsummary += icon + ' Invoice Upload — ' + (allOk ? 'All good' : 'Issues found') + '\\n';\nsummary += '📄 ' + total + ' file' + (total !== 1 ? 's' : '') + ' processed\\n';\nsummary += '☁️ Octa Manager: ' + stats.uploaded + ' uploaded';\nif (stats.failed > 0) summary += ', ' + stats.failed + ' failed';\nif (stats.skipped > 0) summary += ', ' + stats.skipped + ' skipped';\nif (stats.error > 0) summary += ', ' + stats.error + ' error(s)';\nif (dedupSkipped > 0) summary += '\\n🔁 Dedup: ' + dedupSkipped + ' already existed (skipped)';\nsummary += '\\n\\n' + details;\n\nreturn [{ json: {\n  message: summary,\n  stats,\n  dedupSkipped,\n  webhook_secret: 'n8n-webhook-secret-2024',\n  webhook_url: 'http://192.168.50.12:8644/webhooks/n8n-complete'\n} }];"
       },
       "id": "6a7bdf12-5e4a-405d-837d-fa43f172e22e",
       "name": "Aggregate Results",
@@ -1600,11 +1793,12 @@
       "position": [
         2256,
         496
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "const TOOLBOX_URL = 'http://toolbox.apps.svc.cluster.local:8000/api/v1/extract/base64';\nconst FIELD_NAME = 'data';\n\nconst allItems = $input.all();\nconst results = [];\n\nfor (let i = 0; i < allItems.length; i++) {\n  try {\n    const item = allItems[i];\n    await this.helpers.assertBinaryData(i, FIELD_NAME);\n    const buffer = await this.helpers.getBinaryDataBuffer(i, FIELD_NAME);\n\n    const binary = item.binary?.[FIELD_NAME];\n    const fileName = binary?.fileName || 'invoice.pdf';\n    const mimeType = binary?.mimeType || 'application/pdf';\n\n    const response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: TOOLBOX_URL,\n      headers: { 'Content-Type': 'application/json' },\n      body: {\n        fileName,\n        mimeType,\n        data: buffer.toString('base64'),\n      },\n      returnFullResponse: true,\n      ignoreHttpStatusErrors: true,\n      timeout: 60000,\n    });\n\n    const status = response?.statusCode ?? 0;\n    const payload = response?.body ?? null;\n    if (status < 200 || status >= 300) {\n      throw new Error(\n        'Toolbox /extract/base64 returned ' + status + ': ' + (typeof payload === 'string' ? payload : JSON.stringify(payload))\n      );\n    }\n\n    const jsonOut = typeof payload === 'object' && payload !== null\n      ? { fileName, mimeType, ...payload }\n      : { fileName, mimeType, _raw: payload };\n\n    results.push({ json: jsonOut, binary: item.binary });\n  } catch (err) {\n    results.push({\n      json: { fileName: (allItems[i].binary?.[FIELD_NAME]?.fileName || '?'), extractError: err.message },\n      pairedItem: { item: i },\n    });\n  }\n}\n\nreturn results;\n"
+        "jsCode": "// Input: full HTTP responses from 'Extrair Texto (toolbox)', aligned 1:1 by index with the\n// non-personal items of Filter PDFs (the Is Personal Doc? false branch preserves order).\n// Binary is re-attached from Filter PDFs so files ALWAYS reach the upload, even when\n// extraction fails (previous behavior dropped binary here and crashed Upload Google Drive).\nconst items = $input.all();\nconst source = $('Filter PDFs').all().filter((i) => i && i.json && !i.json.personalDoc);\nconst results = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const resp = items[i].json || {};\n  const src = source[i];\n  const fileName = (src && src.json && src.json.fileName) || 'unknown.pdf';\n  const binary = src ? src.binary : undefined;\n  const status = resp.statusCode;\n  const ok = typeof status === 'number' && status >= 200 && status < 300;\n\n  if (ok && resp.body) {\n    const b = resp.body;\n    results.push({\n      json: {\n        fileName,\n        mimeType: 'application/pdf',\n        text: b.text || b.markdown || '',\n        markdown: b.markdown || b.text || '',\n        metadata: b.metadata || {},\n      },\n      binary,\n      pairedItem: { item: i },\n    });\n  } else {\n    const detail = resp.error || resp.body || resp.message || 'no response';\n    const detailStr = (typeof detail === 'object') ? JSON.stringify(detail) : String(detail);\n    results.push({\n      json: {\n        fileName,\n        extractError: 'Toolbox /api/v1/extract HTTP ' + (status || 'n/a') + ': ' + detailStr.slice(0, 300),\n      },\n      binary,\n      pairedItem: { item: i },\n    });\n  }\n}\nreturn results;"
       },
       "id": "extract-pdf-text",
       "name": "Extract PDF Text",
@@ -1649,7 +1843,7 @@
         "operation": "getAll",
         "simple": false,
         "filters": {
-          "q": "=has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:noreply@grupoyour.com OR from:noreply@weoinvoice.com OR from:noreply@factura.grenke.pt OR from:payments-noreply@google.com OR from:noreply@documentos.meoempresas.pt OR from:geral@alcocheteup.pt OR from:no_reply@mun-montijo.pt OR from:extractoelectronico@extracto.viaverde.pt OR \nfrom:faturacao.clientes@prio.pt OR \nfrom:no-reply@bbvacf.pt)"
+          "q": "=has:attachment filename:pdf newer_than:30d (label:to-process/invoice OR from:noreply@grupoyour.com OR from:noreply@weoinvoice.com OR from:noreply@factura.grenke.pt OR from:payments-noreply@google.com OR from:noreply@documentos.meoempresas.pt OR from:geral@alcocheteup.pt OR from:no_reply@mun-montijo.pt OR from:extractoelectronico@extracto.viaverde.pt OR from:faturacao.clientes@prio.pt OR from:apoiocliente@prio.pt OR from:no-reply@bbvacf.pt OR from:support@atlante.energy)"
         },
         "options": {
           "downloadAttachments": true
@@ -2036,6 +2230,132 @@
         2016,
         624
       ]
+    },
+    {
+      "id": "6b32e4de-a7b7-48e0-bf66-81a8387a279f",
+      "name": "Extrair Texto (toolbox)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -104,
+        400
+      ],
+      "parameters": {
+        "bodyParameters": {
+          "parameters": [
+            {
+              "inputDataFieldName": "data",
+              "name": "file",
+              "parameterType": "formBinaryData"
+            }
+          ]
+        },
+        "contentType": "multipart-form-data",
+        "method": "POST",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 60000
+        },
+        "sendBody": true,
+        "url": "http://toolbox.apps.svc.cluster.local:8000/api/v1/extract"
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "aa1bade0-4d7d-456d-bab4-e40cad7c2eda",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        2256,
+        750
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "1cbace95-372c-40f7-9e93-8b6f97198f17",
+      "name": "Build Error Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2472,
+        750
+      ],
+      "parameters": {
+        "jsCode": "const j = $input.first().json || {};\nconst err = (j.execution && j.execution.error) || {};\nconst msg = '❌ Invoice Rename & Upload FAILED\\n' +\n  'Node: ' + ((j.execution && j.execution.lastNodeExecuted) || '?') + '\\n' +\n  'Error: ' + String(err.message || JSON.stringify(err) || 'unknown').slice(0, 400) + '\\n' +\n  'Execution: ' + ((j.execution && j.execution.url) || (j.execution && j.execution.id) || '?');\nreturn [{ json: { message: msg } }];",
+        "language": "javaScript",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "e005b4d1-f5ee-4509-92a1-e787fd63156d",
+      "name": "Alert Hermes on Error",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2688,
+        750
+      ],
+      "parameters": {
+        "options": {
+          "waitForSubWorkflow": true
+        },
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "D1X5OyGlkuo7UwdR"
+        },
+        "workflowInputs": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "message",
+              "id": "message",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "webhook_secret",
+              "id": "webhook_secret",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "webhook_url",
+              "id": "webhook_url",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "message": "={{ $json.message }}",
+            "webhook_secret": "n8n-webhook-secret-2024",
+            "webhook_url": "http://192.168.50.12:8644/webhooks/n8n-complete"
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
     }
   ],
   "pinData": {},
@@ -2065,6 +2385,6 @@
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-08-31T13:44:45.307Z",
-  "versionId": "bd7b8a41-7285-46a9-be2a-6445bb46fa4a"
+  "updatedAt": "2026-09-14T14:47:28.893Z",
+  "versionId": "71892a80-a82d-4ea9-a868-bfa15d8f8861"
 }
