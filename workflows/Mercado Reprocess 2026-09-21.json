@@ -1,0 +1,592 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Gmail Buscar Mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Buscar Mensagem": {
+      "main": [
+        [
+          {
+            "node": "Extrair Anexo Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Anexo Meta": {
+      "main": [
+        [
+          {
+            "node": "Gmail Baixar Anexo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Texto Toolbox": {
+      "main": [
+        [
+          {
+            "node": "Analisar Fatura LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisar Fatura LLM": {
+      "main": [
+        [
+          {
+            "node": "Consolidar Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gravar Mercado Paper": {
+      "main": [
+        [
+          {
+            "node": "Resumo Reprocess",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Apagar Lixo Drive 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidar Record": {
+      "main": [
+        [
+          {
+            "node": "Fatura OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fatura OK?": {
+      "main": [
+        [
+          {
+            "node": "Gravar Mercado Paper",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resumo Skip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apagar Lixo Drive 1": {
+      "main": [
+        [
+          {
+            "node": "Apagar Lixo Drive 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apagar Lixo Drive 2": {
+      "main": [
+        [
+          {
+            "node": "Resumo Reprocess",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Baixar Anexo": {
+      "main": [
+        [
+          {
+            "node": "Preparar Binário",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Binário": {
+      "main": [
+        [
+          {
+            "node": "Toolbox Multipart",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Toolbox Multipart": {
+      "main": [
+        [
+          {
+            "node": "Extrair Texto Toolbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-09-21T13:13:59.491Z",
+  "id": "PGjVCGupqFBJkiaF",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Mercado Reprocess 2026-09-21",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "7f355560-74fc-4cb6-b353-f856a0f5baed",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "12d00d5b-6e56-4325-b820-ad3e1715706a",
+      "name": "Gmail Buscar Mensagem",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "method": "GET",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {
+          "timeout": 30000
+        },
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/1a0c33e0d7bf8480?format=full"
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      }
+    },
+    {
+      "id": "f253596d-8d62-42be-8530-8ad520cf9a0e",
+      "name": "Extrair Anexo Meta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const msg = $input.first().json;\nconst parts = (msg.payload && msg.payload.parts) || [];\nlet found = null;\nconst walk = (ps) => { for (const p of ps) { if (p.filename && p.body && p.body.attachmentId) { found = p; } if (p.parts) walk(p.parts); } };\nwalk(parts);\nif (!found) return [{ json: { error: 'no attachment part', partCount: parts.length } }];\nreturn [{ json: { attachmentId: found.body.attachmentId, filename: found.filename, mimeType: found.mimeType || 'application/pdf', size: found.body.size } }];"
+      }
+    },
+    {
+      "id": "0eebd198-da97-4522-8f6e-a60145a1dc0e",
+      "name": "Gmail Baixar Anexo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "method": "GET",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {
+          "timeout": 30000
+        },
+        "url": "={{ \"https://gmail.googleapis.com/gmail/v1/users/me/messages/1a0c33e0d7bf8480/attachments/\" + $json.attachmentId }}"
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      }
+    },
+    {
+      "id": "5a65f092-d053-4501-9a94-0b953589a0b1",
+      "name": "Extrair Texto Toolbox",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const meta = $('Extrair Anexo Meta').first().json;\nlet status = 0;\nlet body = null;\ntry { const r = $('Toolbox Multipart').first().json; status = r.statusCode || 0; body = r.body; } catch (e) { status = -1; body = { error: String(e.message) }; }\nconst attempts = [{ attempt: 'http-node-multipart', status: status }];\nlet text = '';\nif (status >= 200 && status < 300 && body) {\n  if (typeof body === 'string') text = body;\n  else if (typeof body.text === 'string') text = body.text;\n  else if (typeof body.markdown === 'string') text = body.markdown;\n  else if (typeof body.content === 'string') text = body.content;\n  else if (body.data && typeof body.data === 'string') text = body.data;\n  else text = JSON.stringify(body);\n  text = String(text).substring(0, 60000);\n}\nconst extractError = text ? null : ('http-node-multipart:' + status + ' ' + JSON.stringify(body).slice(0, 300));\nconst L = [\n  'Analisa esta fatura de supermercado e retorna APENAS um JSON valido, sem markdown e sem explicacao.',\n  '',\n  'Schema:',\n  '{',\n  '  \"store\": string,',\n  '  \"document_number\": string,',\n  '  \"date\": \"YYYY-MM-DD\",',\n  '  \"time\": \"HH:MM\" | null,',\n  '  \"total\": string,',\n  '  \"total_net\": string | null,',\n  '  \"payment_method\": string | null,',\n  '  \"savings\": { \"card\": string | null, \"discounts\": string | null },',\n  '  \"items\": [',\n  '    { \"product\": string, \"quantity\": string, \"unit\": \"kg\" | \"un\" | \"lt\" | null, \"unit_price\": string, \"total\": string, \"category\": string, \"brand\": string | null }',\n  '  ]',\n  '}',\n  '',\n  'Regras: TODAS as keys em ingles, exatamente como no schema; valores como string com PONTO decimal (ex: \"3.49\"); category deve ser UMA de: frutas, vegetais, carne, peixe, laticinios, padaria, mercearia, bebidas, congelados, higiene, limpeza, bebe, animais, outros; nao inventes itens - apenas os que estao na fatura; marca do proprio continente = \"Continente\".',\n  ''\n];\nconst prompt = L.join('\\n') + '\\n\\nTexto da fatura:\\n' + (text || '(vazio)');\nconst llmPayload = JSON.stringify({ model: 'glm-5.3-flash', messages: [{ role: 'user', content: prompt }], temperature: 0.1, max_tokens: 16000 });\nreturn [{ json: { filename: meta.filename, textPreview: text.substring(0, 500), textLength: text.length, extractError: extractError, attempts: attempts, llmPayload: llmPayload } }];"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "54b0ca35-6d25-4b63-bfe5-d88282f312c7",
+      "name": "Analisar Fatura LLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        -200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.parse($json.llmPayload) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "wXO4qmCuKINk321e",
+          "name": "LiteLLM KEY"
+        }
+      }
+    },
+    {
+      "id": "750928cd-36e8-476e-b1bc-f05b82321362",
+      "name": "Consolidar Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        -200
+      ],
+      "parameters": {
+        "jsCode": "const llm = $input.first().json;\nconst meta = $('Extrair Anexo Meta').first().json;\nconst raw = (llm.choices && llm.choices[0] && llm.choices[0].message && llm.choices[0].message.content) || '';\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  if (str.includes(',') && str.includes('.')) str = str.replace(/\\./g, '').replace(',', '.');\n  else if (str.includes(',')) str = str.replace(',', '.');\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\nconst CATS = ['frutas','vegetais','carne','peixe','laticinios','padaria','mercearia','bebidas','congelados','higiene','limpeza','bebe','animais','outros'];\nlet data = null, parsedOk = false, error = null;\ntry {\n  let js = raw;\n  const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n  if (cb) js = cb[1];\n  const jm = js.match(/\\{[\\s\\S]*\\}/);\n  if (jm) data = JSON.parse(jm[0]);\n  if (data && Array.isArray(data.items)) parsedOk = true; else error = 'schema: items em falta';\n} catch (e) { error = 'JSON parse: ' + e.message; }\nif (!data) data = {};\nconst filenameBase = String(meta.filename || 'fatura').replace(/\\.pdf$/i, '');\nconst m = String(meta.filename || '').match(/(\\d{8})[._-]?(\\d+)/);\nconst hintDate = m ? m[1].slice(0,4) + '-' + m[1].slice(4,6) + '-' + m[1].slice(6,8) : null;\nconst loja = data.store || meta.store || 'DESCONHECIDO';\nconst numero = String(data.document_number || filenameBase);\nconst data_doc = data.date || hintDate || '2026-09-21';\nconst total = data.total != null ? String(data.total) : null;\nconst itens = (data.items || []).map(it => ({\n  product: String(it.product || '').trim(),\n  quantity: it.quantity != null ? String(it.quantity) : null,\n  unit: it.unit || null,\n  unit_price: it.unit_price != null ? String(it.unit_price) : null,\n  total: it.total != null ? String(it.total) : null,\n  category: CATS.includes(it.category) ? it.category : 'outros',\n  brand: it.brand || null\n}));\nconst soma = itens.reduce((acc, it) => acc + (parseNum(it.total) || 0), 0);\nconst totalNum = parseNum(total);\nconst record = {\n  schema: 'mercado_fatura_v2',\n  store: loja, document_number: numero, date: data_doc,\n  time: data.time || null, total: total, total_net: data.total_net || null,\n  payment_method: data.payment_method || null,\n  savings: data.savings || { card: null, discounts: null },\n  items: itens,\n  check: { items_sum: soma.toFixed(2), document_total: totalNum != null ? totalNum.toFixed(2) : null, difference: totalNum != null ? (totalNum - soma).toFixed(2) : null },\n  source: { message_id: '1a0c33e0d7bf8480', file: meta.filename || null, email_received: '2026-09-21' },\n  processed_at: new Date().toISOString()\n};\nconst my = data_doc && data_doc.length >= 7 ? data_doc.slice(5,7) + '-' + data_doc.slice(0,4) : '09-2026';\nconst uploadName = my + '_' + String(loja).replace(/[^A-Za-z0-9]/g, '').slice(0, 20) + '_' + String(numero).replace(/[^A-Za-z0-9]/g, '').slice(0, 25) + '.json';\nconst webhookPayload = JSON.stringify({ drive_name: uploadName, json: record });\nreturn [{ json: { uploadName: uploadName, parsedOk: parsedOk, error: error, store: loja, total: total, itemCount: itens.length, webhookPayload: webhookPayload } }];"
+      }
+    },
+    {
+      "id": "6ab3b7e3-a765-4e9f-8eb2-3be7bed6d27c",
+      "name": "Gravar Mercado Paper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2016,
+        -300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.ramoneees.com/webhook/mercado-paper",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-mercado-secret",
+              "value": "n8n-webhook-secret-2024"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.parse($(\"Consolidar Record\").first().json.webhookPayload) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "46240343-c5d7-48df-abab-8fbadb6eb2b4",
+      "name": "Resumo Reprocess",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2688,
+        -300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "type": "string",
+              "value": "={{ $json.status ?? \"ERR\" }}"
+            },
+            {
+              "id": "file",
+              "name": "file",
+              "type": "string",
+              "value": "={{ $json.file ?? $json.message ?? \"\" }}"
+            },
+            {
+              "id": "store",
+              "name": "store",
+              "type": "string",
+              "value": "={{ $(\"Consolidar Record\").first().json.store }}"
+            },
+            {
+              "id": "total",
+              "name": "total",
+              "type": "string",
+              "value": "={{ $(\"Consolidar Record\").first().json.total ?? \"\" }}"
+            },
+            {
+              "id": "items",
+              "name": "items",
+              "type": "string",
+              "value": "={{ $(\"Consolidar Record\").first().json.itemCount }}"
+            },
+            {
+              "id": "parsedok",
+              "name": "parsedOk",
+              "type": "string",
+              "value": "={{ $(\"Consolidar Record\").first().json.parsedOk }}"
+            },
+            {
+              "id": "attempts",
+              "name": "attempts",
+              "type": "string",
+              "value": "={{ JSON.stringify($(\"Extrair Texto Toolbox\").first().json.attempts) }}"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "mode": "manual"
+      }
+    },
+    {
+      "id": "41c11fe5-9fd1-42b6-847a-3018eb0efc2f",
+      "name": "Fatura OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1792,
+        -200
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.itemCount }}",
+              "operator": {
+                "operation": "gt",
+                "type": "number"
+              },
+              "rightValue": 0
+            },
+            {
+              "leftValue": "={{ $json.parsedOk }}",
+              "operator": {
+                "operation": "equals",
+                "type": "boolean"
+              },
+              "rightValue": true
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          }
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "47619fd8-2f5b-47e5-8922-98ea2410891e",
+      "name": "Apagar Lixo Drive 1",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2240,
+        -300
+      ],
+      "parameters": {
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Q1dDeRy36Qn9vL-sETrzJ1Pe2CpA_T16"
+        },
+        "operation": "deleteFile"
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "id": "d49cd520-2512-45df-ac1e-c772861e350e",
+      "name": "Apagar Lixo Drive 2",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2464,
+        -300
+      ],
+      "parameters": {
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1iwyQ7KEVyiIFV2uP3GrIQghXpSxa9K_f"
+        },
+        "operation": "deleteFile"
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "id": "cd12ede2-42b5-478f-85d6-288439a19e63",
+      "name": "Resumo Skip",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2016,
+        -40
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "type": "string",
+              "value": "={{ $json.error ?? \"skip-sem-gravacao\" }}"
+            },
+            {
+              "id": "store",
+              "name": "store",
+              "type": "string",
+              "value": "={{ $json.store }}"
+            },
+            {
+              "id": "attempts",
+              "name": "attempts",
+              "type": "string",
+              "value": "={{ JSON.stringify($(\"Extrair Texto Toolbox\").first().json.attempts) }}"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "mode": "manual"
+      }
+    },
+    {
+      "id": "6a2dbc3c-5045-44de-8062-2ff43552ac02",
+      "name": "Preparar Binário",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -200
+      ],
+      "parameters": {
+        "jsCode": "const att = $('Gmail Baixar Anexo').first().json;\nconst meta = $('Extrair Anexo Meta').first().json;\nconst b64 = String(att.data || '').replace(/-/g, '+').replace(/_/g, '/');\nconst buf = Buffer.from(b64, 'base64');\nconst binaryData = await this.helpers.prepareBinaryData(buf, meta.filename || 'fatura.pdf', meta.mimeType || 'application/pdf');\nreturn [{ json: { filename: meta.filename || 'fatura.pdf', size: buf.length }, binary: { data: binaryData } }];"
+      }
+    },
+    {
+      "id": "bac7767b-273f-437a-ba68-f8f1326a3835",
+      "name": "Toolbox Multipart",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        -200
+      ],
+      "parameters": {
+        "bodyParameters": {
+          "parameters": [
+            {
+              "inputDataFieldName": "data",
+              "name": "file",
+              "parameterType": "formBinaryData"
+            }
+          ]
+        },
+        "contentType": "multipart-form-data",
+        "method": "POST",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 60000
+        },
+        "sendBody": true,
+        "url": "http://toolbox.apps.svc.cluster.local:8000/api/v1/extract"
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "PGjVCGupqFBJkiaF",
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-09-21T13:13:59.491Z",
+      "updatedAt": "2026-09-21T13:13:59.491Z"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-09-21T13:24:00.787Z",
+  "versionId": "352ea382-2c6f-41cd-99b3-ba48db079210"
+}
