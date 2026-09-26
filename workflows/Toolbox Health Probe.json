@@ -1,0 +1,258 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "GET Toolbox Root",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Toolbox Root": {
+      "main": [
+        [
+          {
+            "node": "GET Toolbox Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Toolbox Docs": {
+      "main": [
+        [
+          {
+            "node": "GET Toolbox OpenAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Toolbox OpenAPI": {
+      "main": [
+        [
+          {
+            "node": "Collect Probe Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Probe Results": {
+      "main": [
+        [
+          {
+            "node": "Listar Mercado Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-09-21T13:07:09.044Z",
+  "id": "sAJaybSTJ6J2mOVj",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Toolbox Health Probe",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "3694b56f-9f73-4856-b20a-9712a819614d",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "49c4a79f-e47a-4b74-9bdd-86204ecbefa7",
+      "name": "GET Toolbox Root",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://toolbox.apps.svc.cluster.local:8000/",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "68a827af-baea-4fd0-bfc8-7b2a8a2315d8",
+      "name": "GET Toolbox Docs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://toolbox.apps.svc.cluster.local:8000/docs",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "f7e1d987-fe29-4db2-b118-b99a7448b492",
+      "name": "GET Toolbox OpenAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://toolbox.apps.svc.cluster.local:8000/openapi.json",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "e6d914e1-8ce3-4233-ba33-7399f1fefe7c",
+      "name": "Collect Probe Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "root-status",
+              "name": "root_status",
+              "value": "={{ $(\"GET Toolbox Root\").first().json.statusCode ?? \"ERR\" }}",
+              "type": "string"
+            },
+            {
+              "id": "docs-status",
+              "name": "docs_status",
+              "value": "={{ $(\"GET Toolbox Docs\").first().json.statusCode ?? \"ERR\" }}",
+              "type": "string"
+            },
+            {
+              "id": "openapi-status",
+              "name": "openapi_status",
+              "value": "={{ $(\"GET Toolbox OpenAPI\").first().json.statusCode ?? \"ERR\" }}",
+              "type": "string"
+            },
+            {
+              "id": "openapi-paths",
+              "name": "openapi_paths",
+              "value": "={{ JSON.stringify($(\"GET Toolbox OpenAPI\").first().json.body?.paths ?? $(\"GET Toolbox OpenAPI\").first().json.body ?? \"no-body\") }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "af311e9a-183b-43be-a566-b9f34a53a6e5",
+      "name": "Listar Mercado Dados",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1900,
+        0
+      ],
+      "parameters": {
+        "filter": {
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "16YakJ6htaYpeDDmJSkm9MvP9U2C2Ws2u"
+          },
+          "whatToSearch": "files"
+        },
+        "queryString": "=trashed = false",
+        "resource": "fileFolder",
+        "returnAll": true,
+        "searchMethod": "query",
+        "options": {
+          "fields": [
+            "id",
+            "name"
+          ]
+        }
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "sAJaybSTJ6J2mOVj",
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-09-21T13:07:09.044Z",
+      "updatedAt": "2026-09-21T13:07:09.044Z"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-09-21T13:27:15.693Z",
+  "versionId": "dedc6204-b81d-4032-93e2-3e1805636f45"
+}
