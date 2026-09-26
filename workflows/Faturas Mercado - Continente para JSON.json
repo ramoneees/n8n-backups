@@ -1,7 +1,7 @@
 {
   "active": true,
   "activeVersion": {
-    "versionId": "27651ccf-dc07-4d5f-aa85-056e3bcd40fa",
+    "versionId": "066f1128-6a2f-4a3e-a2ac-9307a9dbace0",
     "workflowId": "06z0PeRKbwNaebhN",
     "nodes": [
       {
@@ -54,20 +54,7 @@
       },
       {
         "parameters": {
-          "jsCode": "const TOOLBOX_URL = 'http://toolbox.apps.svc.cluster.local:8000/api/v1/extract/base64';\nconst FIELD_NAME = 'data';\nconst allItems = $input.all();\nconst results = [];\nfor (let i = 0; i < allItems.length; i++) {\n  try {\n    const item = allItems[i];\n    await this.helpers.assertBinaryData(i, FIELD_NAME);\n    const buffer = await this.helpers.getBinaryDataBuffer(i, FIELD_NAME);\n    const binary = item.binary ? item.binary[FIELD_NAME] : null;\n    const fileName = (binary && binary.fileName) || 'invoice.pdf';\n    const mimeType = (binary && binary.mimeType) || 'application/pdf';\n    const response = await this.helpers.httpRequest({\n      method: 'POST', url: TOOLBOX_URL,\n      headers: { 'Content-Type': 'application/json' },\n      body: { fileName, mimeType, data: buffer.toString('base64') },\n      returnFullResponse: true, ignoreHttpStatusErrors: true, timeout: 60000,\n    });\n    const status = response ? response.statusCode : 0;\n    const payload = response ? response.body : null;\n    if (status < 200 || status >= 300) throw new Error('Toolbox returned ' + status + ': ' + (typeof payload === 'string' ? payload : JSON.stringify(payload)));\n    const text = (payload && typeof payload === 'object') ? (payload.text || payload.markdown || payload.content || JSON.stringify(payload)) : String(payload || '');\n    results.push({ json: Object.assign({}, item.json, { text: String(text).substring(0, 60000) }), binary: item.binary });\n  } catch (err) {\n    results.push({ json: Object.assign({}, allItems[i].json, { text: '', extractError: err.message }), binary: allItems[i].binary, pairedItem: { item: i } });\n  }\n}\nreturn results;"
-        },
-        "id": "e371d053-e0b5-404a-a5a8-67fcc8be7eda",
-        "name": "Extrair Texto PDF",
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [
-          112,
-          0
-        ]
-      },
-      {
-        "parameters": {
-          "jsCode": "const items = $input.all();\nconst L = [ 'Analisa esta fatura de supermercado e retorna APENAS um JSON valido, sem markdown e sem explicacao.', '', 'Schema:', '{', '  \"store\": string,', '  \"document_number\": string,', '  \"date\": \"YYYY-MM-DD\",', '  \"time\": \"HH:MM\" | null,', '  \"total\": string,', '  \"total_net\": string | null,', '  \"payment_method\": string | null,', '  \"savings\": { \"card\": string | null, \"discounts\": string | null },', '  \"items\": [', '    { \"product\": string, \"quantity\": string, \"unit\": \"kg\" | \"un\" | \"lt\" | null, \"unit_price\": string, \"total\": string, \"category\": string, \"brand\": string | null }', '  ]', '}', '', 'Regras: TODAS as keys em ingles, exatamente como no schema; valores como string com PONTO decimal (ex: \"3.49\"); category deve ser UMA de: frutas, vegetais, carne, peixe, laticinios, padaria, mercearia, bebidas, congelados, higiene, limpeza, bebe, animais, outros; nao inventes itens - apenas os que estao na fatura; marca do proprio continente = \"Continente\".', '' ];\nreturn items.map(item => {\n  const j = item.json;\n  const p = L.join('\\n') + '\\nDicas extraidas do nome do ficheiro (usa se o texto nao mostrar): store=' + (j.store || '?') + ', numero=' + (j.docNumber || '?') + ', data=' + (j.docDate || '?') + ', total=' + (j.docTotal || '?') + '\\n\\nTexto da fatura:\\n' + String(j.text || '').substring(0, 12000);\n  return { json: Object.assign({}, j, { prompt: p }), binary: item.binary };\n});"
+          "jsCode": "const items = $input.all();\nconst L = [ 'Analisa esta fatura de supermercado e retorna APENAS um JSON valido, sem markdown e sem explicacao.', '', 'Schema:', '{', '  \"store\": string,', '  \"document_number\": string,', '  \"date\": \"YYYY-MM-DD\",', '  \"time\": \"HH:MM\" | null,', '  \"total\": string,', '  \"total_net\": string | null,', '  \"payment_method\": string | null,', '  \"savings\": { \"card\": string | null, \"discounts\": string | null },', '  \"items\": [', '    { \"product\": string, \"quantity\": string, \"unit\": \"kg\" | \"un\" | \"lt\" | null, \"unit_price\": string, \"total\": string, \"category\": string, \"brand\": string | null }', '  ]', '}', '', 'Regras: TODAS as keys em ingles, exatamente como no schema; valores como string com PONTO decimal (ex: \"3.49\"); category deve ser UMA de: frutas, vegetais, carne, peixe, laticinios, padaria, mercearia, bebidas, congelados, higiene, limpeza, bebe, animais, outros; nao inventes itens - apenas os que estao na fatura; marca do proprio continente = \"Continente\".', '' ];\nconst meta = $('Filtrar PDFs Mercado').all();\nreturn items.map((item, idx) => {\n  const j = item.json;\n  const m = meta[idx] ? meta[idx].json : {};\n  const rawText = String(j.text || j.data || j.content || '');\n  const p = L.join('\\n') + '\\nDicas extraidas do nome do ficheiro (usa se o texto nao mostrar): store=' + (m.store || '?') + ', numero=' + (m.docNumber || '?') + ', data=' + (m.docDate || '?') + ', total=' + (m.docTotal || '?') + '\\n\\nTexto da fatura:\\n' + rawText.substring(0, 12000);\n  return { json: Object.assign({}, m, { prompt: p }) };\n});"
         },
         "id": "6ef4a6db-245d-44af-a846-dc79290d8f62",
         "name": "Construir Prompt",
@@ -258,6 +245,61 @@
             "name": "Google Drive Empresa"
           }
         }
+      },
+      {
+        "id": "ea0c3597-857a-492f-ac89-caa7e05cd23c",
+        "name": "Extrair PDF Nativo",
+        "type": "n8n-nodes-base.extractFromFile",
+        "typeVersion": 1,
+        "position": [
+          112,
+          0
+        ],
+        "parameters": {
+          "binaryPropertyName": "data",
+          "operation": "pdf"
+        }
+      },
+      {
+        "id": "19e55c80-86d3-4f13-960d-3ccbc2795196",
+        "name": "Fatura Válida?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1104,
+          100
+        ],
+        "parameters": {
+          "conditions": {
+            "combinator": "and",
+            "conditions": [
+              {
+                "id": "gate-items",
+                "leftValue": "={{ $json.record.items.length }}",
+                "operator": {
+                  "operation": "gt",
+                  "type": "number"
+                },
+                "rightValue": 0
+              },
+              {
+                "id": "gate-parse",
+                "leftValue": "={{ $json.parsedOk }}",
+                "operator": {
+                  "operation": "equals",
+                  "type": "boolean"
+                },
+                "rightValue": true
+              }
+            ],
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            }
+          },
+          "options": {}
+        }
       }
     ],
     "connections": {
@@ -266,28 +308,6 @@
           [
             {
               "node": "Filtrar PDFs Mercado",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Filtrar PDFs Mercado": {
-        "main": [
-          [
-            {
-              "node": "Extrair Texto PDF",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Extrair Texto PDF": {
-        "main": [
-          [
-            {
-              "node": "Construir Prompt",
               "type": "main",
               "index": 0
             }
@@ -320,12 +340,12 @@
         "main": [
           [
             {
-              "node": "Dedup",
+              "node": "Listar Ficheiros Mercado",
               "type": "main",
               "index": 0
             },
             {
-              "node": "Listar Ficheiros Mercado",
+              "node": "Fatura Válida?",
               "type": "main",
               "index": 0
             }
@@ -375,45 +395,56 @@
             }
           ]
         ]
+      },
+      "Filtrar PDFs Mercado": {
+        "main": [
+          [
+            {
+              "node": "Extrair PDF Nativo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extrair PDF Nativo": {
+        "main": [
+          [
+            {
+              "node": "Construir Prompt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fatura Válida?": {
+        "main": [
+          [
+            {
+              "node": "Dedup",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "nodeGroups": [],
     "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
-    "name": "Extraction model -> \"glm-5.3-flash\"",
-    "description": "Boss 2026-09-09: weekly quota exhausted on qwen; swap statement extraction to glm-5.3-flash.",
+    "name": "Extração nativa + gate de qualidade",
+    "description": "Causa raiz da execução 2564: o toolbox mudou de API (POST /api/v1/extract/base64 deixou de existir → 404 crónico) e o fallback silencioso gravou records vazios. Fix: (1) extração nativa via Extract From File (pdf-parse), sem dependência do toolbox — validado end-to-end no reprocessamento da fatura 21-09 (2 285 chars, 19 itens); (2) gate 'Fatura Válida?' — só grava no Drive se items>0 e parse OK, acabando com o lixo DESCONHECIDO.",
     "autosaved": false,
-    "createdAt": "2026-09-09T10:00:59.267Z",
-    "updatedAt": "2026-09-09T10:00:59.267Z"
+    "createdAt": "2026-09-21T13:28:31.996Z",
+    "updatedAt": "2026-09-21T13:28:31.996Z"
   },
-  "activeVersionId": "27651ccf-dc07-4d5f-aa85-056e3bcd40fa",
+  "activeVersionId": "066f1128-6a2f-4a3e-a2ac-9307a9dbace0",
   "connections": {
     "Gmail Trigger": {
       "main": [
         [
           {
             "node": "Filtrar PDFs Mercado",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Filtrar PDFs Mercado": {
-      "main": [
-        [
-          {
-            "node": "Extrair Texto PDF",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extrair Texto PDF": {
-      "main": [
-        [
-          {
-            "node": "Construir Prompt",
             "type": "main",
             "index": 0
           }
@@ -446,12 +477,12 @@
       "main": [
         [
           {
-            "node": "Dedup",
+            "node": "Listar Ficheiros Mercado",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Listar Ficheiros Mercado",
+            "node": "Fatura Válida?",
             "type": "main",
             "index": 0
           }
@@ -496,6 +527,39 @@
         [
           {
             "node": "Notificar Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar PDFs Mercado": {
+      "main": [
+        [
+          {
+            "node": "Extrair PDF Nativo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair PDF Nativo": {
+      "main": [
+        [
+          {
+            "node": "Construir Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fatura Válida?": {
+      "main": [
+        [
+          {
+            "node": "Dedup",
             "type": "main",
             "index": 0
           }
@@ -564,20 +628,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const TOOLBOX_URL = 'http://toolbox.apps.svc.cluster.local:8000/api/v1/extract/base64';\nconst FIELD_NAME = 'data';\nconst allItems = $input.all();\nconst results = [];\nfor (let i = 0; i < allItems.length; i++) {\n  try {\n    const item = allItems[i];\n    await this.helpers.assertBinaryData(i, FIELD_NAME);\n    const buffer = await this.helpers.getBinaryDataBuffer(i, FIELD_NAME);\n    const binary = item.binary ? item.binary[FIELD_NAME] : null;\n    const fileName = (binary && binary.fileName) || 'invoice.pdf';\n    const mimeType = (binary && binary.mimeType) || 'application/pdf';\n    const response = await this.helpers.httpRequest({\n      method: 'POST', url: TOOLBOX_URL,\n      headers: { 'Content-Type': 'application/json' },\n      body: { fileName, mimeType, data: buffer.toString('base64') },\n      returnFullResponse: true, ignoreHttpStatusErrors: true, timeout: 60000,\n    });\n    const status = response ? response.statusCode : 0;\n    const payload = response ? response.body : null;\n    if (status < 200 || status >= 300) throw new Error('Toolbox returned ' + status + ': ' + (typeof payload === 'string' ? payload : JSON.stringify(payload)));\n    const text = (payload && typeof payload === 'object') ? (payload.text || payload.markdown || payload.content || JSON.stringify(payload)) : String(payload || '');\n    results.push({ json: Object.assign({}, item.json, { text: String(text).substring(0, 60000) }), binary: item.binary });\n  } catch (err) {\n    results.push({ json: Object.assign({}, allItems[i].json, { text: '', extractError: err.message }), binary: allItems[i].binary, pairedItem: { item: i } });\n  }\n}\nreturn results;"
-      },
-      "id": "e371d053-e0b5-404a-a5a8-67fcc8be7eda",
-      "name": "Extrair Texto PDF",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        112,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\nconst L = [ 'Analisa esta fatura de supermercado e retorna APENAS um JSON valido, sem markdown e sem explicacao.', '', 'Schema:', '{', '  \"store\": string,', '  \"document_number\": string,', '  \"date\": \"YYYY-MM-DD\",', '  \"time\": \"HH:MM\" | null,', '  \"total\": string,', '  \"total_net\": string | null,', '  \"payment_method\": string | null,', '  \"savings\": { \"card\": string | null, \"discounts\": string | null },', '  \"items\": [', '    { \"product\": string, \"quantity\": string, \"unit\": \"kg\" | \"un\" | \"lt\" | null, \"unit_price\": string, \"total\": string, \"category\": string, \"brand\": string | null }', '  ]', '}', '', 'Regras: TODAS as keys em ingles, exatamente como no schema; valores como string com PONTO decimal (ex: \"3.49\"); category deve ser UMA de: frutas, vegetais, carne, peixe, laticinios, padaria, mercearia, bebidas, congelados, higiene, limpeza, bebe, animais, outros; nao inventes itens - apenas os que estao na fatura; marca do proprio continente = \"Continente\".', '' ];\nreturn items.map(item => {\n  const j = item.json;\n  const p = L.join('\\n') + '\\nDicas extraidas do nome do ficheiro (usa se o texto nao mostrar): store=' + (j.store || '?') + ', numero=' + (j.docNumber || '?') + ', data=' + (j.docDate || '?') + ', total=' + (j.docTotal || '?') + '\\n\\nTexto da fatura:\\n' + String(j.text || '').substring(0, 12000);\n  return { json: Object.assign({}, j, { prompt: p }), binary: item.binary };\n});"
+        "jsCode": "const items = $input.all();\nconst L = [ 'Analisa esta fatura de supermercado e retorna APENAS um JSON valido, sem markdown e sem explicacao.', '', 'Schema:', '{', '  \"store\": string,', '  \"document_number\": string,', '  \"date\": \"YYYY-MM-DD\",', '  \"time\": \"HH:MM\" | null,', '  \"total\": string,', '  \"total_net\": string | null,', '  \"payment_method\": string | null,', '  \"savings\": { \"card\": string | null, \"discounts\": string | null },', '  \"items\": [', '    { \"product\": string, \"quantity\": string, \"unit\": \"kg\" | \"un\" | \"lt\" | null, \"unit_price\": string, \"total\": string, \"category\": string, \"brand\": string | null }', '  ]', '}', '', 'Regras: TODAS as keys em ingles, exatamente como no schema; valores como string com PONTO decimal (ex: \"3.49\"); category deve ser UMA de: frutas, vegetais, carne, peixe, laticinios, padaria, mercearia, bebidas, congelados, higiene, limpeza, bebe, animais, outros; nao inventes itens - apenas os que estao na fatura; marca do proprio continente = \"Continente\".', '' ];\nconst meta = $('Filtrar PDFs Mercado').all();\nreturn items.map((item, idx) => {\n  const j = item.json;\n  const m = meta[idx] ? meta[idx].json : {};\n  const rawText = String(j.text || j.data || j.content || '');\n  const p = L.join('\\n') + '\\nDicas extraidas do nome do ficheiro (usa se o texto nao mostrar): store=' + (m.store || '?') + ', numero=' + (m.docNumber || '?') + ', data=' + (m.docDate || '?') + ', total=' + (m.docTotal || '?') + '\\n\\nTexto da fatura:\\n' + rawText.substring(0, 12000);\n  return { json: Object.assign({}, m, { prompt: p }) };\n});"
       },
       "id": "6ef4a6db-245d-44af-a846-dc79290d8f62",
       "name": "Construir Prompt",
@@ -768,6 +819,61 @@
           "name": "Google Drive Empresa"
         }
       }
+    },
+    {
+      "id": "ea0c3597-857a-492f-ac89-caa7e05cd23c",
+      "name": "Extrair PDF Nativo",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        112,
+        0
+      ],
+      "parameters": {
+        "binaryPropertyName": "data",
+        "operation": "pdf"
+      }
+    },
+    {
+      "id": "19e55c80-86d3-4f13-960d-3ccbc2795196",
+      "name": "Fatura Válida?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1104,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "gate-items",
+              "leftValue": "={{ $json.record.items.length }}",
+              "operator": {
+                "operation": "gt",
+                "type": "number"
+              },
+              "rightValue": 0
+            },
+            {
+              "id": "gate-parse",
+              "leftValue": "={{ $json.parsedOk }}",
+              "operator": {
+                "operation": "equals",
+                "type": "boolean"
+              },
+              "rightValue": true
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          }
+        },
+        "options": {}
+      }
     }
   ],
   "pinData": {},
@@ -788,15 +894,17 @@
   "staticData": {
     "node:Gmail Trigger": {
       "Gmail Trigger": {
-        "lastTimeChecked": 1788004674,
+        "lastTimeChecked": 1790325458,
         "possibleDuplicates": [
-          "1a04d622d75f0de7"
-        ]
+          "1a0d7b6867267381"
+        ],
+        "pendingMessageIds": [],
+        "noProgressTicks": 0
       }
     }
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-09-09T10:00:59.266Z",
-  "versionId": "27651ccf-dc07-4d5f-aa85-056e3bcd40fa"
+  "updatedAt": "2026-09-21T13:28:31.995Z",
+  "versionId": "066f1128-6a2f-4a3e-a2ac-9307a9dbace0"
 }
