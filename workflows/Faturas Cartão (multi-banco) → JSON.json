@@ -1058,6 +1058,11 @@
         },
         "options": {
           "downloadAttachments": true
+        },
+        "parameters": {
+          "filters": {
+            "q": "(from:extrato@universo.pt OR from:fatura@xpi.com.br OR (from:banco@millenniumbcp.pt subject:\"Extrato de Cartão\")) has:attachment filename:pdf newer_than:30d"
+          }
         }
       },
       "credentials": {
@@ -1102,6 +1107,6 @@
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-09-09T10:00:57.506Z",
-  "versionId": "d3b408c1-ddd8-4af1-bf83-923ab08dd12a"
+  "updatedAt": "2026-09-24T09:42:27.199Z",
+  "versionId": "ae9f5101-29e8-43e3-b6a2-72f4332665f8"
 }
