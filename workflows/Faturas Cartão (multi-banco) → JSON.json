@@ -1,7 +1,7 @@
 {
   "active": true,
   "activeVersion": {
-    "versionId": "d3b408c1-ddd8-4af1-bf83-923ab08dd12a",
+    "versionId": "4a6421a8-4dee-41a8-8c3e-ebcd7b159579",
     "workflowId": "XIThcU2rzYxVfRSG",
     "nodes": [
       {
@@ -64,7 +64,10 @@
         "parameters": {
           "mode": "runOnceForAllItems",
           "language": "javaScript",
-          "jsCode": "const src = $('Config e Filtrar PDFs').all();\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  const meta = src[i] ? src[i].json : {};\n  const pages = (j.pages || []).map(p => 'data:image/png;base64,' + ((p && p.image && p.image.data) || ''));\n  out.push({ json: Object.assign({}, meta, {\n    pages: pages,\n    pageCount: pages.length,\n    convertError: pages.length ? undefined : 'sem paginas'\n  }) });\n}\nreturn out;\n"
+          "jsCode": "const src = $('Config e Filtrar PDFs').all();\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  const meta = src[i] ? src[i].json : {};\n  const pages = (j.pages || []).map(p => 'data:image/png;base64,' + ((p && p.image && p.image.data) || ''));\n  out.push({ json: Object.assign({}, meta, {\n    pages: pages,\n    pageCount: pages.length,\n    convertError: pages.length ? undefined : 'sem paginas'\n  }) });\n}\nreturn out;\n",
+          "parameters": {
+            "jsCode": "// Pareia por POSICAO com os itens route=vision do 'Decidir Caminho' (o convert-all\n// processa apenas o subset de visao; o pareamento posicional antigo contra a lista\n// completa quebrava em runs mistos markdown+visao).\nconst src = $('Decidir Caminho').all().filter(x => x.json && x.json.route === 'vision');\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  const meta = src[i] ? src[i].json : {};\n  const pages = (j.pages || []).map(p => 'data:image/png;base64,' + ((p && p.image && p.image.data) || ''));\n  out.push({ json: Object.assign({}, meta, {\n    pages: pages,\n    pageCount: pages.length,\n    convertError: pages.length ? undefined : 'sem paginas'\n  }) });\n}\nreturn out;"
+          }
         }
       },
       {
@@ -122,7 +125,10 @@
         "parameters": {
           "mode": "runOnceForAllItems",
           "language": "javaScript",
-          "jsCode": "const llmItems = $input.all();\nconst src = $('Config e Filtrar PDFs').all();\nconst results = [];\n\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  if (typeof s === 'number') return isNaN(s) ? null : s;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  const lastComma = str.lastIndexOf(',');\n  const lastDot = str.lastIndexOf('.');\n  if (lastComma > -1 && lastDot > -1) {\n    if (lastComma > lastDot) str = str.replace(/\\./g, '').replace(',', '.');\n    else str = str.replace(/,/g, '');\n  } else if (lastComma > -1) {\n    const decimals = str.length - lastComma - 1;\n    if (decimals === 3) str = str.replace(/,/g, '');\n    else str = str.replace(',', '.');\n  }\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\n\nconst CATS = ['mercado','restaurante','transporte','assinaturas','saude','educacao','casa','viagem','tecnologia','lazer','vestuario','servicos_bancarios','taxas','saque','pagamento','outros'];\nconst ISO = /^\\d{4}-\\d{2}-\\d{2}$/;\n\nfunction slug(s) {\n  return String(s || 'banco').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24) || 'banco';\n}\n\nlet okCount = 0, errCount = 0, txCount = 0;\n\nfor (let i = 0; i < llmItems.length; i++) {\n  const meta = src[i] ? src[i].json : {};\n  const body = llmItems[i].json || {};\n  const raw = (body.choices && body.choices[0] && body.choices[0].message ? body.choices[0].message.content : '') || '';\n\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const s = js.indexOf('{');\n    const e = js.lastIndexOf('}');\n    if (s >= 0 && e > s) js = js.slice(s, e + 1);\n    data = JSON.parse(js);\n    parsedOk = true; okCount++;\n  } catch (err) { error = err.message; errCount++; }\n\n  if (!data) data = { schema: 'card_statement_v1', transactions: [], warnings: ['parse falhou: ' + error] };\n  data.schema = 'card_statement_v1';\n  if (!data.issuer && meta.issuer && meta.issuer !== 'desconhecido') data.issuer = meta.issuer;\n  if (!Array.isArray(data.warnings)) data.warnings = [];\n\n  const txs = Array.isArray(data.transactions) ? data.transactions : [];\n  txs.forEach(t => {\n    t.amount = parseNum(t.amount);\n    t.foreign_amount = parseNum(t.foreign_amount);\n    if (!t.category || CATS.indexOf(t.category) === -1) t.category = 'outros';\n    if (!(typeof t.date === 'string' && ISO.test(t.date))) t.date = null;\n  });\n  data.transactions = txs;\n\n  ['total_balance','minimum_payment','previous_balance','credits_payments','credit_limit','available_limit'].forEach(k => { data[k] = parseNum(data[k]); });\n\n  if (data.statement_period) {\n    if (data.statement_period.open_date && !ISO.test(data.statement_period.open_date)) data.statement_period.open_date = null;\n    if (data.statement_period.close_date && !ISO.test(data.statement_period.close_date)) data.statement_period.close_date = null;\n  }\n  if (data.due_date && !ISO.test(data.due_date)) data.due_date = null;\n\n  const sum = txs.reduce((a, t) => a + (t.amount || 0), 0);\n  if (data.total_balance !== null && data.total_balance !== undefined) {\n    const credits = data.credits_payments || 0;\n    const diff = Math.abs((sum + credits) - data.total_balance);\n    if (diff > 0.05) data.warnings.push('soma divergente do total em ' + diff.toFixed(2));\n  }\n\n  // nome deterministico: usa o issuer da Data Table, nao o texto livre do LLM\n  const issuerSlug = slug(meta.issuer || data.issuer);\n  const period = (data.statement_period && data.statement_period.close_date) ? data.statement_period.close_date : meta.emailDate;\n  const last4 = String(data.card_last4 || '0000').replace(/\\D/g, '').slice(-4).padStart(4, '0');\n  const uploadName = issuerSlug + '_' + period + '_' + last4 + '_' + String(meta.msgId || '').slice(-8) + '.json';\n\n  const driveQueryUrl = 'https://www.googleapis.com/drive/v3/files?q=' +\n    encodeURIComponent(\"name = '\" + uploadName + \"' and trashed = false\") +\n    '&fields=' + encodeURIComponent('files(id,name)');\n\n  txCount += txs.length;\n  results.push({ json: {\n    parsedOk, error, uploadName, driveQueryUrl,\n    emailDate: meta.emailDate, fileName: meta.fileName, msgId: meta.msgId, issuer: data.issuer || meta.issuer,\n    record: data,\n    _summary: {\n      file: meta.fileName, issuer: data.issuer || meta.issuer, parsedOk,\n      transactions: txs.length, total: data.total_balance, currency: data.currency,\n      due: data.due_date, warnings: data.warnings.length\n    }\n  }});\n}\n\nconsole.log('consolidate: ok=' + okCount + ' err=' + errCount + ' tx=' + txCount);\nreturn results;\n"
+          "jsCode": "const llmItems = $input.all();\nconst src = $('Config e Filtrar PDFs').all();\nconst results = [];\n\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  if (typeof s === 'number') return isNaN(s) ? null : s;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  const lastComma = str.lastIndexOf(',');\n  const lastDot = str.lastIndexOf('.');\n  if (lastComma > -1 && lastDot > -1) {\n    if (lastComma > lastDot) str = str.replace(/\\./g, '').replace(',', '.');\n    else str = str.replace(/,/g, '');\n  } else if (lastComma > -1) {\n    const decimals = str.length - lastComma - 1;\n    if (decimals === 3) str = str.replace(/,/g, '');\n    else str = str.replace(',', '.');\n  }\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\n\nconst CATS = ['mercado','restaurante','transporte','assinaturas','saude','educacao','casa','viagem','tecnologia','lazer','vestuario','servicos_bancarios','taxas','saque','pagamento','outros'];\nconst ISO = /^\\d{4}-\\d{2}-\\d{2}$/;\n\nfunction slug(s) {\n  return String(s || 'banco').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24) || 'banco';\n}\n\nlet okCount = 0, errCount = 0, txCount = 0;\n\nfor (let i = 0; i < llmItems.length; i++) {\n  const meta = src[i] ? src[i].json : {};\n  const body = llmItems[i].json || {};\n  const raw = (body.choices && body.choices[0] && body.choices[0].message ? body.choices[0].message.content : '') || '';\n\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const s = js.indexOf('{');\n    const e = js.lastIndexOf('}');\n    if (s >= 0 && e > s) js = js.slice(s, e + 1);\n    data = JSON.parse(js);\n    parsedOk = true; okCount++;\n  } catch (err) { error = err.message; errCount++; }\n\n  if (!data) data = { schema: 'card_statement_v1', transactions: [], warnings: ['parse falhou: ' + error] };\n  data.schema = 'card_statement_v1';\n  if (!data.issuer && meta.issuer && meta.issuer !== 'desconhecido') data.issuer = meta.issuer;\n  if (!Array.isArray(data.warnings)) data.warnings = [];\n\n  const txs = Array.isArray(data.transactions) ? data.transactions : [];\n  txs.forEach(t => {\n    t.amount = parseNum(t.amount);\n    t.foreign_amount = parseNum(t.foreign_amount);\n    if (!t.category || CATS.indexOf(t.category) === -1) t.category = 'outros';\n    if (!(typeof t.date === 'string' && ISO.test(t.date))) t.date = null;\n  });\n  data.transactions = txs;\n\n  ['total_balance','minimum_payment','previous_balance','credits_payments','credit_limit','available_limit'].forEach(k => { data[k] = parseNum(data[k]); });\n\n  if (data.statement_period) {\n    if (data.statement_period.open_date && !ISO.test(data.statement_period.open_date)) data.statement_period.open_date = null;\n    if (data.statement_period.close_date && !ISO.test(data.statement_period.close_date)) data.statement_period.close_date = null;\n  }\n  if (data.due_date && !ISO.test(data.due_date)) data.due_date = null;\n\n  const sum = txs.reduce((a, t) => a + (t.amount || 0), 0);\n  if (data.total_balance !== null && data.total_balance !== undefined) {\n    const credits = data.credits_payments || 0;\n    const diff = Math.abs((sum + credits) - data.total_balance);\n    if (diff > 0.05) data.warnings.push('soma divergente do total em ' + diff.toFixed(2));\n  }\n\n  // nome deterministico: usa o issuer da Data Table, nao o texto livre do LLM\n  const issuerSlug = slug(meta.issuer || data.issuer);\n  const period = (data.statement_period && data.statement_period.close_date) ? data.statement_period.close_date : meta.emailDate;\n  const last4 = String(data.card_last4 || '0000').replace(/\\D/g, '').slice(-4).padStart(4, '0');\n  const uploadName = issuerSlug + '_' + period + '_' + last4 + '_' + String(meta.msgId || '').slice(-8) + '.json';\n\n  const driveQueryUrl = 'https://www.googleapis.com/drive/v3/files?q=' +\n    encodeURIComponent(\"name = '\" + uploadName + \"' and trashed = false\") +\n    '&fields=' + encodeURIComponent('files(id,name)');\n\n  txCount += txs.length;\n  results.push({ json: {\n    parsedOk, error, uploadName, driveQueryUrl,\n    emailDate: meta.emailDate, fileName: meta.fileName, msgId: meta.msgId, issuer: data.issuer || meta.issuer,\n    record: data,\n    _summary: {\n      file: meta.fileName, issuer: data.issuer || meta.issuer, parsedOk,\n      transactions: txs.length, total: data.total_balance, currency: data.currency,\n      due: data.due_date, warnings: data.warnings.length\n    }\n  }});\n}\n\nconsole.log('consolidate: ok=' + okCount + ' err=' + errCount + ' tx=' + txCount);\nreturn results;\n",
+          "parameters": {
+            "jsCode": "const llmItems = $input.all();\nconst src = $('Config e Filtrar PDFs').all();\nconst results = [];\n\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  if (typeof s === 'number') return isNaN(s) ? null : s;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  const lastComma = str.lastIndexOf(',');\n  const lastDot = str.lastIndexOf('.');\n  if (lastComma > -1 && lastDot > -1) {\n    if (lastComma > lastDot) str = str.replace(/\\./g, '').replace(',', '.');\n    else str = str.replace(/,/g, '');\n  } else if (lastComma > -1) {\n    const decimals = str.length - lastComma - 1;\n    if (decimals === 3) str = str.replace(/,/g, '');\n    else str = str.replace(',', '.');\n  }\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\n\nconst CATS = ['mercado','restaurante','transporte','assinaturas','saude','educacao','casa','viagem','tecnologia','lazer','vestuario','servicos_bancarios','taxas','saque','pagamento','outros'];\nconst ISO = /^\\d{4}-\\d{2}-\\d{2}$/;\n\nfunction slug(s) {\n  return String(s || 'banco').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24) || 'banco';\n}\n\nlet okCount = 0, errCount = 0, txCount = 0;\n\nfor (let i = 0; i < llmItems.length; i++) {\n  const meta = src[i] ? src[i].json : {};\n  const body = llmItems[i].json || {};\n  const raw = (body.choices && body.choices[0] && body.choices[0].message ? body.choices[0].message.content : '') || '';\n\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const s = js.indexOf('{');\n    const e = js.lastIndexOf('}');\n    if (s >= 0 && e > s) js = js.slice(s, e + 1);\n    data = JSON.parse(js);\n    parsedOk = true; okCount++;\n  } catch (err) { error = err.message; errCount++; }\n\n  if (!data) data = { schema: 'card_statement_v1', transactions: [], warnings: ['parse falhou: ' + error] };\n  data.schema = 'card_statement_v1';\n  if (!data.issuer && meta.issuer && meta.issuer !== 'desconhecido') data.issuer = meta.issuer;\n  if (!Array.isArray(data.warnings)) data.warnings = [];\n\n  const txs = Array.isArray(data.transactions) ? data.transactions : [];\n  txs.forEach(t => {\n    t.amount = parseNum(t.amount);\n    t.foreign_amount = parseNum(t.foreign_amount);\n    if (!t.category || CATS.indexOf(t.category) === -1) t.category = 'outros';\n    if (!(typeof t.date === 'string' && ISO.test(t.date))) t.date = null;\n  });\n  data.transactions = txs;\n\n  ['total_balance','minimum_payment','previous_balance','credits_payments','credit_limit','available_limit'].forEach(k => { data[k] = parseNum(data[k]); });\n\n  if (data.statement_period) {\n    if (data.statement_period.open_date && !ISO.test(data.statement_period.open_date)) data.statement_period.open_date = null;\n    if (data.statement_period.close_date && !ISO.test(data.statement_period.close_date)) data.statement_period.close_date = null;\n  }\n  if (data.due_date && !ISO.test(data.due_date)) data.due_date = null;\n\n  const sum = txs.reduce((a, t) => a + (t.amount || 0), 0);\n  if (data.total_balance !== null && data.total_balance !== undefined) {\n    const credits = data.credits_payments || 0;\n    const diff = Math.abs((sum + credits) - data.total_balance);\n    if (diff > 0.05) data.warnings.push('soma divergente do total em ' + diff.toFixed(2));\n  }\n\n  // nome deterministico: usa o issuer da Data Table, nao o texto livre do LLM\n  const issuerSlug = slug(meta.issuer || data.issuer);\n  const period = (data.statement_period && data.statement_period.close_date) ? data.statement_period.close_date : meta.emailDate;\n  const last4 = String(data.card_last4 || '0000').replace(/\\D/g, '').slice(-4).padStart(4, '0');\n  const uploadName = issuerSlug + '_' + period + '_' + last4 + '_' + String(meta.msgId || '').slice(-8) + '.json';\n\n  const driveQueryUrl = 'https://www.googleapis.com/drive/v3/files?q=' +\n    encodeURIComponent(\"name = '\" + uploadName + \"' and trashed = false\") +\n    '&fields=' + encodeURIComponent('files(id,name)');\n\n  txCount += txs.length;\n  results.push({ json: {\n    parsedOk, error, uploadName, driveQueryUrl,\n    emailDate: meta.emailDate, fileName: meta.fileName, msgId: meta.msgId, issuer: data.issuer || meta.issuer,\n    record: data,\n    _summary: {\n      file: meta.fileName, issuer: data.issuer || meta.issuer, parsedOk,\n      transactions: txs.length, total: data.total_balance, currency: data.currency,\n      due: data.due_date, warnings: data.warnings.length\n    }\n  }});\n}\n\nconsole.log('consolidate: ok=' + okCount + ' err=' + errCount + ' tx=' + txCount);\nreturn results;"
+          }
         }
       },
       {
@@ -158,9 +164,9 @@
           0
         ],
         "parameters": {
-          "mode": "runOnceForAllItems",
+          "jsCode": "// Mantem apenas faturas novas (sem .json correspondente no Drive).\n// Items chegam do Dedup na ordem [texto..., visao...] — reconstruimos a lista\n// consolidada na MESMA ordem, consultando cada consolidador so se executou.\nconst checks = $input.all();\nfunction safe(n) { try { return $(n).all().map(x => x.json); } catch (e) { return []; } }\nconst consolidados = safe('Consolidar JSON (texto)').concat(safe('Consolidar JSON'));\nconst results = [];\nlet skipped = 0;\nfor (let i = 0; i < checks.length; i++) {\n  const existe = checks[i].json && checks[i].json.files && checks[i].json.files.length > 0;\n  if (existe) { skipped++; continue; }\n  const orig = consolidados[i];\n  if (!orig) continue;\n  results.push({ json: orig });\n}\nif (results.length > 0 && results[0].json._summary) {\n  results[0].json._summary = Object.assign({}, results[0].json._summary, { duplicados: skipped });\n}\nconsole.log('dedup: novos=' + results.length + ' duplicados=' + skipped);\nreturn results;",
           "language": "javaScript",
-          "jsCode": "const checks = $input.all();\nconst consolidados = $('Consolidar JSON').all();\nconst results = [];\nlet skipped = 0;\nfor (let i = 0; i < checks.length; i++) {\n  const existe = checks[i].json && checks[i].json.files && checks[i].json.files.length > 0;\n  if (existe) { skipped++; continue; }\n  const orig = consolidados[i];\n  if (!orig) continue;\n  results.push({ json: orig.json });\n}\nif (results.length > 0) {\n  results[0].json._summary = Object.assign({}, results[0].json._summary, { duplicados: skipped });\n}\nconsole.log('dedup: novos=' + results.length + ' duplicados=' + skipped);\nreturn results;\n"
+          "mode": "runOnceForAllItems"
         }
       },
       {
@@ -349,18 +355,18 @@
           0
         ],
         "parameters": {
-          "resource": "message",
-          "operation": "getAll",
-          "returnAll": true,
-          "simple": false,
           "filters": {
-            "q": "(from:extrato@universo.pt OR from:fatura@xpi.com.br OR (from:banco@millenniumbcp.pt subject:\"Extrato de Cartão\")) has:attachment filename:pdf newer_than:30d",
-            "readStatus": "both",
-            "includeSpamTrash": true
+            "includeSpamTrash": true,
+            "q": "(from:info@universo.pt OR from:fatura@xpi.com.br OR (from:banco@millenniumbcp.pt subject:\"Extrato de Cartão\")) has:attachment filename:pdf newer_than:30d",
+            "readStatus": "both"
           },
+          "operation": "getAll",
           "options": {
             "downloadAttachments": true
-          }
+          },
+          "resource": "message",
+          "returnAll": true,
+          "simple": false
         },
         "credentials": {
           "gmailOAuth2": {
@@ -369,6 +375,247 @@
           }
         },
         "webhookId": "b5337d68-4c1e-483a-bda6-00fae306ecf7"
+      },
+      {
+        "id": "47755a0b-04de-4cfa-bee7-7f04e7c7bc7d",
+        "name": "Tentar Markdown (toolbox)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -400,
+          300
+        ],
+        "parameters": {
+          "bodyParameters": {
+            "parameters": [
+              {
+                "inputDataFieldName": "data",
+                "name": "file",
+                "parameterType": "formBinaryData"
+              },
+              {
+                "name": "password",
+                "parameterType": "formData",
+                "value": "={{ $json.password }}"
+              }
+            ]
+          },
+          "contentType": "multipart-form-data",
+          "method": "POST",
+          "options": {
+            "timeout": 60000
+          },
+          "sendBody": true,
+          "url": "http://toolbox.apps.svc.cluster.local:8000/api/v1/markdown"
+        },
+        "onError": "continueRegularOutput",
+        "alwaysOutputData": true
+      },
+      {
+        "id": "0eca8955-de95-414b-8281-2a3b9b29e194",
+        "name": "Decidir Caminho",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -160,
+          300
+        ],
+        "parameters": {
+          "jsCode": "// Markdown-first: toolbox /markdown extrai GFM deterministico do text layer.\n// Fallback para visao cobre: PDF encriptado (/markdown nao aceita password -> 400),\n// scan sem text layer (DOCUMENT_NEEDS_OCR) e qualquer outro erro do endpoint.\nconst items = $input.all();\nconst orig = $('Config e Filtrar PDFs').all();\nconst out = [];\nlet md = 0, vis = 0;\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const j = item.json || {};\n  const meta = j._meta || {};\n  const base = {\n    msgId: meta.msgId, emailDate: meta.emailDate, fileName: meta.fileName,\n    from: meta.from, subject: meta.subject, issuer: meta.issuer, password: meta.password\n  };\n  if (!base.msgId && orig[i] && orig[i].json) Object.assign(base, orig[i].json);\n  const mdText = typeof j.markdown === 'string' ? j.markdown : null;\n  if (mdText && mdText.length > 200) {\n    md++;\n    out.push({ json: Object.assign(base, { markdown: mdText, route: 'markdown' }) });\n  } else {\n    vis++;\n    const bin = (item.binary && item.binary.data) || (orig[i] && orig[i].binary && orig[i].binary.data);\n    out.push({ json: Object.assign(base, { route: 'vision', markdownError: (j.error && j.error.code) || 'sem markdown' }), binary: bin ? { data: bin } : {} });\n  }\n}\nconsole.log('markdown-first: markdown=' + md + ' visao=' + vis);\nreturn out;",
+          "language": "javaScript",
+          "mode": "runOnceForAllItems",
+          "parameters": {
+            "jsCode": "// Markdown-first: toolbox /markdown extrai GFM deterministico do text layer.\n// Etiqueta cada item com route ('markdown' | 'vision'); o Switch 'Rotear Caminho'\n// divide. Fallback visao cobre: PDF encriptado (/markdown nao aceita password -> 400),\n// scan sem text layer (DOCUMENT_NEEDS_OCR) e qualquer outro erro do endpoint.\nconst items = $input.all();\nconst orig = $('Config e Filtrar PDFs').all();\nconst out = [];\nlet md = 0, vis = 0;\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const j = item.json || {};\n  const meta = j._meta || {};\n  const base = {\n    msgId: meta.msgId, emailDate: meta.emailDate, fileName: meta.fileName,\n    from: meta.from, subject: meta.subject, issuer: meta.issuer, password: meta.password\n  };\n  if (!base.msgId && orig[i] && orig[i].json) Object.assign(base, orig[i].json);\n  const mdText = typeof j.markdown === 'string' ? j.markdown : null;\n  if (mdText && mdText.length > 200) {\n    md++;\n    out.push({ json: Object.assign(base, { markdown: mdText, route: 'markdown' }) });\n  } else {\n    vis++;\n    const bin = (item.binary && item.binary.data) || (orig[i] && orig[i].binary && orig[i].binary.data);\n    out.push({ json: Object.assign(base, { route: 'vision', markdownError: (j.error && j.error.code) || 'sem markdown' }), binary: bin ? { data: bin } : {} });\n  }\n}\nconsole.log('markdown-first: markdown=' + md + ' visao=' + vis);\nreturn out;"
+          }
+        }
+      },
+      {
+        "id": "bf4f0114-7310-424d-875e-5d7d88aae87b",
+        "name": "Corpo LLM (texto)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          80,
+          300
+        ],
+        "parameters": {
+          "jsCode": "// Corpo LLM (texto) v5 — trial full-local (2026-09-28, 2 semanas).\n// Tiers: universo/xp -> gemma4-e4b-nothink no Mac mini (sempre ligado);\n// millennium/bcp -> qwen3.8:27b no MacBook via LiteLLM (ollama-macbook);\n// desconhecidos -> glm-4.7 cloud (grupo de controle do trial).\n// Bench 2026-09-28: qwen3.8 local resolveu extrato cartao BCP 21/21 tx +\n// cadeia fechada ao centimo; gemma4 errou 2 campos de resumo (troca layout).\nconst items = $input.all();\nconst results = [];\n\nconst SCHEMA_TEXT = [\n  'Voce e um extrator preciso de faturas/extratos de cartao de credito de QUALQUER banco (Portugal ou Brasil).',\n  'Voce recebe o CONTEUDO TEXTUAL da fatura em markdown, extraido deterministicamente do PDF (text layer). Os numeros no markdown sao EXATOS — transcreva-os sem recalcular nem corrigir.',\n  'Devolva EXATAMENTE um objeto JSON valido, sem markdown, sem comentarios.',\n  '',\n  'Schema:',\n  '{',\n  '  \"schema\": \"card_statement_v1\",',\n  '  \"issuer\": string|null,',\n  '  \"currency\": string|null,',\n  '  \"card_holder\": string|null,',\n  '  \"card_last4\": string|null,',\n  '  \"statement_period\": { \"open_date\": \"YYYY-MM-DD\"|null, \"close_date\": \"YYYY-MM-DD\"|null },',\n  '  \"due_date\": \"YYYY-MM-DD\"|null,',\n  '  \"payment_reference\": string|null,',\n  '  \"total_balance\": number|null,',\n  '  \"minimum_payment\": number|null,',\n  '  \"previous_balance\": number|null,',\n  '  \"credits_payments\": number|null,',\n  '  \"credit_limit\": number|null,',\n  '  \"available_limit\": number|null,',\n  '  \"transactions\": [',\n  '    {',\n  '      \"date\": \"YYYY-MM-DD\"|null,',\n  '      \"description\": string,',\n  '      \"merchant\": string|null,',\n  '      \"category\": string,',\n  '      \"amount\": number,',\n  '      \"installment_info\": string|null,',\n  '      \"foreign_amount\": number|null,',\n  '      \"foreign_currency\": string|null',\n  '    }',\n  '  ],',\n  '  \"warnings\": [string]',\n  '}',\n  '',\n  'Regras:',\n  '- issuer: nome do banco/emissor como aparece no documento (ex: XP, Nubank, Millennium BCP, Revolut).',\n  '- currency: codigo ISO 4217 detectado no documento (BRL, EUR, USD...). Se ambiguo, null + warning.',\n  '- category e UMA de: mercado, restaurante, transporte, assinaturas, saude, educacao, casa, viagem, tecnologia, lazer, vestuario, servicos_bancarios, taxas, saque, pagamento, outros.',\n  '- Numeros com ponto decimal, sem simbolos. \"R$ 1.234,56\" -> 1234.56; \"$1,234.56\" -> 1234.56.',\n  '- Datas YYYY-MM-DD; ano implicito => ano do periodo.',\n  '- NAO invente valores; ilegivel => null + warnings. Campo ausente no documento => null.',\n  '- SINAL (CRITICO): uma COMPRA tem amount SEMPRE POSITIVO. Muitos documentos mostram debitos com sinal negativo (ex: \"-186,92\" ou \"186,92-\"): NESSES casos INVERTA o sinal na extracao -> amount 186.92. Apenas estornos/ajustes a favor do cliente ficam NEGATIVOS.',\n  '- PAGAMENTOS (CRITICO): linhas do tipo \"PAGAMENTO RECEBIDO\", \"DEBITO DIRETO\", \"PAGAMENTO DO CARTAO\" que liquidam a fatura NUNCA entram em transactions - NEM DUPLICADAS. Elas existem APENAS no campo credits_payments (numero POSITIVO). Confira: se uma linha de transactions tem valor igual ao total da fatura e descricao de pagamento, remova-a.',\n  '- card_last4: os 4 ULTIMOS digitos do numero do cartao exibido (ex: \"**** 1100\" -> \"1100\"). Sem cartao no documento => null. NUNCA use \"0000\" como placeholder.',\n  '- minimum_payment: se o documento nao exibir pagamento minimo e o total for liquidado por debito direto, use o valor de total_balance.',\n  '- EXTRATO COMBINADO (CRITICO): se o documento misturar conta a ordem e cartao, localize a SECCAO do cartao de credito e extraia APENAS dela. Salario, depositos, transferencias e saldo da conta a ordem ficam FORA do JSON.',\n  '- Cada linha de transacao = um objeto; \"Parcela X/Y\" em installment_info.',\n  '- Compras em moeda estrangeira: valor convertido em amount, original em foreign_amount/foreign_currency.',\n  '- Ignore rodapes de marketing, SAC, Ouvidoria, avisos legais.',\n  '- AUTO-CHECAGEM: soma(transactions) - credits_payments deve aproximar total_balance (+/- previous_balance). Se nao fechar, reveja antes de responder.',\n  '- Responda SOMENTE o JSON.',\n].join('\\n');\n\n// Roteamento v5 (trial): 3 tiers por emissor.\nconst LOCAL_ISSUERS = new Set(['universo', 'xp']);            // mini, sempre disponivel\nconst LOCAL_HEAVY_ISSUERS = new Set(['millennium', 'bcp']);   // MacBook qwen3.8:27b\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const mdText = item.json.markdown || '';\n  if (!mdText || mdText.length < 200) {\n    results.push({ json: Object.assign({}, item.json, { skipped: true, skipReason: 'sem markdown' }), pairedItem: { item: i } });\n    continue;\n  }\n  const issuerKey = String(item.json.issuer || '').toLowerCase();\n  let engine = 'cloud';\n  if (LOCAL_ISSUERS.has(issuerKey)) engine = 'local';\n  else if (LOCAL_HEAVY_ISSUERS.has(issuerKey)) engine = 'local-heavy';\n\n  let hint = SCHEMA_TEXT;\n  if (item.json.issuer && item.json.issuer !== 'desconhecido') {\n    hint += '\\n- Dica: este documento deve ser do emissor \"' + item.json.issuer + '\".';\n  }\n  const content = [{ type: 'text', text: hint + '\\n\\nDOCUMENTO (markdown):\\n' + mdText }];\n  const MODEL = engine === 'local-heavy' ? 'qwen3.8:27b'\n    : engine === 'local' ? 'gemma4-e4b-nothink'\n    : 'glm-4.7';\n  const reqBody = { model: MODEL, messages: [{ role: 'user', content }], temperature: 0, max_tokens: 12000 };\n  const buf = Buffer.from(JSON.stringify(reqBody), 'utf8');\n  const bin = await this.helpers.prepareBinaryData(buf, 'llm_body.json', 'application/json');\n  results.push({\n    json: Object.assign({}, item.json, { skipped: false, engine, engine_used: MODEL }),\n    binary: { reqbody: bin },\n    pairedItem: { item: i }\n  });\n}\nconsole.log('corpo-texto-v5: ' + results.filter(r => !r.json.skipped).map(r => r.json.issuer + '=' + r.json.engine).join(', '));\nreturn results;\n",
+          "language": "javaScript",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "6946513a-7f91-4212-b338-8f2c482f1eea",
+        "name": "Analisar Fatura (LLM texto)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          320,
+          300
+        ],
+        "parameters": {
+          "authentication": "genericCredentialType",
+          "contentType": "binaryData",
+          "genericAuthType": "httpBearerAuth",
+          "inputDataFieldName": "reqbody",
+          "method": "POST",
+          "options": {
+            "timeout": 300000
+          },
+          "sendBody": true,
+          "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions"
+        },
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "wXO4qmCuKINk321e",
+            "name": "LiteLLM KEY"
+          }
+        }
+      },
+      {
+        "id": "5b1ee519-a9c7-4474-bb8d-ff385dbe3abd",
+        "name": "Preparar Markdown (.md)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1280,
+          300
+        ],
+        "parameters": {
+          "jsCode": "// Gera o ficheiro .md (frontmatter + GFM) para o Drive quando a rota foi markdown.\nconst items = $input.all();\nconst results = [];\nlet n = 0;\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  if (!j.markdown || !j.markdownName) continue;\n  const rec = j.record || {};\n  const fm = '---\\n' +\n    'issuer: ' + (rec.issuer || j.issuer || 'desconhecido') + '\\n' +\n    'card_last4: ' + (rec.card_last4 || '') + '\\n' +\n    'period_close: ' + ((rec.statement_period && rec.statement_period.close_date) || j.emailDate || '') + '\\n' +\n    'total: ' + (rec.total_balance !== null && rec.total_balance !== undefined ? rec.total_balance : '') + '\\n' +\n    'currency: ' + (rec.currency || '') + '\\n' +\n    'source_email: ' + (j.msgId || '') + '\\n' +\n    'extraction: toolbox /api/v1/markdown\\n' +\n    '---\\n\\n';\n  const buf = Buffer.from(fm + j.markdown, 'utf-8');\n  const bin = await this.helpers.prepareBinaryData(buf, j.markdownName, 'text/markdown');\n  results.push({ json: { markdownName: j.markdownName, route: j.route || 'markdown' }, binary: { data: bin } });\n  n++;\n}\nconsole.log('md upload: ' + n + ' ficheiro(s)');\nreturn results;",
+          "language": "javaScript",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "4485eb92-388f-479a-94ef-e4cd232bb2fc",
+        "name": "Gravar Markdown no Drive",
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1520,
+          300
+        ],
+        "parameters": {
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "1RyO_xmviaYG2hN0WsUnVUhJKu5WdhtoD"
+          },
+          "name": "={{ $json.markdownName }}",
+          "operation": "upload",
+          "options": {}
+        },
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lOUQgEfyXT0EShei",
+            "name": "Google Drive Empresa"
+          }
+        }
+      },
+      {
+        "id": "aa4a95ae-3596-47aa-bd9f-8002c9b0fa6f",
+        "name": "Rotear Caminho",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          -40,
+          300
+        ],
+        "parameters": {
+          "options": {},
+          "rules": {
+            "values": [
+              {
+                "combinator": "and",
+                "conditions": {
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "c1",
+                      "leftValue": "={{ $json.route }}",
+                      "operator": {
+                        "name": "filter.operator.equals",
+                        "operation": "equals",
+                        "type": "string"
+                      },
+                      "rightValue": "markdown"
+                    }
+                  ],
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValidation": "",
+                    "leftValue": "",
+                    "typeValidation": "loose",
+                    "version": 2
+                  }
+                },
+                "outputKey": "markdown",
+                "renameOutput": true
+              },
+              {
+                "combinator": "and",
+                "conditions": {
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "c2",
+                      "leftValue": "={{ $json.route }}",
+                      "operator": {
+                        "name": "filter.operator.equals",
+                        "operation": "equals",
+                        "type": "string"
+                      },
+                      "rightValue": "vision"
+                    }
+                  ],
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "leftValidation": "",
+                    "typeValidation": "loose",
+                    "version": 2
+                  }
+                },
+                "outputKey": "vision",
+                "renameOutput": true
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "4fb99263-d7fe-4b20-879e-cf67e0ddd636",
+        "name": "Consolidar JSON (texto)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          560,
+          300
+        ],
+        "parameters": {
+          "jsCode": "// Consolidador do caminho markdown (texto). Pareia por POSICAO com os itens route=markdown\n// do 'Decidir Caminho' (ordem deterministica do subset), e meta por msgId do Config.\n// Emite record + markdown + markdownName para o Preparar Markdown.\nconst llmItems = $input.all();\nconst src = $('Config e Filtrar PDFs').all();\nconst corpoItems = $('Corpo LLM (texto)').all();\nconst decAll = $('Decidir Caminho').all();\nconst mdDec = decAll.filter(x => x.json && x.json.route === 'markdown');\nconst byMsg = {};\nfor (const s of src) if (s.json && s.json.msgId) byMsg[s.json.msgId] = s.json;\nconst results = [];\n\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  if (typeof s === 'number') return isNaN(s) ? null : s;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  const lastComma = str.lastIndexOf(',');\n  const lastDot = str.lastIndexOf('.');\n  if (lastComma > -1 && lastDot > -1) {\n    if (lastComma > lastDot) str = str.replace(/\\./g, '').replace(',', '.');\n    else str = str.replace(/,/g, '');\n  } else if (lastComma > -1) {\n    const decimals = str.length - lastComma - 1;\n    if (decimals === 3) str = str.replace(/,/g, '');\n    else str = str.replace(',', '.');\n  }\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\n\nconst CATS = ['mercado','restaurante','transporte','assinaturas','saude','educacao','casa','viagem','tecnologia','lazer','vestuario','servicos_bancarios','taxas','saque','pagamento','outros'];\nconst ISO = /^\\d{4}-\\d{2}-\\d{2}$/;\n\nfunction slug(s) {\n  return String(s || 'banco').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24) || 'banco';\n}\n\nlet okCount = 0, errCount = 0, txCount = 0;\n\nfor (let i = 0; i < llmItems.length; i++) {\n  const decJson = (mdDec[i] || {}).json || {};\n  const engine = (corpoItems[i] && corpoItems[i].json && corpoItems[i].json.engine) || 'cloud';\n  const meta = Object.assign({}, byMsg[decJson.msgId] || {}, decJson);\n  const body = llmItems[i].json || {};\n  const raw = (body.choices && body.choices[0] && body.choices[0].message ? body.choices[0].message.content : '') || '';\n\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const s = js.indexOf('{');\n    const e = js.lastIndexOf('}');\n    if (s >= 0 && e > s) js = js.slice(s, e + 1);\n    data = JSON.parse(js);\n    parsedOk = true; okCount++;\n  } catch (err) { error = err.message; errCount++; }\n\n  if (!data) data = { schema: 'card_statement_v1', transactions: [], warnings: ['parse falhou: ' + error] };\n  data.schema = 'card_statement_v1';\n  if (!data.issuer && meta.issuer && meta.issuer !== 'desconhecido') data.issuer = meta.issuer;\n  if (!Array.isArray(data.warnings)) data.warnings = [];\n\n  const txs = Array.isArray(data.transactions) ? data.transactions : [];\n  txs.forEach(t => {\n    t.amount = parseNum(t.amount);\n    t.foreign_amount = parseNum(t.foreign_amount);\n    if (!t.category || CATS.indexOf(t.category) === -1) t.category = 'outros';\n    if (!(typeof t.date === 'string' && ISO.test(t.date))) t.date = null;\n  });\n  data.transactions = txs;\n\n  ['total_balance','minimum_payment','previous_balance','credits_payments','credit_limit','available_limit'].forEach(k => { data[k] = parseNum(data[k]); });\n\n  // Normalizador de sinal (bench 2026-09-27): LLMs oscilam na convencao (debitos negativos vs positivos).\n  // Documento mostra debitos como negativos quando TODAS as transactions <= 0 e o total a pagar e positivo.\n  if (txs.length && data.total_balance !== null && data.total_balance > 0) {\n    const allNonPositive = txs.every(t => (t.amount || 0) <= 0);\n    if (allNonPositive) txs.forEach(t => { t.amount = t.amount === null ? null : -t.amount; });\n  }\n\n  if (data.statement_period) {\n    if (data.statement_period.open_date && !ISO.test(data.statement_period.open_date)) data.statement_period.open_date = null;\n    if (data.statement_period.close_date && !ISO.test(data.statement_period.close_date)) data.statement_period.close_date = null;\n  }\n  if (data.due_date && !ISO.test(data.due_date)) data.due_date = null;\n\n  const sum = txs.reduce((a, t) => a + (t.amount || 0), 0);\n  if (data.total_balance !== null && data.total_balance !== undefined) {\n    const credits = data.credits_payments || 0;\n    const diff = Math.abs((sum + credits) - data.total_balance);\n    if (diff > 0.05) data.warnings.push('soma divergente do total em ' + diff.toFixed(2));\n  }\n\n  const issuerSlug = slug(meta.issuer || data.issuer);\n  const period = (data.statement_period && data.statement_period.close_date) ? data.statement_period.close_date : meta.emailDate;\n  const last4 = String(data.card_last4 || '0000').replace(/\\D/g, '').slice(-4).padStart(4, '0');\n  const uploadName = issuerSlug + '_' + period + '_' + last4 + '_' + String(meta.msgId || '').slice(-8) + '.json';\n  const markdownName = uploadName.replace(/\\.json$/, '') + '.md';\n\n  const driveQueryUrl = 'https://www.googleapis.com/drive/v3/files?q=' +\n    encodeURIComponent(\"name = '\" + uploadName + \"' and trashed = false\") +\n    '&fields=' + encodeURIComponent('files(id,name)');\n\n  txCount += txs.length;\n  results.push({ json: {\n    parsedOk, error, uploadName, markdownName, driveQueryUrl,\n    emailDate: meta.emailDate, fileName: meta.fileName, msgId: meta.msgId, issuer: data.issuer || meta.issuer,\n    markdown: decJson.markdown || null, route: 'markdown', engine,\n    record: data,\n    _summary: {\n      file: meta.fileName, issuer: data.issuer || meta.issuer, parsedOk,\n      transactions: txs.length, total: data.total_balance, currency: data.currency,\n      due: data.due_date, warnings: data.warnings.length, engine\n    }\n  }});\n}\n\nconsole.log('consolidate-texto: ok=' + okCount + ' err=' + errCount + ' tx=' + txCount);\nreturn results;\n",
+          "language": "javaScript",
+          "mode": "runOnceForAllItems"
+        }
+      },
+      {
+        "id": "90d8d0ce-60b4-49eb-9213-4985dbfd4c8b",
+        "name": "Unir Consolidacoes",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          680,
+          150
+        ],
+        "parameters": {
+          "mode": "append"
+        }
       }
     ],
     "connections": {
@@ -416,17 +663,6 @@
           ]
         ]
       },
-      "Consolidar JSON": {
-        "main": [
-          [
-            {
-              "node": "Dedup Check Drive",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
       "Dedup Check Drive": {
         "main": [
           [
@@ -443,6 +679,11 @@
           [
             {
               "node": "Preparar Binario",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Preparar Markdown (.md)",
               "type": "main",
               "index": 0
             }
@@ -493,17 +734,6 @@
           ]
         ]
       },
-      "Config e Filtrar PDFs": {
-        "main": [
-          [
-            {
-              "node": "Converter Paginas (toolbox)",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
       "Agendamento (dia 3 e 5)": {
         "main": [
           [
@@ -525,17 +755,135 @@
             }
           ]
         ]
+      },
+      "Config e Filtrar PDFs": {
+        "main": [
+          [
+            {
+              "node": "Tentar Markdown (toolbox)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tentar Markdown (toolbox)": {
+        "main": [
+          [
+            {
+              "node": "Decidir Caminho",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Decidir Caminho": {
+        "main": [
+          [
+            {
+              "node": "Rotear Caminho",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Corpo LLM (texto)": {
+        "main": [
+          [
+            {
+              "node": "Analisar Fatura (LLM texto)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar Markdown (.md)": {
+        "main": [
+          [
+            {
+              "node": "Gravar Markdown no Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Rotear Caminho": {
+        "main": [
+          [
+            {
+              "node": "Corpo LLM (texto)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Converter Paginas (toolbox)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Analisar Fatura (LLM texto)": {
+        "main": [
+          [
+            {
+              "node": "Consolidar JSON (texto)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consolidar JSON (texto)": {
+        "main": [
+          [
+            {
+              "node": "Unir Consolidacoes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consolidar JSON": {
+        "main": [
+          [
+            {
+              "node": "Unir Consolidacoes",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Unir Consolidacoes": {
+        "main": [
+          [
+            {
+              "node": "Dedup Check Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "nodeGroups": [],
     "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
-    "name": "Extraction model -> 'glm-5.3-flash'",
-    "description": "Boss 2026-09-09: weekly quota exhausted on qwen; swap statement extraction to glm-5.3-flash.",
+    "name": "v5: millennium->qwen3.8 local (trial 2 semanas)",
+    "description": "Trial full-local: millennium/bcp extraidos pelo qwen3.8:27b no MacBook via LiteLLM (ollama-macbook). universo/xp mantem gemma4 no mini. Desconhecidos = cloud glm-4.7 (controle). Gates aritmeticos no Consolidar continuam a julgar tudo.",
     "autosaved": false,
-    "createdAt": "2026-09-09T10:00:57.507Z",
-    "updatedAt": "2026-09-09T10:00:57.507Z"
+    "createdAt": "2026-09-28T13:42:58.937Z",
+    "updatedAt": "2026-09-28T13:42:58.937Z"
   },
-  "activeVersionId": "d3b408c1-ddd8-4af1-bf83-923ab08dd12a",
+  "activeVersionId": "4a6421a8-4dee-41a8-8c3e-ebcd7b159579",
   "connections": {
     "Converter Paginas (toolbox)": {
       "main": [
@@ -581,17 +929,6 @@
         ]
       ]
     },
-    "Consolidar JSON": {
-      "main": [
-        [
-          {
-            "node": "Dedup Check Drive",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Dedup Check Drive": {
       "main": [
         [
@@ -608,6 +945,11 @@
         [
           {
             "node": "Preparar Binario",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Preparar Markdown (.md)",
             "type": "main",
             "index": 0
           }
@@ -658,17 +1000,6 @@
         ]
       ]
     },
-    "Config e Filtrar PDFs": {
-      "main": [
-        [
-          {
-            "node": "Converter Paginas (toolbox)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Agendamento (dia 3 e 5)": {
       "main": [
         [
@@ -685,6 +1016,124 @@
         [
           {
             "node": "Ler Fontes e Senhas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config e Filtrar PDFs": {
+      "main": [
+        [
+          {
+            "node": "Tentar Markdown (toolbox)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tentar Markdown (toolbox)": {
+      "main": [
+        [
+          {
+            "node": "Decidir Caminho",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decidir Caminho": {
+      "main": [
+        [
+          {
+            "node": "Rotear Caminho",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Corpo LLM (texto)": {
+      "main": [
+        [
+          {
+            "node": "Analisar Fatura (LLM texto)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Markdown (.md)": {
+      "main": [
+        [
+          {
+            "node": "Gravar Markdown no Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rotear Caminho": {
+      "main": [
+        [
+          {
+            "node": "Corpo LLM (texto)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Converter Paginas (toolbox)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisar Fatura (LLM texto)": {
+      "main": [
+        [
+          {
+            "node": "Consolidar JSON (texto)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidar JSON (texto)": {
+      "main": [
+        [
+          {
+            "node": "Unir Consolidacoes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidar JSON": {
+      "main": [
+        [
+          {
+            "node": "Unir Consolidacoes",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Unir Consolidacoes": {
+      "main": [
+        [
+          {
+            "node": "Dedup Check Drive",
             "type": "main",
             "index": 0
           }
@@ -762,7 +1211,10 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const src = $('Config e Filtrar PDFs').all();\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  const meta = src[i] ? src[i].json : {};\n  const pages = (j.pages || []).map(p => 'data:image/png;base64,' + ((p && p.image && p.image.data) || ''));\n  out.push({ json: Object.assign({}, meta, {\n    pages: pages,\n    pageCount: pages.length,\n    convertError: pages.length ? undefined : 'sem paginas'\n  }) });\n}\nreturn out;\n"
+        "jsCode": "const src = $('Config e Filtrar PDFs').all();\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  const meta = src[i] ? src[i].json : {};\n  const pages = (j.pages || []).map(p => 'data:image/png;base64,' + ((p && p.image && p.image.data) || ''));\n  out.push({ json: Object.assign({}, meta, {\n    pages: pages,\n    pageCount: pages.length,\n    convertError: pages.length ? undefined : 'sem paginas'\n  }) });\n}\nreturn out;\n",
+        "parameters": {
+          "jsCode": "// Pareia por POSICAO com os itens route=vision do 'Decidir Caminho' (o convert-all\n// processa apenas o subset de visao; o pareamento posicional antigo contra a lista\n// completa quebrava em runs mistos markdown+visao).\nconst src = $('Decidir Caminho').all().filter(x => x.json && x.json.route === 'vision');\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  const meta = src[i] ? src[i].json : {};\n  const pages = (j.pages || []).map(p => 'data:image/png;base64,' + ((p && p.image && p.image.data) || ''));\n  out.push({ json: Object.assign({}, meta, {\n    pages: pages,\n    pageCount: pages.length,\n    convertError: pages.length ? undefined : 'sem paginas'\n  }) });\n}\nreturn out;"
+        }
       }
     },
     {
@@ -820,7 +1272,10 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const llmItems = $input.all();\nconst src = $('Config e Filtrar PDFs').all();\nconst results = [];\n\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  if (typeof s === 'number') return isNaN(s) ? null : s;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  const lastComma = str.lastIndexOf(',');\n  const lastDot = str.lastIndexOf('.');\n  if (lastComma > -1 && lastDot > -1) {\n    if (lastComma > lastDot) str = str.replace(/\\./g, '').replace(',', '.');\n    else str = str.replace(/,/g, '');\n  } else if (lastComma > -1) {\n    const decimals = str.length - lastComma - 1;\n    if (decimals === 3) str = str.replace(/,/g, '');\n    else str = str.replace(',', '.');\n  }\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\n\nconst CATS = ['mercado','restaurante','transporte','assinaturas','saude','educacao','casa','viagem','tecnologia','lazer','vestuario','servicos_bancarios','taxas','saque','pagamento','outros'];\nconst ISO = /^\\d{4}-\\d{2}-\\d{2}$/;\n\nfunction slug(s) {\n  return String(s || 'banco').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24) || 'banco';\n}\n\nlet okCount = 0, errCount = 0, txCount = 0;\n\nfor (let i = 0; i < llmItems.length; i++) {\n  const meta = src[i] ? src[i].json : {};\n  const body = llmItems[i].json || {};\n  const raw = (body.choices && body.choices[0] && body.choices[0].message ? body.choices[0].message.content : '') || '';\n\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const s = js.indexOf('{');\n    const e = js.lastIndexOf('}');\n    if (s >= 0 && e > s) js = js.slice(s, e + 1);\n    data = JSON.parse(js);\n    parsedOk = true; okCount++;\n  } catch (err) { error = err.message; errCount++; }\n\n  if (!data) data = { schema: 'card_statement_v1', transactions: [], warnings: ['parse falhou: ' + error] };\n  data.schema = 'card_statement_v1';\n  if (!data.issuer && meta.issuer && meta.issuer !== 'desconhecido') data.issuer = meta.issuer;\n  if (!Array.isArray(data.warnings)) data.warnings = [];\n\n  const txs = Array.isArray(data.transactions) ? data.transactions : [];\n  txs.forEach(t => {\n    t.amount = parseNum(t.amount);\n    t.foreign_amount = parseNum(t.foreign_amount);\n    if (!t.category || CATS.indexOf(t.category) === -1) t.category = 'outros';\n    if (!(typeof t.date === 'string' && ISO.test(t.date))) t.date = null;\n  });\n  data.transactions = txs;\n\n  ['total_balance','minimum_payment','previous_balance','credits_payments','credit_limit','available_limit'].forEach(k => { data[k] = parseNum(data[k]); });\n\n  if (data.statement_period) {\n    if (data.statement_period.open_date && !ISO.test(data.statement_period.open_date)) data.statement_period.open_date = null;\n    if (data.statement_period.close_date && !ISO.test(data.statement_period.close_date)) data.statement_period.close_date = null;\n  }\n  if (data.due_date && !ISO.test(data.due_date)) data.due_date = null;\n\n  const sum = txs.reduce((a, t) => a + (t.amount || 0), 0);\n  if (data.total_balance !== null && data.total_balance !== undefined) {\n    const credits = data.credits_payments || 0;\n    const diff = Math.abs((sum + credits) - data.total_balance);\n    if (diff > 0.05) data.warnings.push('soma divergente do total em ' + diff.toFixed(2));\n  }\n\n  // nome deterministico: usa o issuer da Data Table, nao o texto livre do LLM\n  const issuerSlug = slug(meta.issuer || data.issuer);\n  const period = (data.statement_period && data.statement_period.close_date) ? data.statement_period.close_date : meta.emailDate;\n  const last4 = String(data.card_last4 || '0000').replace(/\\D/g, '').slice(-4).padStart(4, '0');\n  const uploadName = issuerSlug + '_' + period + '_' + last4 + '_' + String(meta.msgId || '').slice(-8) + '.json';\n\n  const driveQueryUrl = 'https://www.googleapis.com/drive/v3/files?q=' +\n    encodeURIComponent(\"name = '\" + uploadName + \"' and trashed = false\") +\n    '&fields=' + encodeURIComponent('files(id,name)');\n\n  txCount += txs.length;\n  results.push({ json: {\n    parsedOk, error, uploadName, driveQueryUrl,\n    emailDate: meta.emailDate, fileName: meta.fileName, msgId: meta.msgId, issuer: data.issuer || meta.issuer,\n    record: data,\n    _summary: {\n      file: meta.fileName, issuer: data.issuer || meta.issuer, parsedOk,\n      transactions: txs.length, total: data.total_balance, currency: data.currency,\n      due: data.due_date, warnings: data.warnings.length\n    }\n  }});\n}\n\nconsole.log('consolidate: ok=' + okCount + ' err=' + errCount + ' tx=' + txCount);\nreturn results;\n"
+        "jsCode": "const llmItems = $input.all();\nconst src = $('Config e Filtrar PDFs').all();\nconst results = [];\n\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  if (typeof s === 'number') return isNaN(s) ? null : s;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  const lastComma = str.lastIndexOf(',');\n  const lastDot = str.lastIndexOf('.');\n  if (lastComma > -1 && lastDot > -1) {\n    if (lastComma > lastDot) str = str.replace(/\\./g, '').replace(',', '.');\n    else str = str.replace(/,/g, '');\n  } else if (lastComma > -1) {\n    const decimals = str.length - lastComma - 1;\n    if (decimals === 3) str = str.replace(/,/g, '');\n    else str = str.replace(',', '.');\n  }\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\n\nconst CATS = ['mercado','restaurante','transporte','assinaturas','saude','educacao','casa','viagem','tecnologia','lazer','vestuario','servicos_bancarios','taxas','saque','pagamento','outros'];\nconst ISO = /^\\d{4}-\\d{2}-\\d{2}$/;\n\nfunction slug(s) {\n  return String(s || 'banco').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24) || 'banco';\n}\n\nlet okCount = 0, errCount = 0, txCount = 0;\n\nfor (let i = 0; i < llmItems.length; i++) {\n  const meta = src[i] ? src[i].json : {};\n  const body = llmItems[i].json || {};\n  const raw = (body.choices && body.choices[0] && body.choices[0].message ? body.choices[0].message.content : '') || '';\n\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const s = js.indexOf('{');\n    const e = js.lastIndexOf('}');\n    if (s >= 0 && e > s) js = js.slice(s, e + 1);\n    data = JSON.parse(js);\n    parsedOk = true; okCount++;\n  } catch (err) { error = err.message; errCount++; }\n\n  if (!data) data = { schema: 'card_statement_v1', transactions: [], warnings: ['parse falhou: ' + error] };\n  data.schema = 'card_statement_v1';\n  if (!data.issuer && meta.issuer && meta.issuer !== 'desconhecido') data.issuer = meta.issuer;\n  if (!Array.isArray(data.warnings)) data.warnings = [];\n\n  const txs = Array.isArray(data.transactions) ? data.transactions : [];\n  txs.forEach(t => {\n    t.amount = parseNum(t.amount);\n    t.foreign_amount = parseNum(t.foreign_amount);\n    if (!t.category || CATS.indexOf(t.category) === -1) t.category = 'outros';\n    if (!(typeof t.date === 'string' && ISO.test(t.date))) t.date = null;\n  });\n  data.transactions = txs;\n\n  ['total_balance','minimum_payment','previous_balance','credits_payments','credit_limit','available_limit'].forEach(k => { data[k] = parseNum(data[k]); });\n\n  if (data.statement_period) {\n    if (data.statement_period.open_date && !ISO.test(data.statement_period.open_date)) data.statement_period.open_date = null;\n    if (data.statement_period.close_date && !ISO.test(data.statement_period.close_date)) data.statement_period.close_date = null;\n  }\n  if (data.due_date && !ISO.test(data.due_date)) data.due_date = null;\n\n  const sum = txs.reduce((a, t) => a + (t.amount || 0), 0);\n  if (data.total_balance !== null && data.total_balance !== undefined) {\n    const credits = data.credits_payments || 0;\n    const diff = Math.abs((sum + credits) - data.total_balance);\n    if (diff > 0.05) data.warnings.push('soma divergente do total em ' + diff.toFixed(2));\n  }\n\n  // nome deterministico: usa o issuer da Data Table, nao o texto livre do LLM\n  const issuerSlug = slug(meta.issuer || data.issuer);\n  const period = (data.statement_period && data.statement_period.close_date) ? data.statement_period.close_date : meta.emailDate;\n  const last4 = String(data.card_last4 || '0000').replace(/\\D/g, '').slice(-4).padStart(4, '0');\n  const uploadName = issuerSlug + '_' + period + '_' + last4 + '_' + String(meta.msgId || '').slice(-8) + '.json';\n\n  const driveQueryUrl = 'https://www.googleapis.com/drive/v3/files?q=' +\n    encodeURIComponent(\"name = '\" + uploadName + \"' and trashed = false\") +\n    '&fields=' + encodeURIComponent('files(id,name)');\n\n  txCount += txs.length;\n  results.push({ json: {\n    parsedOk, error, uploadName, driveQueryUrl,\n    emailDate: meta.emailDate, fileName: meta.fileName, msgId: meta.msgId, issuer: data.issuer || meta.issuer,\n    record: data,\n    _summary: {\n      file: meta.fileName, issuer: data.issuer || meta.issuer, parsedOk,\n      transactions: txs.length, total: data.total_balance, currency: data.currency,\n      due: data.due_date, warnings: data.warnings.length\n    }\n  }});\n}\n\nconsole.log('consolidate: ok=' + okCount + ' err=' + errCount + ' tx=' + txCount);\nreturn results;\n",
+        "parameters": {
+          "jsCode": "const llmItems = $input.all();\nconst src = $('Config e Filtrar PDFs').all();\nconst results = [];\n\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  if (typeof s === 'number') return isNaN(s) ? null : s;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  const lastComma = str.lastIndexOf(',');\n  const lastDot = str.lastIndexOf('.');\n  if (lastComma > -1 && lastDot > -1) {\n    if (lastComma > lastDot) str = str.replace(/\\./g, '').replace(',', '.');\n    else str = str.replace(/,/g, '');\n  } else if (lastComma > -1) {\n    const decimals = str.length - lastComma - 1;\n    if (decimals === 3) str = str.replace(/,/g, '');\n    else str = str.replace(',', '.');\n  }\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\n\nconst CATS = ['mercado','restaurante','transporte','assinaturas','saude','educacao','casa','viagem','tecnologia','lazer','vestuario','servicos_bancarios','taxas','saque','pagamento','outros'];\nconst ISO = /^\\d{4}-\\d{2}-\\d{2}$/;\n\nfunction slug(s) {\n  return String(s || 'banco').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24) || 'banco';\n}\n\nlet okCount = 0, errCount = 0, txCount = 0;\n\nfor (let i = 0; i < llmItems.length; i++) {\n  const meta = src[i] ? src[i].json : {};\n  const body = llmItems[i].json || {};\n  const raw = (body.choices && body.choices[0] && body.choices[0].message ? body.choices[0].message.content : '') || '';\n\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const s = js.indexOf('{');\n    const e = js.lastIndexOf('}');\n    if (s >= 0 && e > s) js = js.slice(s, e + 1);\n    data = JSON.parse(js);\n    parsedOk = true; okCount++;\n  } catch (err) { error = err.message; errCount++; }\n\n  if (!data) data = { schema: 'card_statement_v1', transactions: [], warnings: ['parse falhou: ' + error] };\n  data.schema = 'card_statement_v1';\n  if (!data.issuer && meta.issuer && meta.issuer !== 'desconhecido') data.issuer = meta.issuer;\n  if (!Array.isArray(data.warnings)) data.warnings = [];\n\n  const txs = Array.isArray(data.transactions) ? data.transactions : [];\n  txs.forEach(t => {\n    t.amount = parseNum(t.amount);\n    t.foreign_amount = parseNum(t.foreign_amount);\n    if (!t.category || CATS.indexOf(t.category) === -1) t.category = 'outros';\n    if (!(typeof t.date === 'string' && ISO.test(t.date))) t.date = null;\n  });\n  data.transactions = txs;\n\n  ['total_balance','minimum_payment','previous_balance','credits_payments','credit_limit','available_limit'].forEach(k => { data[k] = parseNum(data[k]); });\n\n  if (data.statement_period) {\n    if (data.statement_period.open_date && !ISO.test(data.statement_period.open_date)) data.statement_period.open_date = null;\n    if (data.statement_period.close_date && !ISO.test(data.statement_period.close_date)) data.statement_period.close_date = null;\n  }\n  if (data.due_date && !ISO.test(data.due_date)) data.due_date = null;\n\n  const sum = txs.reduce((a, t) => a + (t.amount || 0), 0);\n  if (data.total_balance !== null && data.total_balance !== undefined) {\n    const credits = data.credits_payments || 0;\n    const diff = Math.abs((sum + credits) - data.total_balance);\n    if (diff > 0.05) data.warnings.push('soma divergente do total em ' + diff.toFixed(2));\n  }\n\n  // nome deterministico: usa o issuer da Data Table, nao o texto livre do LLM\n  const issuerSlug = slug(meta.issuer || data.issuer);\n  const period = (data.statement_period && data.statement_period.close_date) ? data.statement_period.close_date : meta.emailDate;\n  const last4 = String(data.card_last4 || '0000').replace(/\\D/g, '').slice(-4).padStart(4, '0');\n  const uploadName = issuerSlug + '_' + period + '_' + last4 + '_' + String(meta.msgId || '').slice(-8) + '.json';\n\n  const driveQueryUrl = 'https://www.googleapis.com/drive/v3/files?q=' +\n    encodeURIComponent(\"name = '\" + uploadName + \"' and trashed = false\") +\n    '&fields=' + encodeURIComponent('files(id,name)');\n\n  txCount += txs.length;\n  results.push({ json: {\n    parsedOk, error, uploadName, driveQueryUrl,\n    emailDate: meta.emailDate, fileName: meta.fileName, msgId: meta.msgId, issuer: data.issuer || meta.issuer,\n    record: data,\n    _summary: {\n      file: meta.fileName, issuer: data.issuer || meta.issuer, parsedOk,\n      transactions: txs.length, total: data.total_balance, currency: data.currency,\n      due: data.due_date, warnings: data.warnings.length\n    }\n  }});\n}\n\nconsole.log('consolidate: ok=' + okCount + ' err=' + errCount + ' tx=' + txCount);\nreturn results;"
+        }
       }
     },
     {
@@ -856,9 +1311,9 @@
         0
       ],
       "parameters": {
-        "mode": "runOnceForAllItems",
+        "jsCode": "// Mantem apenas faturas novas (sem .json correspondente no Drive).\n// Items chegam do Dedup na ordem [texto..., visao...] — reconstruimos a lista\n// consolidada na MESMA ordem, consultando cada consolidador so se executou.\nconst checks = $input.all();\nfunction safe(n) { try { return $(n).all().map(x => x.json); } catch (e) { return []; } }\nconst consolidados = safe('Consolidar JSON (texto)').concat(safe('Consolidar JSON'));\nconst results = [];\nlet skipped = 0;\nfor (let i = 0; i < checks.length; i++) {\n  const existe = checks[i].json && checks[i].json.files && checks[i].json.files.length > 0;\n  if (existe) { skipped++; continue; }\n  const orig = consolidados[i];\n  if (!orig) continue;\n  results.push({ json: orig });\n}\nif (results.length > 0 && results[0].json._summary) {\n  results[0].json._summary = Object.assign({}, results[0].json._summary, { duplicados: skipped });\n}\nconsole.log('dedup: novos=' + results.length + ' duplicados=' + skipped);\nreturn results;",
         "language": "javaScript",
-        "jsCode": "const checks = $input.all();\nconst consolidados = $('Consolidar JSON').all();\nconst results = [];\nlet skipped = 0;\nfor (let i = 0; i < checks.length; i++) {\n  const existe = checks[i].json && checks[i].json.files && checks[i].json.files.length > 0;\n  if (existe) { skipped++; continue; }\n  const orig = consolidados[i];\n  if (!orig) continue;\n  results.push({ json: orig.json });\n}\nif (results.length > 0) {\n  results[0].json._summary = Object.assign({}, results[0].json._summary, { duplicados: skipped });\n}\nconsole.log('dedup: novos=' + results.length + ' duplicados=' + skipped);\nreturn results;\n"
+        "mode": "runOnceForAllItems"
       }
     },
     {
@@ -1047,23 +1502,18 @@
         0
       ],
       "parameters": {
-        "resource": "message",
-        "operation": "getAll",
-        "returnAll": true,
-        "simple": false,
         "filters": {
-          "q": "(from:extrato@universo.pt OR from:fatura@xpi.com.br OR (from:banco@millenniumbcp.pt subject:\"Extrato de Cartão\")) has:attachment filename:pdf newer_than:30d",
-          "readStatus": "both",
-          "includeSpamTrash": true
+          "includeSpamTrash": true,
+          "q": "(from:info@universo.pt OR from:fatura@xpi.com.br OR (from:banco@millenniumbcp.pt subject:\"Extrato de Cartão\")) has:attachment filename:pdf newer_than:30d",
+          "readStatus": "both"
         },
+        "operation": "getAll",
         "options": {
           "downloadAttachments": true
         },
-        "parameters": {
-          "filters": {
-            "q": "(from:extrato@universo.pt OR from:fatura@xpi.com.br OR (from:banco@millenniumbcp.pt subject:\"Extrato de Cartão\")) has:attachment filename:pdf newer_than:30d"
-          }
-        }
+        "resource": "message",
+        "returnAll": true,
+        "simple": false
       },
       "credentials": {
         "gmailOAuth2": {
@@ -1072,6 +1522,247 @@
         }
       },
       "webhookId": "b5337d68-4c1e-483a-bda6-00fae306ecf7"
+    },
+    {
+      "id": "47755a0b-04de-4cfa-bee7-7f04e7c7bc7d",
+      "name": "Tentar Markdown (toolbox)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        300
+      ],
+      "parameters": {
+        "bodyParameters": {
+          "parameters": [
+            {
+              "inputDataFieldName": "data",
+              "name": "file",
+              "parameterType": "formBinaryData"
+            },
+            {
+              "name": "password",
+              "parameterType": "formData",
+              "value": "={{ $json.password }}"
+            }
+          ]
+        },
+        "contentType": "multipart-form-data",
+        "method": "POST",
+        "options": {
+          "timeout": 60000
+        },
+        "sendBody": true,
+        "url": "http://toolbox.apps.svc.cluster.local:8000/api/v1/markdown"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "0eca8955-de95-414b-8281-2a3b9b29e194",
+      "name": "Decidir Caminho",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Markdown-first: toolbox /markdown extrai GFM deterministico do text layer.\n// Fallback para visao cobre: PDF encriptado (/markdown nao aceita password -> 400),\n// scan sem text layer (DOCUMENT_NEEDS_OCR) e qualquer outro erro do endpoint.\nconst items = $input.all();\nconst orig = $('Config e Filtrar PDFs').all();\nconst out = [];\nlet md = 0, vis = 0;\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const j = item.json || {};\n  const meta = j._meta || {};\n  const base = {\n    msgId: meta.msgId, emailDate: meta.emailDate, fileName: meta.fileName,\n    from: meta.from, subject: meta.subject, issuer: meta.issuer, password: meta.password\n  };\n  if (!base.msgId && orig[i] && orig[i].json) Object.assign(base, orig[i].json);\n  const mdText = typeof j.markdown === 'string' ? j.markdown : null;\n  if (mdText && mdText.length > 200) {\n    md++;\n    out.push({ json: Object.assign(base, { markdown: mdText, route: 'markdown' }) });\n  } else {\n    vis++;\n    const bin = (item.binary && item.binary.data) || (orig[i] && orig[i].binary && orig[i].binary.data);\n    out.push({ json: Object.assign(base, { route: 'vision', markdownError: (j.error && j.error.code) || 'sem markdown' }), binary: bin ? { data: bin } : {} });\n  }\n}\nconsole.log('markdown-first: markdown=' + md + ' visao=' + vis);\nreturn out;",
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "parameters": {
+          "jsCode": "// Markdown-first: toolbox /markdown extrai GFM deterministico do text layer.\n// Etiqueta cada item com route ('markdown' | 'vision'); o Switch 'Rotear Caminho'\n// divide. Fallback visao cobre: PDF encriptado (/markdown nao aceita password -> 400),\n// scan sem text layer (DOCUMENT_NEEDS_OCR) e qualquer outro erro do endpoint.\nconst items = $input.all();\nconst orig = $('Config e Filtrar PDFs').all();\nconst out = [];\nlet md = 0, vis = 0;\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const j = item.json || {};\n  const meta = j._meta || {};\n  const base = {\n    msgId: meta.msgId, emailDate: meta.emailDate, fileName: meta.fileName,\n    from: meta.from, subject: meta.subject, issuer: meta.issuer, password: meta.password\n  };\n  if (!base.msgId && orig[i] && orig[i].json) Object.assign(base, orig[i].json);\n  const mdText = typeof j.markdown === 'string' ? j.markdown : null;\n  if (mdText && mdText.length > 200) {\n    md++;\n    out.push({ json: Object.assign(base, { markdown: mdText, route: 'markdown' }) });\n  } else {\n    vis++;\n    const bin = (item.binary && item.binary.data) || (orig[i] && orig[i].binary && orig[i].binary.data);\n    out.push({ json: Object.assign(base, { route: 'vision', markdownError: (j.error && j.error.code) || 'sem markdown' }), binary: bin ? { data: bin } : {} });\n  }\n}\nconsole.log('markdown-first: markdown=' + md + ' visao=' + vis);\nreturn out;"
+        }
+      }
+    },
+    {
+      "id": "bf4f0114-7310-424d-875e-5d7d88aae87b",
+      "name": "Corpo LLM (texto)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Corpo LLM (texto) v5 — trial full-local (2026-09-28, 2 semanas).\n// Tiers: universo/xp -> gemma4-e4b-nothink no Mac mini (sempre ligado);\n// millennium/bcp -> qwen3.8:27b no MacBook via LiteLLM (ollama-macbook);\n// desconhecidos -> glm-4.7 cloud (grupo de controle do trial).\n// Bench 2026-09-28: qwen3.8 local resolveu extrato cartao BCP 21/21 tx +\n// cadeia fechada ao centimo; gemma4 errou 2 campos de resumo (troca layout).\nconst items = $input.all();\nconst results = [];\n\nconst SCHEMA_TEXT = [\n  'Voce e um extrator preciso de faturas/extratos de cartao de credito de QUALQUER banco (Portugal ou Brasil).',\n  'Voce recebe o CONTEUDO TEXTUAL da fatura em markdown, extraido deterministicamente do PDF (text layer). Os numeros no markdown sao EXATOS — transcreva-os sem recalcular nem corrigir.',\n  'Devolva EXATAMENTE um objeto JSON valido, sem markdown, sem comentarios.',\n  '',\n  'Schema:',\n  '{',\n  '  \"schema\": \"card_statement_v1\",',\n  '  \"issuer\": string|null,',\n  '  \"currency\": string|null,',\n  '  \"card_holder\": string|null,',\n  '  \"card_last4\": string|null,',\n  '  \"statement_period\": { \"open_date\": \"YYYY-MM-DD\"|null, \"close_date\": \"YYYY-MM-DD\"|null },',\n  '  \"due_date\": \"YYYY-MM-DD\"|null,',\n  '  \"payment_reference\": string|null,',\n  '  \"total_balance\": number|null,',\n  '  \"minimum_payment\": number|null,',\n  '  \"previous_balance\": number|null,',\n  '  \"credits_payments\": number|null,',\n  '  \"credit_limit\": number|null,',\n  '  \"available_limit\": number|null,',\n  '  \"transactions\": [',\n  '    {',\n  '      \"date\": \"YYYY-MM-DD\"|null,',\n  '      \"description\": string,',\n  '      \"merchant\": string|null,',\n  '      \"category\": string,',\n  '      \"amount\": number,',\n  '      \"installment_info\": string|null,',\n  '      \"foreign_amount\": number|null,',\n  '      \"foreign_currency\": string|null',\n  '    }',\n  '  ],',\n  '  \"warnings\": [string]',\n  '}',\n  '',\n  'Regras:',\n  '- issuer: nome do banco/emissor como aparece no documento (ex: XP, Nubank, Millennium BCP, Revolut).',\n  '- currency: codigo ISO 4217 detectado no documento (BRL, EUR, USD...). Se ambiguo, null + warning.',\n  '- category e UMA de: mercado, restaurante, transporte, assinaturas, saude, educacao, casa, viagem, tecnologia, lazer, vestuario, servicos_bancarios, taxas, saque, pagamento, outros.',\n  '- Numeros com ponto decimal, sem simbolos. \"R$ 1.234,56\" -> 1234.56; \"$1,234.56\" -> 1234.56.',\n  '- Datas YYYY-MM-DD; ano implicito => ano do periodo.',\n  '- NAO invente valores; ilegivel => null + warnings. Campo ausente no documento => null.',\n  '- SINAL (CRITICO): uma COMPRA tem amount SEMPRE POSITIVO. Muitos documentos mostram debitos com sinal negativo (ex: \"-186,92\" ou \"186,92-\"): NESSES casos INVERTA o sinal na extracao -> amount 186.92. Apenas estornos/ajustes a favor do cliente ficam NEGATIVOS.',\n  '- PAGAMENTOS (CRITICO): linhas do tipo \"PAGAMENTO RECEBIDO\", \"DEBITO DIRETO\", \"PAGAMENTO DO CARTAO\" que liquidam a fatura NUNCA entram em transactions - NEM DUPLICADAS. Elas existem APENAS no campo credits_payments (numero POSITIVO). Confira: se uma linha de transactions tem valor igual ao total da fatura e descricao de pagamento, remova-a.',\n  '- card_last4: os 4 ULTIMOS digitos do numero do cartao exibido (ex: \"**** 1100\" -> \"1100\"). Sem cartao no documento => null. NUNCA use \"0000\" como placeholder.',\n  '- minimum_payment: se o documento nao exibir pagamento minimo e o total for liquidado por debito direto, use o valor de total_balance.',\n  '- EXTRATO COMBINADO (CRITICO): se o documento misturar conta a ordem e cartao, localize a SECCAO do cartao de credito e extraia APENAS dela. Salario, depositos, transferencias e saldo da conta a ordem ficam FORA do JSON.',\n  '- Cada linha de transacao = um objeto; \"Parcela X/Y\" em installment_info.',\n  '- Compras em moeda estrangeira: valor convertido em amount, original em foreign_amount/foreign_currency.',\n  '- Ignore rodapes de marketing, SAC, Ouvidoria, avisos legais.',\n  '- AUTO-CHECAGEM: soma(transactions) - credits_payments deve aproximar total_balance (+/- previous_balance). Se nao fechar, reveja antes de responder.',\n  '- Responda SOMENTE o JSON.',\n].join('\\n');\n\n// Roteamento v5 (trial): 3 tiers por emissor.\nconst LOCAL_ISSUERS = new Set(['universo', 'xp']);            // mini, sempre disponivel\nconst LOCAL_HEAVY_ISSUERS = new Set(['millennium', 'bcp']);   // MacBook qwen3.8:27b\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const mdText = item.json.markdown || '';\n  if (!mdText || mdText.length < 200) {\n    results.push({ json: Object.assign({}, item.json, { skipped: true, skipReason: 'sem markdown' }), pairedItem: { item: i } });\n    continue;\n  }\n  const issuerKey = String(item.json.issuer || '').toLowerCase();\n  let engine = 'cloud';\n  if (LOCAL_ISSUERS.has(issuerKey)) engine = 'local';\n  else if (LOCAL_HEAVY_ISSUERS.has(issuerKey)) engine = 'local-heavy';\n\n  let hint = SCHEMA_TEXT;\n  if (item.json.issuer && item.json.issuer !== 'desconhecido') {\n    hint += '\\n- Dica: este documento deve ser do emissor \"' + item.json.issuer + '\".';\n  }\n  const content = [{ type: 'text', text: hint + '\\n\\nDOCUMENTO (markdown):\\n' + mdText }];\n  const MODEL = engine === 'local-heavy' ? 'qwen3.8:27b'\n    : engine === 'local' ? 'gemma4-e4b-nothink'\n    : 'glm-4.7';\n  const reqBody = { model: MODEL, messages: [{ role: 'user', content }], temperature: 0, max_tokens: 12000 };\n  const buf = Buffer.from(JSON.stringify(reqBody), 'utf8');\n  const bin = await this.helpers.prepareBinaryData(buf, 'llm_body.json', 'application/json');\n  results.push({\n    json: Object.assign({}, item.json, { skipped: false, engine, engine_used: MODEL }),\n    binary: { reqbody: bin },\n    pairedItem: { item: i }\n  });\n}\nconsole.log('corpo-texto-v5: ' + results.filter(r => !r.json.skipped).map(r => r.json.issuer + '=' + r.json.engine).join(', '));\nreturn results;\n",
+        "language": "javaScript",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "6946513a-7f91-4212-b338-8f2c482f1eea",
+      "name": "Analisar Fatura (LLM texto)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        300
+      ],
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "contentType": "binaryData",
+        "genericAuthType": "httpBearerAuth",
+        "inputDataFieldName": "reqbody",
+        "method": "POST",
+        "options": {
+          "timeout": 300000
+        },
+        "sendBody": true,
+        "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions"
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "wXO4qmCuKINk321e",
+          "name": "LiteLLM KEY"
+        }
+      }
+    },
+    {
+      "id": "5b1ee519-a9c7-4474-bb8d-ff385dbe3abd",
+      "name": "Preparar Markdown (.md)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Gera o ficheiro .md (frontmatter + GFM) para o Drive quando a rota foi markdown.\nconst items = $input.all();\nconst results = [];\nlet n = 0;\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  if (!j.markdown || !j.markdownName) continue;\n  const rec = j.record || {};\n  const fm = '---\\n' +\n    'issuer: ' + (rec.issuer || j.issuer || 'desconhecido') + '\\n' +\n    'card_last4: ' + (rec.card_last4 || '') + '\\n' +\n    'period_close: ' + ((rec.statement_period && rec.statement_period.close_date) || j.emailDate || '') + '\\n' +\n    'total: ' + (rec.total_balance !== null && rec.total_balance !== undefined ? rec.total_balance : '') + '\\n' +\n    'currency: ' + (rec.currency || '') + '\\n' +\n    'source_email: ' + (j.msgId || '') + '\\n' +\n    'extraction: toolbox /api/v1/markdown\\n' +\n    '---\\n\\n';\n  const buf = Buffer.from(fm + j.markdown, 'utf-8');\n  const bin = await this.helpers.prepareBinaryData(buf, j.markdownName, 'text/markdown');\n  results.push({ json: { markdownName: j.markdownName, route: j.route || 'markdown' }, binary: { data: bin } });\n  n++;\n}\nconsole.log('md upload: ' + n + ' ficheiro(s)');\nreturn results;",
+        "language": "javaScript",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "4485eb92-388f-479a-94ef-e4cd232bb2fc",
+      "name": "Gravar Markdown no Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1520,
+        300
+      ],
+      "parameters": {
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1RyO_xmviaYG2hN0WsUnVUhJKu5WdhtoD"
+        },
+        "name": "={{ $json.markdownName }}",
+        "operation": "upload",
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "id": "aa4a95ae-3596-47aa-bd9f-8002c9b0fa6f",
+      "name": "Rotear Caminho",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -40,
+        300
+      ],
+      "parameters": {
+        "options": {},
+        "rules": {
+          "values": [
+            {
+              "combinator": "and",
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "c1",
+                    "leftValue": "={{ $json.route }}",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "markdown"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValidation": "",
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                }
+              },
+              "outputKey": "markdown",
+              "renameOutput": true
+            },
+            {
+              "combinator": "and",
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "c2",
+                    "leftValue": "={{ $json.route }}",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "vision"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "leftValidation": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                }
+              },
+              "outputKey": "vision",
+              "renameOutput": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4fb99263-d7fe-4b20-879e-cf67e0ddd636",
+      "name": "Consolidar JSON (texto)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Consolidador do caminho markdown (texto). Pareia por POSICAO com os itens route=markdown\n// do 'Decidir Caminho' (ordem deterministica do subset), e meta por msgId do Config.\n// Emite record + markdown + markdownName para o Preparar Markdown.\nconst llmItems = $input.all();\nconst src = $('Config e Filtrar PDFs').all();\nconst corpoItems = $('Corpo LLM (texto)').all();\nconst decAll = $('Decidir Caminho').all();\nconst mdDec = decAll.filter(x => x.json && x.json.route === 'markdown');\nconst byMsg = {};\nfor (const s of src) if (s.json && s.json.msgId) byMsg[s.json.msgId] = s.json;\nconst results = [];\n\nfunction parseNum(s) {\n  if (s === null || s === undefined) return null;\n  if (typeof s === 'number') return isNaN(s) ? null : s;\n  let str = String(s).trim().replace(/[^0-9.,-]/g, '');\n  if (!str) return null;\n  const lastComma = str.lastIndexOf(',');\n  const lastDot = str.lastIndexOf('.');\n  if (lastComma > -1 && lastDot > -1) {\n    if (lastComma > lastDot) str = str.replace(/\\./g, '').replace(',', '.');\n    else str = str.replace(/,/g, '');\n  } else if (lastComma > -1) {\n    const decimals = str.length - lastComma - 1;\n    if (decimals === 3) str = str.replace(/,/g, '');\n    else str = str.replace(',', '.');\n  }\n  const n = parseFloat(str);\n  return isNaN(n) ? null : n;\n}\n\nconst CATS = ['mercado','restaurante','transporte','assinaturas','saude','educacao','casa','viagem','tecnologia','lazer','vestuario','servicos_bancarios','taxas','saque','pagamento','outros'];\nconst ISO = /^\\d{4}-\\d{2}-\\d{2}$/;\n\nfunction slug(s) {\n  return String(s || 'banco').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24) || 'banco';\n}\n\nlet okCount = 0, errCount = 0, txCount = 0;\n\nfor (let i = 0; i < llmItems.length; i++) {\n  const decJson = (mdDec[i] || {}).json || {};\n  const engine = (corpoItems[i] && corpoItems[i].json && corpoItems[i].json.engine) || 'cloud';\n  const meta = Object.assign({}, byMsg[decJson.msgId] || {}, decJson);\n  const body = llmItems[i].json || {};\n  const raw = (body.choices && body.choices[0] && body.choices[0].message ? body.choices[0].message.content : '') || '';\n\n  let data = null, parsedOk = false, error = null;\n  try {\n    let js = raw;\n    const cb = raw.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n    if (cb) js = cb[1];\n    const s = js.indexOf('{');\n    const e = js.lastIndexOf('}');\n    if (s >= 0 && e > s) js = js.slice(s, e + 1);\n    data = JSON.parse(js);\n    parsedOk = true; okCount++;\n  } catch (err) { error = err.message; errCount++; }\n\n  if (!data) data = { schema: 'card_statement_v1', transactions: [], warnings: ['parse falhou: ' + error] };\n  data.schema = 'card_statement_v1';\n  if (!data.issuer && meta.issuer && meta.issuer !== 'desconhecido') data.issuer = meta.issuer;\n  if (!Array.isArray(data.warnings)) data.warnings = [];\n\n  const txs = Array.isArray(data.transactions) ? data.transactions : [];\n  txs.forEach(t => {\n    t.amount = parseNum(t.amount);\n    t.foreign_amount = parseNum(t.foreign_amount);\n    if (!t.category || CATS.indexOf(t.category) === -1) t.category = 'outros';\n    if (!(typeof t.date === 'string' && ISO.test(t.date))) t.date = null;\n  });\n  data.transactions = txs;\n\n  ['total_balance','minimum_payment','previous_balance','credits_payments','credit_limit','available_limit'].forEach(k => { data[k] = parseNum(data[k]); });\n\n  // Normalizador de sinal (bench 2026-09-27): LLMs oscilam na convencao (debitos negativos vs positivos).\n  // Documento mostra debitos como negativos quando TODAS as transactions <= 0 e o total a pagar e positivo.\n  if (txs.length && data.total_balance !== null && data.total_balance > 0) {\n    const allNonPositive = txs.every(t => (t.amount || 0) <= 0);\n    if (allNonPositive) txs.forEach(t => { t.amount = t.amount === null ? null : -t.amount; });\n  }\n\n  if (data.statement_period) {\n    if (data.statement_period.open_date && !ISO.test(data.statement_period.open_date)) data.statement_period.open_date = null;\n    if (data.statement_period.close_date && !ISO.test(data.statement_period.close_date)) data.statement_period.close_date = null;\n  }\n  if (data.due_date && !ISO.test(data.due_date)) data.due_date = null;\n\n  const sum = txs.reduce((a, t) => a + (t.amount || 0), 0);\n  if (data.total_balance !== null && data.total_balance !== undefined) {\n    const credits = data.credits_payments || 0;\n    const diff = Math.abs((sum + credits) - data.total_balance);\n    if (diff > 0.05) data.warnings.push('soma divergente do total em ' + diff.toFixed(2));\n  }\n\n  const issuerSlug = slug(meta.issuer || data.issuer);\n  const period = (data.statement_period && data.statement_period.close_date) ? data.statement_period.close_date : meta.emailDate;\n  const last4 = String(data.card_last4 || '0000').replace(/\\D/g, '').slice(-4).padStart(4, '0');\n  const uploadName = issuerSlug + '_' + period + '_' + last4 + '_' + String(meta.msgId || '').slice(-8) + '.json';\n  const markdownName = uploadName.replace(/\\.json$/, '') + '.md';\n\n  const driveQueryUrl = 'https://www.googleapis.com/drive/v3/files?q=' +\n    encodeURIComponent(\"name = '\" + uploadName + \"' and trashed = false\") +\n    '&fields=' + encodeURIComponent('files(id,name)');\n\n  txCount += txs.length;\n  results.push({ json: {\n    parsedOk, error, uploadName, markdownName, driveQueryUrl,\n    emailDate: meta.emailDate, fileName: meta.fileName, msgId: meta.msgId, issuer: data.issuer || meta.issuer,\n    markdown: decJson.markdown || null, route: 'markdown', engine,\n    record: data,\n    _summary: {\n      file: meta.fileName, issuer: data.issuer || meta.issuer, parsedOk,\n      transactions: txs.length, total: data.total_balance, currency: data.currency,\n      due: data.due_date, warnings: data.warnings.length, engine\n    }\n  }});\n}\n\nconsole.log('consolidate-texto: ok=' + okCount + ' err=' + errCount + ' tx=' + txCount);\nreturn results;\n",
+        "language": "javaScript",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "90d8d0ce-60b4-49eb-9213-4985dbfd4c8b",
+      "name": "Unir Consolidacoes",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        680,
+        150
+      ],
+      "parameters": {
+        "mode": "append"
+      }
     }
   ],
   "pinData": null,
@@ -1107,6 +1798,6 @@
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-09-24T09:42:27.199Z",
-  "versionId": "ae9f5101-29e8-43e3-b6a2-72f4332665f8"
+  "updatedAt": "2026-09-28T13:42:58.933Z",
+  "versionId": "4a6421a8-4dee-41a8-8c3e-ebcd7b159579"
 }
