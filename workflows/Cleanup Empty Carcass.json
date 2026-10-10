@@ -1,0 +1,143 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Manual": {
+      "main": [
+        [
+          {
+            "node": "Listar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listar": {
+      "main": [
+        [
+          {
+            "node": "Filtrar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar": {
+      "main": [
+        [
+          {
+            "node": "Lixo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-10-03T15:41:53.358Z",
+  "id": "LZHyLSlJhXHHYhIU",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Cleanup Empty Carcass",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "e26c092b-0828-4ca3-879e-557573d7cbfb",
+      "name": "Manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "0c8ca183-5d4c-4cb8-a09e-43a64a8cdc1a",
+      "name": "Listar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://www.googleapis.com/drive/v3/files?q=\" + encodeURIComponent(\"name contains 'Millennium_BCP_2026-09-02_0000_56c01721' and '1RyO_xmviaYG2hN0WsUnVUhJKu5WdhtoD' in parents and trashed = false\") + \"&fields=\" + encodeURIComponent(\"files(id,name)\") + \"&pageSize=20\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "id": "f7d4abd9-098a-426d-9a58-11ddd0d3b17d",
+      "name": "Filtrar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const out = [];\nconst files = ($input.first().json.files) || [];\nfor (const f of files) {\n  const n = f.name || '';\n  if (n.startsWith('Millennium_BCP_2026-09-02_0000_56c01721')) {\n    out.push({ json: { id: f.id, name: n } });\n  }\n}\nreturn out;"
+      }
+    },
+    {
+      "id": "54dd4d99-9880-4846-a8a8-2fdaba7a1928",
+      "name": "Lixo",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "operation": "deleteFile",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        }
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "LZHyLSlJhXHHYhIU",
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-10-03T15:41:53.358Z",
+      "updatedAt": "2026-10-03T15:41:53.358Z"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-10-03T15:41:53.358Z",
+  "versionId": "b376d492-bb33-4b43-a883-0a5714716599"
+}
