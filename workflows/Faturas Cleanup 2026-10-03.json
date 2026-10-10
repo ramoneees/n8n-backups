@@ -1,0 +1,156 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Build Cleanup Payloads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cleanup Payloads": {
+      "main": [
+        [
+          {
+            "node": "Drive Patch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Patch": {
+      "main": [
+        [
+          {
+            "node": "Verify Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-10-03T13:37:27.943Z",
+  "id": "5TZP0vVFlA0YK6be",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Faturas Cleanup 2026-10-03",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "4db7f259-a57d-4955-a7f2-2f1b7f0d5120",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "89254564-6caa-47f2-ae59-73e77f6e50a7",
+      "name": "Build Cleanup Payloads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const renames = [\n  { fileId: '1VwmZfNRVcc-dTTUYT_hee1lkV9Qrhhow', fileName: 'Millennium_BCP_2026-09-30_511128_ca477a8a.md' },\n  { fileId: '1HFSAcHxi_0x3mrbzGhTiMAYb2gfqfH5x', fileName: 'XP_2026-09-29_4147_9bb5e4dc.md' },\n  { fileId: '1rvwqly6Q0yOpoXrDmJEfYcdQXMYMk8D_', fileName: 'Universo_2026-09-15_1100_c6ceed53.md' }\n];\nconst trash = [\n  '1a9vrojEFxSM8xd1OdpWlxGIuwQnv4zAn',\n  '1Xc24xfrJBpjIKDHqxOu4jNclAh068h-2',\n  '1FwontnEkPXouQtFocCw7FZzx56ifrh1j',\n  '1HtfrscnzQRQ1NQTQsJC2HSgmncCGz0xJ',\n  '1X6m8dm9xS2co3zmDBmMV3W8NoUDVgaJ0',\n  '1h0r3avWvwSBUgY88Di0_hnZBRMZKF5vM',\n  '1RfQuZoFEgR_zJ3QFqk9xhF4cZgU0j5oS',\n  '1S0tfuvor-r9P3QS6IlyGdv9-AxjhSlOX',\n  '10CdZAYP4SUKwOVSQ5fwCuwx4x0iowLrP'\n];\nconst out = [];\nfor (let i = 0; i < renames.length; i++) {\n  out.push({ json: { op: 'rename', fileId: renames[i].fileId, fileName: renames[i].fileName } });\n}\nfor (let i = 0; i < trash.length; i++) {\n  out.push({ json: { op: 'trash', fileId: trash[i] } });\n}\nreturn out;"
+      }
+    },
+    {
+      "id": "27c8a600-c0c2-4d1b-ab77-f89908926a33",
+      "name": "Drive Patch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://www.googleapis.com/drive/v3/files/{{ $json.fileId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.op === \"rename\" ? { name: $json.fileName } : { trashed: true }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    },
+    {
+      "id": "e274fe36-6770-4ee8-8fce-760a1eae134b",
+      "name": "Verify Final",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "returnAll": true,
+        "queryParameters": {
+          "query": {
+            "matchType": "string",
+            "queryText": "'1RyO_xmviaYG2hN0WsUnVUhJKu5WdhtoD' in parents and trashed = false"
+          }
+        },
+        "options": {
+          "fields": [
+            "id",
+            "name"
+          ]
+        }
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      },
+      "executeOnce": true
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "5TZP0vVFlA0YK6be",
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-10-03T13:37:27.943Z",
+      "updatedAt": "2026-10-03T13:37:27.943Z"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-10-03T13:37:37.809Z",
+  "versionId": "a4ed25be-589d-428c-9d56-3e6d860400cd"
+}
