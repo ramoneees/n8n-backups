@@ -1,0 +1,93 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Verify Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-10-03T13:39:03.434Z",
+  "id": "PhB7k4ImYta4JIGX",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Faturas Verify 2026-10-03",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "48ccc859-0288-41d3-8107-4b2e74d6ae03",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "f6ef37ad-2e9d-4a1f-ae7c-133ebc2b9585",
+      "name": "Verify Final",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "returnAll": true,
+        "queryParameters": {
+          "query": {
+            "matchType": "string",
+            "queryText": "'1RyO_xmviaYG2hN0WsUnVUhJKu5WdhtoD' in parents and trashed = false"
+          }
+        },
+        "options": {
+          "fields": [
+            "id",
+            "name"
+          ]
+        }
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      },
+      "executeOnce": true
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "PhB7k4ImYta4JIGX",
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-10-03T13:39:03.434Z",
+      "updatedAt": "2026-10-03T13:39:03.434Z"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-10-03T13:44:05.988Z",
+  "versionId": "f91d1731-87fc-45cd-8b92-2213dab22784"
+}
