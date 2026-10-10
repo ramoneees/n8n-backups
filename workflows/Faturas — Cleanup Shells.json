@@ -1,0 +1,106 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Alvo": {
+      "main": [
+        [
+          {
+            "node": "Apagar no Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Alvo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-09-01T08:13:20.205Z",
+  "id": "w8V2Fr6zIse6VL3O",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Faturas — Cleanup Shells",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "aae6ce9b-2612-4656-87af-2c2f71bb8ce9",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -460,
+        400
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "9ef13752-1e68-4e25-bd62-116e1c05ed4f",
+      "name": "Alvo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        400
+      ],
+      "parameters": {
+        "jsCode": "// Shells vazios gravados pela exec 2757 do workflow XIThcU2rzYxVfRSG (parsedOk=false, 0 transacoes)\n// Apagar para destravar o dedup por nome no proximo agendamento (dia 5).\nconst ids = [\n  { id: '1Xc24xfrJBpjIKDHqxOu4jNclAh068h-2', name: 'XP_2026-09-29_0000_9bb5e4dc.json' },\n  { id: '1HtfrscnzQRQ1NQTQsJC2HSgmncCGz0xJ', name: 'Universo_2026-09-24_0000_c6ceed53.json' },\n];\nreturn ids.map(x => ({ json: x }));",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "af70b6ef-428c-45d9-83b0-8d4f6b6f5e44",
+      "name": "Apagar no Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -20,
+        400
+      ],
+      "parameters": {
+        "fileId": "={{ $json.id }}",
+        "operation": "deleteFile",
+        "resource": "file"
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "w8V2Fr6zIse6VL3O",
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-09-01T08:13:20.205Z",
+      "updatedAt": "2026-09-01T08:13:20.205Z"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-10-03T13:50:40.486Z",
+  "versionId": "b7d03524-196c-407d-83d5-9a8ede11c787"
+}
