@@ -1,0 +1,111 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Manual": {
+      "main": [
+        [
+          {
+            "node": "Build",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build": {
+      "main": [
+        [
+          {
+            "node": "PATCH",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-10-03T15:57:27.574Z",
+  "id": "5wM5SZhbHsCj4szb",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Surgery Prestige Set Total",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "c69cd022-0bfc-4a3e-bcab-e15e9fb33e07",
+      "name": "Manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "524b361c-04c4-48ba-931a-0134abda497c",
+      "name": "Build",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const payload = \"{\\\"schema\\\": \\\"card_statement_v1\\\", \\\"issuer\\\": \\\"Millennium BCP\\\", \\\"currency\\\": \\\"EUR\\\", \\\"card_holder\\\": null, \\\"card_last4\\\": \\\"1128\\\", \\\"statement_period\\\": {\\\"open_date\\\": \\\"2026-09-01\\\", \\\"close_date\\\": \\\"2026-09-30\\\"}, \\\"due_date\\\": \\\"2026-10-12\\\", \\\"payment_reference\\\": \\\"4552290-511128-00-0\\\", \\\"total_balance\\\": 3762.27, \\\"minimum_payment\\\": 758.9, \\\"previous_balance\\\": 3442.67, \\\"credits_payments\\\": 1307.95, \\\"credit_limit\\\": 7000, \\\"available_limit\\\": null, \\\"transactions\\\": [{\\\"date\\\": \\\"2026-09-01\\\", \\\"description\\\": \\\"COMPRA 7318 Atlante InvoiceNr. 752 Milan\\\", \\\"merchant\\\": \\\"Atlante\\\", \\\"category\\\": \\\"outros\\\", \\\"amount\\\": 26.79, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-07\\\", \\\"description\\\": \\\"COMPRA 7318 THOMANN DE BURGEBRACH\\\", \\\"merchant\\\": \\\"THOMANN DE BURGEBRACH\\\", \\\"category\\\": \\\"tecnologia\\\", \\\"amount\\\": 785.37, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-08\\\", \\\"description\\\": \\\"COMPRA 7318 Atlante InvoiceNr. 796 Milan\\\", \\\"merchant\\\": \\\"Atlante\\\", \\\"category\\\": \\\"outros\\\", \\\"amount\\\": 16.33, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-09\\\", \\\"description\\\": \\\"COMPRA 7318 BODY LAB MONTIJO\\\", \\\"merchant\\\": \\\"BODY LAB MONTIJO\\\", \\\"category\\\": \\\"saude\\\", \\\"amount\\\": 120, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-15\\\", \\\"description\\\": \\\"COMPRA 7318 Atlante InvoiceNr. 815 Milan\\\", \\\"merchant\\\": \\\"Atlante\\\", \\\"category\\\": \\\"outros\\\", \\\"amount\\\": 49.06, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-15\\\", \\\"description\\\": \\\"COMPRA 7318 INDUSTRIA DOS OCULOS MONTIJO\\\", \\\"merchant\\\": \\\"INDUSTRIA DOS OCULOS MONTIJO\\\", \\\"category\\\": \\\"saude\\\", \\\"amount\\\": 90, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-18\\\", \\\"description\\\": \\\"COMPRA 7318 BODY LAB MONTIJO\\\", \\\"merchant\\\": \\\"BODY LAB MONTIJO\\\", \\\"category\\\": \\\"saude\\\", \\\"amount\\\": 35, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-22\\\", \\\"description\\\": \\\"COMPRA 7318 Atlante InvoiceNr. 841 Milan\\\", \\\"merchant\\\": \\\"Atlante\\\", \\\"category\\\": \\\"outros\\\", \\\"amount\\\": 45.53, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-29\\\", \\\"description\\\": \\\"COMPRA 7318 Atlante InvoiceNr. 894 Milan\\\", \\\"merchant\\\": \\\"Atlante\\\", \\\"category\\\": \\\"outros\\\", \\\"amount\\\": 4.69, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-15\\\", \\\"description\\\": \\\"COMPRA 7318 INDUSTRIA DOS OCULOS MONTIJO Fracionada x3\\\", \\\"merchant\\\": \\\"INDUSTRIA DOS OCULOS MONTIJO\\\", \\\"category\\\": \\\"saude\\\", \\\"amount\\\": 428, \\\"installment_info\\\": \\\"3x\\\", \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-30\\\", \\\"description\\\": \\\"JUROS PAG FRACIONADO\\\", \\\"merchant\\\": null, \\\"category\\\": \\\"taxas\\\", \\\"amount\\\": 8, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-30\\\", \\\"description\\\": \\\"IMPOSTO DO SELO\\\", \\\"merchant\\\": null, \\\"category\\\": \\\"taxas\\\", \\\"amount\\\": 0.32, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-30\\\", \\\"description\\\": \\\"IMP DO SELO S/PAG FRAC 1000.00\\\", \\\"merchant\\\": null, \\\"category\\\": \\\"taxas\\\", \\\"amount\\\": 4.23, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-30\\\", \\\"description\\\": \\\"JUROS PAG FRACIONADO\\\", \\\"merchant\\\": null, \\\"category\\\": \\\"taxas\\\", \\\"amount\\\": 9.08, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-30\\\", \\\"description\\\": \\\"IMPOSTO DO SELO\\\", \\\"merchant\\\": null, \\\"category\\\": \\\"taxas\\\", \\\"amount\\\": 0.36, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}, {\\\"date\\\": \\\"2026-09-30\\\", \\\"description\\\": \\\"IMP DO SELO S/PAG FRAC 1134.72\\\", \\\"merchant\\\": null, \\\"category\\\": \\\"taxas\\\", \\\"amount\\\": 4.79, \\\"installment_info\\\": null, \\\"foreign_amount\\\": null, \\\"foreign_currency\\\": null}], \\\"warnings\\\": [\\\"A soma das transa\\u00e7\\u00f5es (1588.22) n\\u00e3o corresponde ao total a pagar (1905.24) menos os cr\\u00e9ditos (1307.95). A diferen\\u00e7a de 224.97 pode dever-se a juros ou taxas n\\u00e3o detalhados individualmente ou a arredondamentos no documento.\\\", \\\"soma divergente do total em 1030.26\\\", \\\"cirurgia 2026-10-03: total_balance corrigido de 1905.24 (Total a Pagar c/ fracionados em curso) para 3762.27 (saldo em divida = prev+Sigma-credits); cadeia do banco prova.\\\"]}\";\nconst buf = Buffer.from(payload, 'utf8');\nconst bin = await this.helpers.prepareBinaryData(buf, 'stmt.json', 'application/json');\nreturn [{ json: { ok: true }, binary: { data: bin } }];\n"
+      }
+    },
+    {
+      "id": "e2414c0d-b313-4325-a0af-7a5a9ef6be1d",
+      "name": "PATCH",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "https://www.googleapis.com/upload/drive/v3/files/1hvunCmwn5ivp1t2kxj_0AOxrWQruRaQB?uploadType=media",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lOUQgEfyXT0EShei",
+          "name": "Google Drive Empresa"
+        }
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "5wM5SZhbHsCj4szb",
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-10-03T15:57:27.574Z",
+      "updatedAt": "2026-10-03T15:57:27.574Z"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-10-03T15:57:27.574Z",
+  "versionId": "b2dca676-8d0f-4b42-8f12-bc81467e8b20"
+}
