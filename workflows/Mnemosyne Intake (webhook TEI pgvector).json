@@ -1,0 +1,187 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Intake Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse and Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse and Auth": {
+      "main": [
+        [
+          {
+            "node": "Embed via TEI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed via TEI": {
+      "main": [
+        [
+          {
+            "node": "Merge Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Embedding": {
+      "main": [
+        [
+          {
+            "node": "Upsert pgvector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert pgvector": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-11-02T10:51:08.864Z",
+  "id": "13dBFjNpqS9bIM4t",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Mnemosyne Intake (webhook TEI pgvector)",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "6a27a839-7820-45d9-bff8-166324c1bf4d",
+      "name": "Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mnemosyne-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "mnemosyne-intake-v1"
+    },
+    {
+      "id": "813ebb36-5b58-4ae3-b341-555b6a5eb959",
+      "name": "Parse and Auth",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const secret = $json.headers && $json.headers['x-mnemo-secret'];\nif (secret !== 'n8n-webhook-secret-2024') { throw new Error('unauthorized'); }\nconst p = $json.body;\nif (!p || !Array.isArray(p.entries) || p.entries.length === 0) { throw new Error('payload invalido'); }\nreturn p.entries.map(e => ({ json: {\n  namespace: p.namespace || '/memory/faturas',\n  source_agent: p.source_agent || 'n8n-intake',\n  key: e.key || (e.metadata && e.metadata.file_path) || ('entry-' + Date.now() + '-' + Math.random().toString(36).slice(2,8)),\n  content: e.content,\n  metadata: e.metadata || {}\n}}));\n"
+      }
+    },
+    {
+      "id": "2df5d39e-488e-470a-a724-d6c89f00debc",
+      "name": "Embed via TEI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://tei.olympus.svc.cluster.local:80/embed",
+        "sendBody": true,
+        "specifyBody": "json",
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ inputs: $json.content.substring(0, 6000) }) }}",
+        "options": {
+          "timeout": 120000
+        }
+      }
+    },
+    {
+      "id": "16eba0a4-e8bf-42da-9c82-0b4cbcedfaea",
+      "name": "Merge Embedding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const emb = Array.isArray($json) ? $json[0] : $json;\nconst src = $('Parse and Auth').item.json;\nreturn [{ json: Object.assign({}, src, { embedding: JSON.stringify(emb) }) }];\n"
+      }
+    },
+    {
+      "id": "7653d23f-055a-413e-8104-72c8524c72e6",
+      "name": "Upsert pgvector",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH del AS (DELETE FROM memory_entries WHERE namespace = $1 AND metadata->>'key' = $2) INSERT INTO memory_entries (content, metadata, namespace, embedding, source_agent) VALUES ($4, $5::jsonb, $1, $3::vector, $6)",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify([$json.namespace, $json.key, $json.embedding, $json.content, JSON.stringify($json.metadata), $json.source_agent]) }}"
+        }
+      }
+    },
+    {
+      "id": "a105336a-5c15-4162-8d7b-53bbea374523",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: \"ok\", indexed: $(\"Parse and Auth\").all().length, namespace: $json.namespace }) }}"
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "13dBFjNpqS9bIM4t",
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-11-02T10:51:08.864Z",
+      "updatedAt": "2026-11-02T10:51:08.864Z"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-11-02T10:51:08.864Z",
+  "versionId": "75a69a19-ab0a-4e38-976d-bdd10c55c82f"
+}
