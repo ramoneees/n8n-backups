@@ -1,0 +1,88 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Gmail Pessoal Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-11-10T10:26:29.155Z",
+  "id": "G8JwgzDLqDW5EC4X",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Notify Boss (Email)",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "fc2175f9-bef9-40ad-9f97-48b234f0de6a",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "cc1e3e0b-ac08-47b9-8ee7-96827c9540b8",
+      "name": "Gmail Pessoal Send",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "ramon.p.rios@gmail.com",
+        "subject": "✅ Faturas 11/2026 — 19 renomeadas, 19/19 no Octa Manager",
+        "emailType": "text",
+        "message": "Chefe,\n\nFaturas processadas e entregues — 19/19, zero falhas.\n\n• Renomeadas no padrão MM_AAAA_TIPO_Emitente\n• Google Drive: pasta 11-2026\n• Octa Manager: 19 carregados\n\nFicheiros:\n11_2026_FT_BBVA.pdf\n10_2026_REC_VIAVERDE.pdf\n11_2026_FT_LIMITEDECIMAL.pdf\n10_2026_FT_PRIO.pdf\n10_2026_FT_GOOGLE.pdf\n10_2026_FT_SMASMONTIJO.pdf\n10_2026_FT_ATLANTE.pdf\n10_2026_EX_BBVA.pdf\n10_2026_FT_GRENKE.pdf\n10_2026_FT_GRENKE_2.pdf\n10_2026_FT_ATLANTE_2.pdf\n10_2026_EX_MILLENNIUMBCP.pdf\nNL 20261105162933.pdf\nNL 20261102045745.pdf\nEXTRATO COMBINADO 2026010.pdf\nNL 20261031162707.pdf\nNL 20261030074258.pdf\nNL 20261028065741.pdf\nNL 20261015055713.pdf\n\n(NL e EXTRATO mantêm o nome original — documentos pessoais.)\n\nNota: tentei notificar por iMessage, mas do cluster não há caminho autenticado até ao BlueBubbles (BB e api_server exigem chaves próprias). Fix permanente: rota de webhook no Hermes com deliver: bluebubbles + deliver_only: true (secret n8n-webhook-secret-2024) — aí o n8n passa a entregar direto no teu DM, sem LLM.\n\n— JARVIS",
+        "options": {
+          "appendAttribution": true,
+          "senderName": "JARVIS"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      },
+      "webhookId": "d3ad16b8-8c48-4eef-b0ce-1ec3b16d2194"
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "G8JwgzDLqDW5EC4X",
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-11-10T10:26:29.155Z",
+      "updatedAt": "2026-11-10T10:26:29.155Z"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-11-10T10:26:29.155Z",
+  "versionId": "c28c29ce-f427-4e1d-a03f-c87a570e8b40"
+}
