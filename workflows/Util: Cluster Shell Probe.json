@@ -1,0 +1,112 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "activeVersionId": null,
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Cluster Probe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cluster Probe": {
+      "main": [
+        [
+          {
+            "node": "PG Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-11-07T19:20:32.825Z",
+  "id": "i2AuY8w1XeheDudq",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Util: Cluster Shell Probe",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "5c3e181e-408d-4f5a-8ee3-80d721aabd2c",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "5c75d560-e6d6-4c5a-9208-e3a644e9bc56",
+      "name": "Cluster Probe",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "command": "SA=/var/run/secrets/kubernetes.io/serviceaccount; ls $SA >/dev/null 2>&1 || { echo no-sa-mount; exit 0; }; T=$(cat $SA/token); API=\"https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT_HTTPS:-443}\"; echo \"== endpoints/tei ==\"; wget -qO- --no-check-certificate --header=\"Authorization: Bearer $T\" \"$API/api/v1/namespaces/olympus/endpoints/tei\" 2>&1 | head -c 600; echo; echo \"== deploy/tei ==\"; wget -qO- --no-check-certificate --header=\"Authorization: Bearer $T\" \"$API/apis/apps/v1/namespaces/olympus/deployments/tei\" 2>&1 | grep -oE '\"replicas\":[0-9]+|\"readyReplicas\":[0-9]+|\"image\":\"[^\"]+\"|\"reason\":\"[^\"]*\"|\"message\":\"[^\"]*\"' | head -10; echo \"== pods olympus (nomes) ==\"; wget -qO- --no-check-certificate --header=\"Authorization: Bearer $T\" \"$API/api/v1/namespaces/olympus/pods\" 2>&1 | grep -oE '\"name\":\"[^\"]+\"' | sort -u | head -15; echo \"== done ==\"",
+        "parameters": {
+          "command": "echo \"== tei health ==\"; wget -O- -T 5 http://tei.olympus.svc.cluster.local:80/health 2>&1 | head -8; echo \"== tei embed ==\"; wget -O- -T 8 --post-data='{\"inputs\":\"jarvis healthcheck\"}' --header='Content-Type: application/json' http://tei.olympus.svc.cluster.local:80/embed 2>&1 | head -c 400; echo; echo \"== done ==\""
+        },
+        "notes": "v2: consulta k8s API via SA token (read-only)"
+      }
+    },
+    {
+      "id": "bdaadaf3-2197-4b62-b407-8f3f5d78dffd",
+      "name": "PG Check",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {},
+        "query": "SELECT metadata->>'file' AS file, count(*) AS chunks, bool_or(embedding IS NOT NULL) AS has_embedding, min(metadata->>'chunk_index') AS c0, max(metadata->>'chunk_index') AS c1 FROM memory_entries WHERE namespace = '/memory/condominio' GROUP BY metadata->>'file' ORDER BY 1",
+        "resource": "database",
+        "parameters": {
+          "query": "SELECT namespace, count(*) AS entries, max(created_at) AS last_write FROM memory_entries GROUP BY namespace ORDER BY 2 DESC LIMIT 12"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jOrx76x9kc4PrZRh",
+          "name": "Postgres Mnemosyne"
+        }
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "i2AuY8w1XeheDudq",
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-11-07T19:20:32.825Z",
+      "updatedAt": "2026-11-07T19:20:32.825Z"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-11-07T19:33:15.275Z",
+  "versionId": "62d66ed1-4a81-46bb-bcb3-49e57269c920"
+}
