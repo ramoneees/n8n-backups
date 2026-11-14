@@ -1,0 +1,878 @@
+{
+  "active": true,
+  "activeVersion": {
+    "versionId": "46eb367e-afdd-4c89-87d5-4c08e9e08fce",
+    "workflowId": "EQtpk3dcMkC7maai",
+    "nodes": [
+      {
+        "id": "a83ab38e-8b4d-4f7c-826f-2c4d7cfc82dd",
+        "name": "A cada 6 horas",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.4,
+        "position": [
+          -780,
+          0
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "hoursInterval": 6
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "eb940198-0904-4e7a-9615-f0cd1b05b7f8",
+        "name": "Buscar Emails Condominio",
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.2,
+        "position": [
+          -560,
+          0
+        ],
+        "parameters": {
+          "operation": "getAll",
+          "returnAll": true,
+          "simple": false,
+          "filters": {
+            "includeSpamTrash": true,
+            "q": "from:gocondominios.pt has:attachment filename:pdf newer_than:15d",
+            "readStatus": "both"
+          },
+          "options": {
+            "downloadAttachments": true
+          }
+        },
+        "credentials": {
+          "gmailOAuth2": {
+            "id": "IZ5cS1EUXpPOEEPu",
+            "name": "Gmail Pessoal"
+          }
+        },
+        "webhookId": "829dfc3a-4ede-4606-8497-9bb900288bd1"
+      },
+      {
+        "id": "99bcac3a-fd02-4713-ad94-8266aead15f8",
+        "name": "Preparar Anexos",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -336,
+          0
+        ],
+        "parameters": {
+          "jsCode": "\n// Um item por anexo PDF, com metadata do email.\nconst items = $input.all();\nconst out = [];\nfor (const item of items) {\n  const j = item.json || {};\n  const msgId = j.id || j.threadId || ('nocid-' + Date.now());\n  const headers = (j.payload && j.payload.headers) || [];\n  const get = (n) => { const h = headers.find(x => x && x.name && x.name.toLowerCase() === n); return h ? h.value : (j[n] || ''); };\n  const subject = get('subject') || '(sem assunto)';\n  const from = get('from') || '';\n  const date = j.internalDate ? new Date(Number(j.internalDate)).toISOString().slice(0,10) : (j.date || new Date().toISOString().slice(0,10));\n  if (!item.binary) continue;\n  for (const key of Object.keys(item.binary)) {\n    const bin = item.binary[key];\n    const fileName = (bin.fileName || '').trim();\n    if (!fileName) continue;\n    const isPdf = (bin.mimeType || '').toLowerCase().includes('pdf') || fileName.toLowerCase().endsWith('.pdf');\n    if (!isPdf) continue;\n    out.push({ json: { msgId: String(msgId), subject, from, date, fileName }, binary: { data: bin } });\n  }\n}\nconsole.log('anexos pdf: ' + out.length);\nreturn out;\n"
+        }
+      },
+      {
+        "id": "e9a1d31f-c1e3-44a7-ba34-afa65f76952a",
+        "name": "Markdown (toolbox)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -112,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://toolbox.apps.svc.cluster.local:8000/api/v1/markdown",
+          "sendBody": true,
+          "contentType": "multipart-form-data",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "parameterType": "formBinaryData",
+                "name": "file",
+                "inputDataFieldName": "data"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 60000
+          },
+          "alwaysOutputData": true
+        },
+        "onError": "continueRegularOutput",
+        "alwaysOutputData": true
+      },
+      {
+        "id": "20e2d3ba-e8c0-4481-8f45-f2bf17f78fd5",
+        "name": "Chunk e Payload",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          112,
+          0
+        ],
+        "parameters": {
+          "jsCode": "\n// Markdown -> chunks (cap duro ~850 chars) -> entries.\n// Metadata vem do \"Preparar Anexos\" por alinhamento de indice (o HTTP do toolbox descarta o json anterior).\nconst items = $input.all();\nlet metas = [];\ntry { metas = $('Preparar Anexos').all().map(i => i.json); } catch (e) {}\n\nconst splitLong = (p, max) => {\n  if (p.length <= max) return [p];\n  const parts = [];\n  let cur = '';\n  for (const ln of p.split('\\n')) {\n    if ((cur + '\\n' + ln).length > max && cur) { parts.push(cur); cur = ln; }\n    else cur = cur ? cur + '\\n' + ln : ln;\n    while (cur.length > max) { parts.push(cur.slice(0, max)); cur = cur.slice(max); }\n  }\n  if (cur) parts.push(cur);\n  return parts;\n};\n\nconst results = [];\nfor (let idx = 0; idx < items.length; idx++) {\n  const j = items[idx].json || {};\n  const m = metas[idx] || {};\n  const base = {\n    msgId: String(m.msgId || j.msgId || 'sem-id'),\n    fileName: m.fileName || j.fileName || 'desconhecido',\n    subject: m.subject || j.subject || '(sem assunto)',\n    from: m.from || j.from || '',\n    date: m.date || j.date || ''\n  };\n  const md = typeof j.markdown === 'string' ? j.markdown : '';\n\n  if (!md && j.error) {\n    results.push({ json: {\n      namespace: '/memory/condominio', source_agent: 'n8n-condominio',\n      entries: [{ key: base.msgId + '::' + base.fileName + '::erro-toolbox',\n        content: '[' + base.subject + ' | ' + base.date + ' | ' + base.fileName + '] FALHA na extracao de texto (toolbox). Revisar PDF original.',\n        metadata: { kind: 'condominio-doc-erro-toolbox', title: base.subject, date: base.date, file: base.fileName } }],\n      fileName: base.fileName, nChunks: 1, toolboxError: true,\n      errDetail: (j.error && (j.error.message || j.error.description)) || 'desconhecido'\n    } });\n    continue;\n  }\n\n  if (!md || md.length < 200) {\n    results.push({ json: {\n      namespace: '/memory/condominio', source_agent: 'n8n-condominio',\n      entries: [{ key: base.msgId + '::' + base.fileName + '::scan',\n        content: '[' + base.subject + ' | ' + base.date + ' | ' + base.fileName + '] Documento SEM camada de texto (provavel scan) - placeholder; revisar PDF original.',\n        metadata: { kind: 'condominio-doc-scan', title: base.subject, date: base.date, file: base.fileName } }],\n      fileName: base.fileName, nChunks: 1, skipped: true\n    } });\n    continue;\n  }\n\n  const paragraphs = md.split(/\\n\\s*\\n/).map(p => p.trim()).filter(Boolean);\n  const chunks = [];\n  let cur = '';\n  for (const p0 of paragraphs) {\n    for (const p of splitLong(p0, 850)) {\n      if ((cur + '\\n\\n' + p).length > 850 && cur) { chunks.push(cur); cur = p; }\n      else cur = cur ? cur + '\\n\\n' + p : p;\n    }\n  }\n  if (cur) chunks.push(cur);\n\n  const entries = chunks.map((c, i) => ({\n    key: base.msgId + '::' + base.fileName + '::' + i,\n    content: '[' + base.subject + ' | ' + base.date + ' | ' + base.fileName + ']\\n\\n' + c,\n    metadata: { kind: 'condominio-doc', title: base.subject, date: base.date, sender: base.from, file: base.fileName, chunk_index: i, chunks: chunks.length }\n  }));\n  results.push({ json: { namespace: '/memory/condominio', source_agent: 'n8n-condominio', entries, fileName: base.fileName, nChunks: chunks.length } });\n}\nconsole.log('docs ok: ' + results.filter(r => !r.json.skipped && !r.json.toolboxError).length + ', scan: ' + results.filter(r => r.json.skipped).length + ', toolbox erro: ' + results.filter(r => r.json.toolboxError).length);\nreturn results;\n"
+        }
+      },
+      {
+        "id": "7c54dee7-622b-43d3-ae95-71cd0a5ca80b",
+        "name": "Separar Entries",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          336,
+          0
+        ],
+        "parameters": {
+          "jsCode": "\nconst items = $input.all();\nconst out = [];\nfor (const item of items) {\n  const j = item.json || {};\n  const entries = Array.isArray(j.entries) ? j.entries : [];\n  for (const e of entries) {\n    out.push({ json: {\n      namespace: j.namespace || '/memory/condominio',\n      source_agent: j.source_agent || 'n8n-condominio',\n      key: e.key, content: e.content, metadata: e.metadata || {},\n      fileName: j.fileName\n    }});\n  }\n}\nconsole.log('entries: ' + out.length);\nreturn out;\n"
+        }
+      },
+      {
+        "id": "5c9b3330-dd64-4741-abcb-2a7e179e5932",
+        "name": "Embed TEI",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          560,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://tei.olympus.svc.cluster.local:80/embed",
+          "sendBody": true,
+          "specifyBody": "json",
+          "contentType": "json",
+          "jsonBody": "={{ JSON.stringify({ inputs: $json.content.substring(0, 6000) }) }}",
+          "options": {
+            "batching": {
+              "batch": {
+                "batchSize": 1
+              }
+            },
+            "timeout": 120000
+          }
+        },
+        "onError": "continueRegularOutput",
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 3000,
+        "alwaysOutputData": true
+      },
+      {
+        "id": "7e6dec83-eade-4700-b061-424e2c5327f6",
+        "name": "Build Params",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          784,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Um UNICO item com o batch completo (JSON) para o Upsert. Contorna o bug do Postgres node v2.5 com queryReplacement tipo array (executava 1x soh, primeiro item — n8n #31704): agora ha UM item e UM bind $1::jsonb. Falhas de embed ficam de fora; proximo ciclo recupera (idempotente).\nconst items = $input.all();\nlet srcs = [];\ntry { srcs = $('Separar Entries').all().map(i => i.json); } catch (e) {}\nif (items.length !== srcs.length) throw new Error('desalinhamento embed/entradas: ' + items.length + ' vs ' + srcs.length);\nconst batch = [];\nlet embedFails = 0;\nfor (let i = 0; i < items.length; i++) {\n  const emb = items[i].json;\n  const src = srcs[i] || {};\n  let embArr = null;\n  if (Array.isArray(emb)) embArr = emb;\n  else if (emb && Array.isArray(emb.data) && emb.data[0] && Array.isArray(emb.data[0].embedding)) embArr = emb.data[0].embedding;\n  else if (emb && Array.isArray(emb.embeddings) && Array.isArray(emb.embeddings[0])) embArr = emb.embeddings[0];\n  if (!embArr) { embedFails++; continue; }\n  batch.push({\n    namespace: src.namespace, key: src.key, content: src.content,\n    embedding: JSON.stringify(embArr),\n    metadata: Object.assign({ key: src.key }, src.metadata || {}),\n    source_agent: src.source_agent\n  });\n}\nconsole.log('batch: ' + batch.length + ', embed falhou: ' + embedFails);\nreturn [{ json: { batch: JSON.stringify(batch), count: batch.length, embedFails } }];\n"
+        }
+      },
+      {
+        "id": "d80984c6-af30-474b-9bdf-28c269a09af9",
+        "name": "Upsert pgvector",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          1008,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "options": {
+            "queryReplacement": "={{ $json.batch }}"
+          },
+          "query": "WITH rows AS (SELECT e AS j FROM jsonb_array_elements($1::jsonb) AS e), del AS (DELETE FROM memory_entries m USING rows r WHERE m.namespace = r.j->>'namespace' AND m.metadata->>'key' = r.j->>'key') INSERT INTO memory_entries (content, metadata, namespace, embedding, source_agent) SELECT j->>'content', j->'metadata', j->>'namespace', (j->>'embedding')::vector, j->>'source_agent' FROM rows",
+          "resource": "database"
+        },
+        "credentials": {
+          "postgres": {
+            "id": "jOrx76x9kc4PrZRh",
+            "name": "Postgres Mnemosyne"
+          }
+        },
+        "onError": "continueRegularOutput",
+        "alwaysOutputData": true
+      },
+      {
+        "id": "ecc252e6-8317-445d-b560-a7d9fc4e277e",
+        "name": "Resumo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          560,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Resumo v4: upsert agora e UM batch atomico; upsertOk = chunks escritos na BD (count do batch), nao itens de output do node (que eram 1 e escondiam a perda).\nlet embeds = [], entries = [], docsIn = [];\ntry { embeds = $('Embed TEI').all(); } catch (e) {}\ntry { entries = $('Separar Entries').all(); } catch (e) {}\ntry { docsIn = $('Chunk e Payload').all(); } catch (e) {}\nconst ups = $input.all();\nconst upsertErrors = ups.filter(u => u.json && u.json.error).length;\n\nlet batchCount = 0;\ntry { batchCount = $('Build Params').first().json.count || 0; } catch (e) {}\nconst upsertOk = upsertErrors ? 0 : batchCount;\n\nconst failedFiles = {};\nfor (let i = 0; i < entries.length; i++) {\n  const e2 = entries[i].json || {};\n  const emb = (embeds[i] || {}).json || {};\n  const embBad = emb.error || !Array.isArray(emb);\n  if (embBad) { const f = e2.fileName || (e2.metadata && e2.metadata.file) || '?'; failedFiles[f] = (failedFiles[f] || 0) + 1; }\n}\n\nlet docs = 0, chunks = 0, skipped = 0, toolboxFails = 0;\nconst parts = [];\nfor (const d of docsIn) {\n  const j = d.json || {};\n  if (j.toolboxError) { toolboxFails++; parts.push('- ' + (j.fileName || '?') + ': TOOLBOX falhou (' + (j.errDetail || '?') + ')'); continue; }\n  if (j.skipped) { skipped++; parts.push('- ' + (j.fileName || '?') + ': SEM TEXTO (scan?) - revisar'); continue; }\n  if (failedFiles[j.fileName]) continue;\n  docs++; chunks += (j.nChunks || 0);\n}\nconst failFiles = Object.keys(failedFiles);\nfor (const f of failFiles) parts.push('- ' + f + ': ERRO embed (' + failedFiles[f] + ' chunks)');\nif (upsertErrors) parts.push('- UPSERT falhou (' + upsertErrors + ') - batch NAO escrito');\nconst fails = toolboxFails + failFiles.length + (upsertErrors ? 1 : 0);\nlet message = 'Condominio -> Mnemosyne: ' + upsertOk + '/' + chunks + ' chunks na BD';\nif (docs) message += ' (' + docs + ' doc(s))';\nif (skipped) message += '; ' + skipped + ' sem texto (revisar)';\nif (fails) message += '; ' + fails + ' FALHA(S)';\nmessage += ' [upserts ok: ' + upsertOk + ']';\nif (parts.length) message += '\\n' + parts.join('\\n');\nreturn [{ json: { message, docs, chunks, skipped, fails, upsertOk } }];\n"
+        }
+      },
+      {
+        "id": "521388d3-4072-44da-88e9-c89b1fecadf1",
+        "name": "Notificar Hermes",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          784,
+          0
+        ],
+        "parameters": {
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "D1X5OyGlkuo7UwdR"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "message": "={{ $json.message }}",
+              "webhook_secret": "n8n-webhook-secret-2024",
+              "webhook_url": "http://hermes.ramoneees.com:8644/webhooks/n8n-complete"
+            },
+            "matchingColumns": [],
+            "schema": []
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "executeOnce": true
+      },
+      {
+        "id": "17a14057-260a-4b15-97d7-575d9a6a1bea",
+        "name": "Ja Indexado?",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          -224,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "options": {
+            "queryReplacement": "={{ $json.msgId + '::' + $json.fileName }}"
+          },
+          "query": "SELECT EXISTS (SELECT 1 FROM memory_entries m WHERE m.namespace = '/memory/condominio' AND starts_with(m.metadata->>'key', $1 || '::')) AS ja_indexado",
+          "resource": "database"
+        },
+        "credentials": {
+          "postgres": {
+            "id": "jOrx76x9kc4PrZRh",
+            "name": "Postgres Mnemosyne"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "b1a63bdf-dd31-4ba0-8efa-d68ab9a15b9f",
+        "name": "Filtrar Novos",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Deixa passar apenas docs AINDA NAO indexados (nenhuma entrada com prefixo msgId::fileName:: na BD).\n// Item do check vem 1:1 alinhado com Preparar Anexos; sem resposta do check => trata como novo (processa e notifica).\nconst checks = $input.all();\nlet docs = [];\ntry { docs = $('Preparar Anexos').all(); } catch (e) {}\nconst out = [];\nfor (let i = 0; i < docs.length; i++) {\n  const c = (checks[i] || {}).json || {};\n  if (c.ja_indexado === true) continue;\n  const d = docs[i];\n  out.push({ json: d.json, binary: d.binary });\n}\nconsole.log('docs novos: ' + out.length + '/' + docs.length);\nreturn out;\n"
+        }
+      }
+    ],
+    "connections": {
+      "Buscar Emails Condominio": {
+        "main": [
+          [
+            {
+              "node": "Preparar Anexos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Markdown (toolbox)": {
+        "main": [
+          [
+            {
+              "node": "Chunk e Payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Chunk e Payload": {
+        "main": [
+          [
+            {
+              "node": "Separar Entries",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Separar Entries": {
+        "main": [
+          [
+            {
+              "node": "Embed TEI",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Embed TEI": {
+        "main": [
+          [
+            {
+              "node": "Build Params",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Params": {
+        "main": [
+          [
+            {
+              "node": "Upsert pgvector",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upsert pgvector": {
+        "main": [
+          [
+            {
+              "node": "Resumo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resumo": {
+        "main": [
+          [
+            {
+              "node": "Notificar Hermes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "A cada 6 horas": {
+        "main": [
+          [
+            {
+              "node": "Buscar Emails Condominio",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar Anexos": {
+        "main": [
+          [
+            {
+              "node": "Ja Indexado?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ja Indexado?": {
+        "main": [
+          [
+            {
+              "node": "Filtrar Novos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filtrar Novos": {
+        "main": [
+          [
+            {
+              "node": "Markdown (toolbox)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
+    "name": "So indexa/notifica docs novos",
+    "description": "Check no Postgres (prefixo msgId::file::) apos baixar anexos: docs ja indexados nao entram no pipeline (sem re-embed) e runs sem novidade terminam silenciosas, sem notificar. Falha no check = doc tratado como novo (processa e notifica).",
+    "autosaved": false,
+    "createdAt": "2026-11-08T07:35:28.287Z",
+    "updatedAt": "2026-11-08T07:35:28.287Z"
+  },
+  "activeVersionId": "46eb367e-afdd-4c89-87d5-4c08e9e08fce",
+  "connections": {
+    "Buscar Emails Condominio": {
+      "main": [
+        [
+          {
+            "node": "Preparar Anexos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Markdown (toolbox)": {
+      "main": [
+        [
+          {
+            "node": "Chunk e Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk e Payload": {
+      "main": [
+        [
+          {
+            "node": "Separar Entries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar Entries": {
+      "main": [
+        [
+          {
+            "node": "Embed TEI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed TEI": {
+      "main": [
+        [
+          {
+            "node": "Build Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Params": {
+      "main": [
+        [
+          {
+            "node": "Upsert pgvector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert pgvector": {
+      "main": [
+        [
+          {
+            "node": "Resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumo": {
+      "main": [
+        [
+          {
+            "node": "Notificar Hermes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "A cada 6 horas": {
+      "main": [
+        [
+          {
+            "node": "Buscar Emails Condominio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Anexos": {
+      "main": [
+        [
+          {
+            "node": "Ja Indexado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ja Indexado?": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Novos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Novos": {
+      "main": [
+        [
+          {
+            "node": "Markdown (toolbox)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-11-07T19:21:42.638Z",
+  "id": "EQtpk3dcMkC7maai",
+  "isArchived": false,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "name": "Condominio -> Mnemosyne v5 (upsert direto)",
+  "nodeGroups": [],
+  "nodes": [
+    {
+      "id": "a83ab38e-8b4d-4f7c-826f-2c4d7cfc82dd",
+      "name": "A cada 6 horas",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -780,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "eb940198-0904-4e7a-9615-f0cd1b05b7f8",
+      "name": "Buscar Emails Condominio",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -560,
+        0
+      ],
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "simple": false,
+        "filters": {
+          "includeSpamTrash": true,
+          "q": "from:gocondominios.pt has:attachment filename:pdf newer_than:15d",
+          "readStatus": "both"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "IZ5cS1EUXpPOEEPu",
+          "name": "Gmail Pessoal"
+        }
+      },
+      "webhookId": "829dfc3a-4ede-4606-8497-9bb900288bd1"
+    },
+    {
+      "id": "99bcac3a-fd02-4713-ad94-8266aead15f8",
+      "name": "Preparar Anexos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\n// Um item por anexo PDF, com metadata do email.\nconst items = $input.all();\nconst out = [];\nfor (const item of items) {\n  const j = item.json || {};\n  const msgId = j.id || j.threadId || ('nocid-' + Date.now());\n  const headers = (j.payload && j.payload.headers) || [];\n  const get = (n) => { const h = headers.find(x => x && x.name && x.name.toLowerCase() === n); return h ? h.value : (j[n] || ''); };\n  const subject = get('subject') || '(sem assunto)';\n  const from = get('from') || '';\n  const date = j.internalDate ? new Date(Number(j.internalDate)).toISOString().slice(0,10) : (j.date || new Date().toISOString().slice(0,10));\n  if (!item.binary) continue;\n  for (const key of Object.keys(item.binary)) {\n    const bin = item.binary[key];\n    const fileName = (bin.fileName || '').trim();\n    if (!fileName) continue;\n    const isPdf = (bin.mimeType || '').toLowerCase().includes('pdf') || fileName.toLowerCase().endsWith('.pdf');\n    if (!isPdf) continue;\n    out.push({ json: { msgId: String(msgId), subject, from, date, fileName }, binary: { data: bin } });\n  }\n}\nconsole.log('anexos pdf: ' + out.length);\nreturn out;\n"
+      }
+    },
+    {
+      "id": "e9a1d31f-c1e3-44a7-ba34-afa65f76952a",
+      "name": "Markdown (toolbox)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -112,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://toolbox.apps.svc.cluster.local:8000/api/v1/markdown",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        },
+        "alwaysOutputData": true
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "20e2d3ba-e8c0-4481-8f45-f2bf17f78fd5",
+      "name": "Chunk e Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\n// Markdown -> chunks (cap duro ~850 chars) -> entries.\n// Metadata vem do \"Preparar Anexos\" por alinhamento de indice (o HTTP do toolbox descarta o json anterior).\nconst items = $input.all();\nlet metas = [];\ntry { metas = $('Preparar Anexos').all().map(i => i.json); } catch (e) {}\n\nconst splitLong = (p, max) => {\n  if (p.length <= max) return [p];\n  const parts = [];\n  let cur = '';\n  for (const ln of p.split('\\n')) {\n    if ((cur + '\\n' + ln).length > max && cur) { parts.push(cur); cur = ln; }\n    else cur = cur ? cur + '\\n' + ln : ln;\n    while (cur.length > max) { parts.push(cur.slice(0, max)); cur = cur.slice(max); }\n  }\n  if (cur) parts.push(cur);\n  return parts;\n};\n\nconst results = [];\nfor (let idx = 0; idx < items.length; idx++) {\n  const j = items[idx].json || {};\n  const m = metas[idx] || {};\n  const base = {\n    msgId: String(m.msgId || j.msgId || 'sem-id'),\n    fileName: m.fileName || j.fileName || 'desconhecido',\n    subject: m.subject || j.subject || '(sem assunto)',\n    from: m.from || j.from || '',\n    date: m.date || j.date || ''\n  };\n  const md = typeof j.markdown === 'string' ? j.markdown : '';\n\n  if (!md && j.error) {\n    results.push({ json: {\n      namespace: '/memory/condominio', source_agent: 'n8n-condominio',\n      entries: [{ key: base.msgId + '::' + base.fileName + '::erro-toolbox',\n        content: '[' + base.subject + ' | ' + base.date + ' | ' + base.fileName + '] FALHA na extracao de texto (toolbox). Revisar PDF original.',\n        metadata: { kind: 'condominio-doc-erro-toolbox', title: base.subject, date: base.date, file: base.fileName } }],\n      fileName: base.fileName, nChunks: 1, toolboxError: true,\n      errDetail: (j.error && (j.error.message || j.error.description)) || 'desconhecido'\n    } });\n    continue;\n  }\n\n  if (!md || md.length < 200) {\n    results.push({ json: {\n      namespace: '/memory/condominio', source_agent: 'n8n-condominio',\n      entries: [{ key: base.msgId + '::' + base.fileName + '::scan',\n        content: '[' + base.subject + ' | ' + base.date + ' | ' + base.fileName + '] Documento SEM camada de texto (provavel scan) - placeholder; revisar PDF original.',\n        metadata: { kind: 'condominio-doc-scan', title: base.subject, date: base.date, file: base.fileName } }],\n      fileName: base.fileName, nChunks: 1, skipped: true\n    } });\n    continue;\n  }\n\n  const paragraphs = md.split(/\\n\\s*\\n/).map(p => p.trim()).filter(Boolean);\n  const chunks = [];\n  let cur = '';\n  for (const p0 of paragraphs) {\n    for (const p of splitLong(p0, 850)) {\n      if ((cur + '\\n\\n' + p).length > 850 && cur) { chunks.push(cur); cur = p; }\n      else cur = cur ? cur + '\\n\\n' + p : p;\n    }\n  }\n  if (cur) chunks.push(cur);\n\n  const entries = chunks.map((c, i) => ({\n    key: base.msgId + '::' + base.fileName + '::' + i,\n    content: '[' + base.subject + ' | ' + base.date + ' | ' + base.fileName + ']\\n\\n' + c,\n    metadata: { kind: 'condominio-doc', title: base.subject, date: base.date, sender: base.from, file: base.fileName, chunk_index: i, chunks: chunks.length }\n  }));\n  results.push({ json: { namespace: '/memory/condominio', source_agent: 'n8n-condominio', entries, fileName: base.fileName, nChunks: chunks.length } });\n}\nconsole.log('docs ok: ' + results.filter(r => !r.json.skipped && !r.json.toolboxError).length + ', scan: ' + results.filter(r => r.json.skipped).length + ', toolbox erro: ' + results.filter(r => r.json.toolboxError).length);\nreturn results;\n"
+      }
+    },
+    {
+      "id": "7c54dee7-622b-43d3-ae95-71cd0a5ca80b",
+      "name": "Separar Entries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\nconst items = $input.all();\nconst out = [];\nfor (const item of items) {\n  const j = item.json || {};\n  const entries = Array.isArray(j.entries) ? j.entries : [];\n  for (const e of entries) {\n    out.push({ json: {\n      namespace: j.namespace || '/memory/condominio',\n      source_agent: j.source_agent || 'n8n-condominio',\n      key: e.key, content: e.content, metadata: e.metadata || {},\n      fileName: j.fileName\n    }});\n  }\n}\nconsole.log('entries: ' + out.length);\nreturn out;\n"
+      }
+    },
+    {
+      "id": "5c9b3330-dd64-4741-abcb-2a7e179e5932",
+      "name": "Embed TEI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://tei.olympus.svc.cluster.local:80/embed",
+        "sendBody": true,
+        "specifyBody": "json",
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ inputs: $json.content.substring(0, 6000) }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "7e6dec83-eade-4700-b061-424e2c5327f6",
+      "name": "Build Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Um UNICO item com o batch completo (JSON) para o Upsert. Contorna o bug do Postgres node v2.5 com queryReplacement tipo array (executava 1x soh, primeiro item — n8n #31704): agora ha UM item e UM bind $1::jsonb. Falhas de embed ficam de fora; proximo ciclo recupera (idempotente).\nconst items = $input.all();\nlet srcs = [];\ntry { srcs = $('Separar Entries').all().map(i => i.json); } catch (e) {}\nif (items.length !== srcs.length) throw new Error('desalinhamento embed/entradas: ' + items.length + ' vs ' + srcs.length);\nconst batch = [];\nlet embedFails = 0;\nfor (let i = 0; i < items.length; i++) {\n  const emb = items[i].json;\n  const src = srcs[i] || {};\n  let embArr = null;\n  if (Array.isArray(emb)) embArr = emb;\n  else if (emb && Array.isArray(emb.data) && emb.data[0] && Array.isArray(emb.data[0].embedding)) embArr = emb.data[0].embedding;\n  else if (emb && Array.isArray(emb.embeddings) && Array.isArray(emb.embeddings[0])) embArr = emb.embeddings[0];\n  if (!embArr) { embedFails++; continue; }\n  batch.push({\n    namespace: src.namespace, key: src.key, content: src.content,\n    embedding: JSON.stringify(embArr),\n    metadata: Object.assign({ key: src.key }, src.metadata || {}),\n    source_agent: src.source_agent\n  });\n}\nconsole.log('batch: ' + batch.length + ', embed falhou: ' + embedFails);\nreturn [{ json: { batch: JSON.stringify(batch), count: batch.length, embedFails } }];\n"
+      }
+    },
+    {
+      "id": "d80984c6-af30-474b-9bdf-28c269a09af9",
+      "name": "Upsert pgvector",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1008,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {
+          "queryReplacement": "={{ $json.batch }}"
+        },
+        "query": "WITH rows AS (SELECT e AS j FROM jsonb_array_elements($1::jsonb) AS e), del AS (DELETE FROM memory_entries m USING rows r WHERE m.namespace = r.j->>'namespace' AND m.metadata->>'key' = r.j->>'key') INSERT INTO memory_entries (content, metadata, namespace, embedding, source_agent) SELECT j->>'content', j->'metadata', j->>'namespace', (j->>'embedding')::vector, j->>'source_agent' FROM rows",
+        "resource": "database"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jOrx76x9kc4PrZRh",
+          "name": "Postgres Mnemosyne"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "ecc252e6-8317-445d-b560-a7d9fc4e277e",
+      "name": "Resumo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Resumo v4: upsert agora e UM batch atomico; upsertOk = chunks escritos na BD (count do batch), nao itens de output do node (que eram 1 e escondiam a perda).\nlet embeds = [], entries = [], docsIn = [];\ntry { embeds = $('Embed TEI').all(); } catch (e) {}\ntry { entries = $('Separar Entries').all(); } catch (e) {}\ntry { docsIn = $('Chunk e Payload').all(); } catch (e) {}\nconst ups = $input.all();\nconst upsertErrors = ups.filter(u => u.json && u.json.error).length;\n\nlet batchCount = 0;\ntry { batchCount = $('Build Params').first().json.count || 0; } catch (e) {}\nconst upsertOk = upsertErrors ? 0 : batchCount;\n\nconst failedFiles = {};\nfor (let i = 0; i < entries.length; i++) {\n  const e2 = entries[i].json || {};\n  const emb = (embeds[i] || {}).json || {};\n  const embBad = emb.error || !Array.isArray(emb);\n  if (embBad) { const f = e2.fileName || (e2.metadata && e2.metadata.file) || '?'; failedFiles[f] = (failedFiles[f] || 0) + 1; }\n}\n\nlet docs = 0, chunks = 0, skipped = 0, toolboxFails = 0;\nconst parts = [];\nfor (const d of docsIn) {\n  const j = d.json || {};\n  if (j.toolboxError) { toolboxFails++; parts.push('- ' + (j.fileName || '?') + ': TOOLBOX falhou (' + (j.errDetail || '?') + ')'); continue; }\n  if (j.skipped) { skipped++; parts.push('- ' + (j.fileName || '?') + ': SEM TEXTO (scan?) - revisar'); continue; }\n  if (failedFiles[j.fileName]) continue;\n  docs++; chunks += (j.nChunks || 0);\n}\nconst failFiles = Object.keys(failedFiles);\nfor (const f of failFiles) parts.push('- ' + f + ': ERRO embed (' + failedFiles[f] + ' chunks)');\nif (upsertErrors) parts.push('- UPSERT falhou (' + upsertErrors + ') - batch NAO escrito');\nconst fails = toolboxFails + failFiles.length + (upsertErrors ? 1 : 0);\nlet message = 'Condominio -> Mnemosyne: ' + upsertOk + '/' + chunks + ' chunks na BD';\nif (docs) message += ' (' + docs + ' doc(s))';\nif (skipped) message += '; ' + skipped + ' sem texto (revisar)';\nif (fails) message += '; ' + fails + ' FALHA(S)';\nmessage += ' [upserts ok: ' + upsertOk + ']';\nif (parts.length) message += '\\n' + parts.join('\\n');\nreturn [{ json: { message, docs, chunks, skipped, fails, upsertOk } }];\n"
+      }
+    },
+    {
+      "id": "521388d3-4072-44da-88e9-c89b1fecadf1",
+      "name": "Notificar Hermes",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        784,
+        0
+      ],
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "D1X5OyGlkuo7UwdR"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "={{ $json.message }}",
+            "webhook_secret": "n8n-webhook-secret-2024",
+            "webhook_url": "http://hermes.ramoneees.com:8644/webhooks/n8n-complete"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "17a14057-260a-4b15-97d7-575d9a6a1bea",
+      "name": "Ja Indexado?",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -224,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {
+          "queryReplacement": "={{ $json.msgId + '::' + $json.fileName }}"
+        },
+        "query": "SELECT EXISTS (SELECT 1 FROM memory_entries m WHERE m.namespace = '/memory/condominio' AND starts_with(m.metadata->>'key', $1 || '::')) AS ja_indexado",
+        "resource": "database"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "jOrx76x9kc4PrZRh",
+          "name": "Postgres Mnemosyne"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "b1a63bdf-dd31-4ba0-8efa-d68ab9a15b9f",
+      "name": "Filtrar Novos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Deixa passar apenas docs AINDA NAO indexados (nenhuma entrada com prefixo msgId::fileName:: na BD).\n// Item do check vem 1:1 alinhado com Preparar Anexos; sem resposta do check => trata como novo (processa e notifica).\nconst checks = $input.all();\nlet docs = [];\ntry { docs = $('Preparar Anexos').all(); } catch (e) {}\nconst out = [];\nfor (let i = 0; i < docs.length; i++) {\n  const c = (checks[i] || {}).json || {};\n  if (c.ja_indexado === true) continue;\n  const d = docs[i];\n  out.push({ json: d.json, binary: d.binary });\n}\nconsole.log('docs novos: ' + out.length + '/' + docs.length);\nreturn out;\n"
+      }
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "EQtpk3dcMkC7maai",
+      "projectId": "NIWdtECswkBCcQBM",
+      "createdAt": "2026-11-07T19:21:42.638Z",
+      "updatedAt": "2026-11-07T19:21:42.638Z"
+    }
+  ],
+  "staticData": {
+    "node:A cada 15 minutos": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    },
+    "node:A cada 6 horas": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        "hours:6"
+      ]
+    }
+  },
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-11-08T07:35:28.284Z",
+  "versionId": "46eb367e-afdd-4c89-87d5-4c08e9e08fce"
+}
