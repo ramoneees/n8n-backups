@@ -1,7 +1,7 @@
 {
   "active": true,
   "activeVersion": {
-    "versionId": "066f1128-6a2f-4a3e-a2ac-9307a9dbace0",
+    "versionId": "6fa148f7-270c-4e3b-ae93-21b3d88dd0a9",
     "workflowId": "06z0PeRKbwNaebhN",
     "nodes": [
       {
@@ -68,7 +68,7 @@
       {
         "parameters": {
           "method": "POST",
-          "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions",
+          "url": "https://litellm.ramoneees.com/v1/chat/completions",
           "authentication": "genericCredentialType",
           "genericAuthType": "httpBearerAuth",
           "sendBody": true,
@@ -432,13 +432,13 @@
     },
     "nodeGroups": [],
     "authors": "Ramon ramon@pereirariosoftware.com (via MCP)",
-    "name": "Extração nativa + gate de qualidade",
-    "description": "Causa raiz da execução 2564: o toolbox mudou de API (POST /api/v1/extract/base64 deixou de existir → 404 crónico) e o fallback silencioso gravou records vazios. Fix: (1) extração nativa via Extract From File (pdf-parse), sem dependência do toolbox — validado end-to-end no reprocessamento da fatura 21-09 (2 285 chars, 19 itens); (2) gate 'Fatura Válida?' — só grava no Drive se items>0 e parse OK, acabando com o lixo DESCONHECIDO.",
+    "name": "Updated Analisar Fatura (LLM)",
+    "description": "Updated nodes: Analisar Fatura (LLM)",
     "autosaved": false,
-    "createdAt": "2026-09-21T13:28:31.996Z",
-    "updatedAt": "2026-09-21T13:28:31.996Z"
+    "createdAt": "2026-11-11T18:29:20.904Z",
+    "updatedAt": "2026-11-11T18:29:20.904Z"
   },
-  "activeVersionId": "066f1128-6a2f-4a3e-a2ac-9307a9dbace0",
+  "activeVersionId": "6fa148f7-270c-4e3b-ae93-21b3d88dd0a9",
   "connections": {
     "Gmail Trigger": {
       "main": [
@@ -642,7 +642,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://litellm.olympus.svc.cluster.local:4000/v1/chat/completions",
+        "url": "https://litellm.ramoneees.com/v1/chat/completions",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBearerAuth",
         "sendBody": true,
@@ -906,6 +906,6 @@
   },
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-09-21T13:28:31.995Z",
-  "versionId": "066f1128-6a2f-4a3e-a2ac-9307a9dbace0"
+  "updatedAt": "2026-11-11T18:29:20.902Z",
+  "versionId": "6fa148f7-270c-4e3b-ae93-21b3d88dd0a9"
 }
